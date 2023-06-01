@@ -3,6 +3,9 @@ uuid = "b5ee06fe-188d-450a-9f05-8f188668dd15"
 authors = ["Gage Bonner <gage.bonner@gmail.com>"]
 version = "1.0.0-DEV"
 
+[deps]
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+
 [compat]
 julia = "1.8"
 

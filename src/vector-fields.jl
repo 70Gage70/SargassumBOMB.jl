@@ -41,30 +41,30 @@ close(water)
 
 """
 The dataset must now be cleaned. 
-
-We reverse the order of the first dimension of u_wind and v_wind so that the latitudes are increasing.
-We set all NaNs (velocities measured over land) equal to zero.
-We rearrange u/v such that the order of entries is (lon, lat, t) == (x, y, t).
-
-We subtract the half-day from the wind velocity data and subtract the 365th day from the water velocity data,
-so that they are on the same grid.
-We rescale the times to be in days since Jan. 1 2021.
-We convert lat, lon and t to iterators.
 """
 
+# Reverse the order of the first dimension of u_wind and v_wind so that the latitudes are increasing.
 u_wind = u_wind[end:-1:1, :, :]
 v_wind = v_wind[end:-1:1, :, :]
 
+# Set all NaNs (velocities measured over land) equal to zero.
 u_wind[isnan.(u_wind)] .= 0.0
 v_wind[isnan.(v_wind)] .= 0.0
 u_wtr[isnan.(u_wtr)] .= 0.0
 v_wtr[isnan.(v_wtr)] .= 0.0
 
-u_wind, v_wind, v_wind, v_wtr  = [permutedims(x, [2, 1, 3]) for x in [u_wind, v_wind, v_wind, v_wtr ]]
+# Rearrange u/v such that the order of entries is (lon, lat, t) == (x, y, t).
+u_wind, v_wind, u_wtr, v_wtr  = [permutedims(x, [2, 1, 3]) for x in [u_wind, v_wind, u_wtr, v_wtr ]]
 
+# We subtract the half-day from the wind velocity times and subtract the 365th day from the water velocity times and data,
+# so that they are on the same grid.
+# We also rescale the times to be in days since Jan. 1 2021.
 t_wind = t_wind .- 0.5 .- 738157
 t_wtr = t_wtr[1:end-1] .- 738157
+u_wtr = u_wtr[:, :, 1:end-1]
+v_wtr = v_wtr[:, :, 1:end-1]
 
+# We convert lat, lon and t to iterators.
 lon_wind, lat_wind, t_wind, lon_wtr, lat_wtr, t_wtr = [-99.75:0.25:-0.25, 0.25:0.25:90.0, 0.0:1.0:363.0, -99.875:0.25:-50.125, 5.125:0.25:34.875, 0.0:1.0:363.0]
 
 """

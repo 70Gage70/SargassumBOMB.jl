@@ -26,10 +26,10 @@ $$
 u = (1 - \alpha) v + \alpha v_a.
 \end{equation}
 $$
-Let $\text{D}q/\text{D}t = \partial_x q + (\nabla_{x, y} q) \cdot q$.
+Let $\text{D}v_i/\text{D}t = (v, 1) \cdot (\nabla_{x, y, t} v_i) = \partial_t v_i + v \cdot (\nabla_{x, y} v_i) $.
 $$
 \begin{align}
-\dot{x} &= u_x + \tau\left( R \dot{v}_x - R\left( f + \frac{1}{3}\omega \right)v_y -  \dot{u}_x + \left( f + \frac{1}{3}R \omega \right) u_y  + F_x\right) \\ 
-\dot{y} &= u_y + \tau\left( R \dot{v}_y + R\left( f + \frac{1}{3}\omega \right)v_x -  \dot{u}_y + \left( f + \frac{1}{3}R \omega \right) u_x  + F_y \right)
+\dot{x} &= u_x + \tau\left( R \frac{\text{D} v_x}{\text{D}t} - R\left( f + \frac{1}{3}\omega \right)v_y -  \frac{\text{D} u_x}{\text{D}t} + \left( f + \frac{1}{3}R \omega \right) u_y  + F_x\right) \\ 
+\dot{y} &= u_y + \tau\left( R \frac{\text{D} v_y}{\text{D}t} + R\left( f + \frac{1}{3}\omega \right)v_x -  \frac{\text{D} u_y}{\text{D}t} - \left( f + \frac{1}{3}R \omega \right) u_x  + F_y \right)
 \end{align}
 $$

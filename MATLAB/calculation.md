@@ -18,14 +18,25 @@ $$
 R(\delta) &= \frac{1 - \tfrac{1}{2} \Phi}{1 - \tfrac{1}{6} \Phi} .
 \end{align}
 $$
-Let $\Omega = 2\pi$ be the angular velocity of the  
-
+Let $\Omega$ be the angular velocity of the Earth in radians and then $\vartheta_0$ be a reference latitude. Then,
+$$
+\begin{equation}
+f = 2 \Omega \sin \vartheta_0 .
+\end{equation}
+$$
 Let the planar $(x, y)$ velocity of the water be $v(x, y, t)$, let the planar velocity of the air be $v_{a}(x, y, t)$ and define
 $$
 \begin{equation}
 u = (1 - \alpha) v + \alpha v_a.
 \end{equation}
 $$
+Let $\omega(x, y, t)$ be the vorticity of the water, then
+$$
+\begin{equation}
+\omega = \frac{\partial v_y}{\partial x} - \frac{\partial v_x}{\partial y}.
+\end{equation}
+$$
+
 Let $\text{D}v_i/\text{D}t = (v, 1) \cdot (\nabla_{x, y, t} v_i) = \partial_t v_i + v \cdot (\nabla_{x, y} v_i) $.
 $$
 \begin{align}

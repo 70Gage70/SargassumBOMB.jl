@@ -102,9 +102,9 @@ function vector_fields(f_wind = "../MATLAB/viento_2021.mat", f_wtr = "../MATLAB/
     Du_xDt(x, y, t, α) = (1 - α) * Dv_xDt(x, y, t) + α * Dva_xDt(x, y, t)
     Du_yDt(x, y, t, α) = (1 - α) * Dv_yDt(x, y, t) + α * Dva_yDt(x, y, t)
 
-    omega(x, y, t) = gradient(v_y, x, y, t)[1] - gradient(v_x, x, y, t)[2]
+    ω(x, y, t) = gradient(v_y, x, y, t)[1] - gradient(v_x, x, y, t)[2]
 
-    return (v_x, v_y, Dv_xDt, Dv_yDt, u_x, u_y, Du_xDt, Du_yDt, omega)
+    return (v_x, v_y, Dv_xDt, Dv_yDt, u_x, u_y, Du_xDt, Du_yDt, ω)
 end
 
 

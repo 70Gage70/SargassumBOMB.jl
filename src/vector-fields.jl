@@ -2,8 +2,10 @@ using Interpolations
 using MAT
 using LinearAlgebra: ⋅
 
+########################################################################################
+
 """
-    wind_velocity_load(file = "../MATLAB/viento_2021.mat")
+    wind_file_default = "viento_2021.mat"
 
 This is wind velocity data from 2021 in the north Atlantic. The dataset contains 5 keys:
 
@@ -13,16 +15,11 @@ This is wind velocity data from 2021 in the north Atlantic. The dataset contains
 "u" [360 x 399 x 364] [km/day]: The x component (East/West) of the wind velocity.
 "v" [360 x 399 x 364] [km/day]: The y component (North/South) of the wind velocity.
 """
-function wind_velocity_load(file = "../MATLAB/viento_2021.mat")
-    data_wind = matopen(file)
-    lon_wind, lat_wind, t_wind, u_wind, v_wind = read(data_wind, "Lon", "Lat", "t", "u", "v");
-    close(data_wind)
+const wind_file_default = joinpath(@__DIR__, "..", "MATLAB", "viento_2021.mat")
 
-    return (lon_wind, lat_wind, t_wind, u_wind, v_wind)
-end
 
 """
-    water_velocity_load(file = "../MATLAB/merged-2021-IAS.mat")
+    water_file_default = "merged-2021-IAS.mat"
 
 This is water velocity data from 2021 in the north Atlantic. The dataset contains 5 keys:
 
@@ -32,22 +29,23 @@ This is water velocity data from 2021 in the north Atlantic. The dataset contain
 "u" [120 x 200 x 365] [km/day]: The x component (East/West) of the wind velocity.
 "v" [120 x 200 x 365] [km/day]: The y component (North/South) of the wind velocity.
 """
-function water_velocity_load(file = "../MATLAB/merged-2021-IAS.mat")
-    data_wtr = matopen(file)
-    lon_wtr, lat_wtr, t_wtr, u_wtr, v_wtr = read(data_wtr, "lon", "lat", "t", "u", "v");
-    close(data_wtr)
+const water_file_default = joinpath(@__DIR__, "..", "MATLAB", "merged-2021-IAS.mat")
 
-    return (lon_wtr, lat_wtr, t_wtr, u_wtr, v_wtr)
-end
 
 """
-    clean_vector_fields()
+    load_vector_fields(wind_file, water_file)
 
 Standardize vector field data for use with interpolators.
 """
-function clean_vector_fields(wind, water)
-    lon_wind, lat_wind, t_wind, u_wind, v_wind = wind
-    lon_wtr, lat_wtr, t_wtr, u_wtr, v_wtr = water
+function load_vector_fields(wind_file::String = wind_file_default, water_file::String = water_file_default)
+    # load the data from the mat files
+    data_wind = matopen(wind_file)
+    lon_wind, lat_wind, t_wind, u_wind, v_wind = read(data_wind, "Lon", "Lat", "t", "u", "v");
+    close(data_wind)
+
+    data_wtr = matopen(water_file)
+    lon_wtr, lat_wtr, t_wtr, u_wtr, v_wtr = read(data_wtr, "lon", "lat", "t", "u", "v");
+    close(data_wtr)
 
     # Reverse the order of the first dimension of u_wind and v_wind so that the latitudes are increasing.
     u_wind = u_wind[end:-1:1, :, :]
@@ -77,14 +75,13 @@ function clean_vector_fields(wind, water)
 end
 
 
+"""
+    vector_fields(wind_file, water_file)
 
+Create interpolants for wind and water vector fields.
 """
-We construct the interpolators.
-"""
-function vector_fields(f_wind = "../MATLAB/viento_2021.mat", f_wtr = "../MATLAB/merged-2021-IAS.mat")
-    wind = wind_velocity_load(f_wind)
-    water = water_velocity_load(f_wtr)
-    lon_wind, lat_wind, t_wind, u_wind, v_wind, lon_wtr, lat_wtr, t_wtr, u_wtr, v_wtr = clean_vector_fields(wind, water)
+function vector_fields(wind_file::String = wind_file_default, water_file::String = water_file_default)
+    lon_wind, lat_wind, t_wind, u_wind, v_wind, lon_wtr, lat_wtr, t_wtr, u_wtr, v_wtr = load_vector_fields(wind_file, water_file)
 
     bsp = BSpline(Cubic(Line(OnGrid()))) 
 

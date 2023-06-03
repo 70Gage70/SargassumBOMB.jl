@@ -40,12 +40,11 @@ ddt = Differential(t)
         R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)
     ),
     ddt(y) ~ u_y(x, y, t, α) + τ * (
-        R*Dv_yDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
+        R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
     )
 ])
 
-# ux + tau * (R*DvxDt - R*(f + omega/3) .* vy ...
-# - DuxDt + (f + R*omega/3).* uy + Fx)
+
 
 # using ModelingToolkit, NonlinearSolve
 

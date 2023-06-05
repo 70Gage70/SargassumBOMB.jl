@@ -58,9 +58,8 @@ ddt = Differential(t)
     )
 ])
 
-# initial_conditions = [x => -63, y => 14.0] # runs into Dominican
-# t_range = (0.0, 5.4)
-initial_conditions = [x => -83.4, y => 24.6]
+ics = sph2xy(-83.4, 24.6, lon0, lat0)
+initial_conditions = [x => ics[1], y => ics[2]]
 t_range = (0.0, 1.0)
 params = BOM_parameters()
 params = [α => params[1], τ => params[2], R => params[3], f => params[4]]
@@ -74,7 +73,7 @@ prob = ODEProblem(
 
 sol = solve(prob)
 traj = stack(sol.u)
-x_traj, y_traj = (traj[1,:], traj[2, :])
+x_traj, y_traj = (traj[1,:], traj[2, :]) # map(x -> xy2sph(x..., lon0, lat0), eachcol(traj))
 times = sol.t
 
 
@@ -90,18 +89,18 @@ ga(fig, row, col, title) = GeoAxis(
 )
 
 
-lines!(ga(fig, 1, 1, "traj"), x_traj, y_traj; color = times, linewidth = 4)
+# lines!(ga(fig, 1, 1, "traj"), x_traj, y_traj; color = times, linewidth = 4)
 
 
 
-lon_wind, lat_wind, t_wind, u_wind, v_wind, lon_wtr, lat_wtr, t_wtr, u_wtr, v_wtr = load_vector_fields()
-u_wtr_itp = [v_x(lon, lat, 1) for lon in lon_wtr, lat in lat_wtr]
-v_wtr_itp = [v_y(lon, lat, 1) for lon in lon_wtr, lat in lat_wtr]
+# lon_wind, lat_wind, t_wind, u_wind, v_wind, lon_wtr, lat_wtr, t_wtr, u_wtr, v_wtr = load_vector_fields()
+# u_wtr_itp = [v_x(lon, lat, 1) for lon in lon_wtr, lat in lat_wtr]
+# v_wtr_itp = [v_y(lon, lat, 1) for lon in lon_wtr, lat in lat_wtr]
 
-surface!(ga(fig, 2, 1, "water_x"), lon_wtr, lat_wtr, u_wtr[:,:,1])
-surface!(ga(fig, 2, 2, "water_y"), lon_wtr, lat_wtr, v_wtr[:,:,1])
+# surface!(ga(fig, 2, 1, "water_x"), lon_wtr, lat_wtr, u_wtr[:,:,1])
+# surface!(ga(fig, 2, 2, "water_y"), lon_wtr, lat_wtr, v_wtr[:,:,1])
 
-surface!(ga(fig, 3, 1, "wind_x_itp"), lon_wtr, lat_wtr, u_wtr_itp)
-surface!(ga(fig, 3, 2, "wind_y_itp"), lon_wtr, lat_wtr, v_wtr_itp)
+# surface!(ga(fig, 3, 1, "wind_x_itp"), lon_wtr, lat_wtr, u_wtr_itp)
+# surface!(ga(fig, 3, 2, "wind_y_itp"), lon_wtr, lat_wtr, v_wtr_itp)
 
-fig
+# fig

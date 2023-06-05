@@ -17,7 +17,7 @@ function sph2xy(lon, lat, lon0, lat0; R = 6371)
     x = R*(lon - lon0)*deg2rad*cos(lat0*deg2rad)
     y = R*(lat - lat0)*deg2rad
 
-    return (x, y)
+    return [x, y]
 end
 
 """
@@ -40,5 +40,5 @@ function xy2sph(x, y, lon0, lat0; R = 6371)
     lon = lon0 + rad2deg*x/(R*cos(lat0*deg2rad))
     lat = lat0 + rad2deg*y/R 
 
-    return (lon, lat)
+    return [lon, lat]
 end

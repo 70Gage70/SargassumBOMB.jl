@@ -12,10 +12,10 @@ Compute planar coordinates (x, y) [km] from spherical coordinates (lon, lat) [de
 `R`: The radius of the Earth; x and y are returned in the units of R. Default 6371 km.
 """
 function sph2xy(lon, lat, lon0, lat0; R = 6371)
-    λ, λ0, θ, θ0 = π/180 * [lon, lon0, lat, lat0]
+    deg2rad = π/180
 
-    x = R*(λ - λ0)*cos(θ0)
-    y = R*(θ - θ0)
+    x = R*(lon - lon0)*deg2rad*cos(lat0*deg2rad)
+    y = R*(lat - lat0)*deg2rad
 
     return (x, y)
 end
@@ -33,11 +33,12 @@ Compute spherical coordinates (lon, lat) [deg] from planary coordinates (x, y) [
 `lat0`: A reference latitude, usually taken near the middle of the domain.
 `R`: The radius of the Earth; should be in the same units as x and y. Default 6371 km.
 """
-function sph2xy(x, y, lon0, lat0; R = 6371)
-    λ0, θ0 = π/180 * [lon0, lat0]
+function xy2sph(x, y, lon0, lat0; R = 6371)
+    deg2rad = π/180
+    rad2deg = 1/deg2rad
 
-    λ = (180/π) * (x/(R*cos(θ0)) + λ0)
-    θ = (180/π) * (y/R + θ0)
+    lon = lon0 + rad2deg*x/(R*cos(lat0*deg2rad))
+    lat = lat0 + rad2deg*y/R 
 
-    return (λ, θ)
+    return (lon, lat)
 end

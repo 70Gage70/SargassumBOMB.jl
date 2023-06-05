@@ -3,6 +3,7 @@ using ModelingToolkit
 using GeoMakie, CairoMakie
 
 include("parameters.jl")
+include("coordinates.jl")
 include("vector-fields.jl")
 
 #############################################

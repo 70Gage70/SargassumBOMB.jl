@@ -73,7 +73,7 @@ prob = ODEProblem(
 
 sol = solve(prob)
 traj = stack(sol.u)
-x_traj, y_traj = (traj[1,:], traj[2, :]) # map(x -> xy2sph(x..., lon0, lat0), eachcol(traj))
+x_traj, y_traj = (traj[1,:], traj[2, :]) # map(x -> xy2sph(x..., lon0, lat0), eachcol(traj)) |> stack
 times = sol.t
 
 

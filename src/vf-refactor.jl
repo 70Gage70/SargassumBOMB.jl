@@ -1,12 +1,18 @@
 using MAT
 using Interpolations
+using LinearAlgebra: ⋅
 
 include("helpers.jl")
 include("coordinates.jl")
 
 ##############################################
 
-abstract type AbstractVectorField end
+"""
+    AbstractVectorFieldGrid
+
+The abstract type for gridded vector fields.
+"""
+abstract type AbstractVectorFieldGrid end
 
 """
     mutable struct VectorField2DGridSPH{T}
@@ -22,7 +28,7 @@ A container for a two-dimensional vector field defined at each point on a linear
 - `u`: The x component of the vector field, conventionally u[lon, lat, time].
 - `v`: The y component of the vector field, conventionally v[lon, lat, time].
 """
-mutable struct VectorField2DGridSPH{T<:Real} <: AbstractVectorField
+mutable struct VectorField2DGridSPH{T<:Real} <: AbstractVectorFieldGrid
     lon::AbstractRange{T}
     lat::AbstractRange{T}
     time0::DateTime
@@ -146,6 +152,13 @@ function VectorField2DGridSPH(
 end
 
 """
+    AbstractVectorFieldInterpolant
+
+The abstract type for interpolated vector fields.
+"""
+abstract type AbstractVectorFieldInterpolant end
+
+"""
     struct VectorField2DInterpolantSPH{T, I}
 
 A container for a two-dimensional vector field interpolated over spherical longitude, latitude and time coordinates.
@@ -159,7 +172,7 @@ A container for a two-dimensional vector field interpolated over spherical longi
 - `u`: An interpolant for the x component of the vector field. Call as `u(lon, lat, t)`.
 - `v`: An interpolant for the y component of the vector field. Call as `v(lon, lat, t)`.
 """
-struct VectorField2DInterpolantSPH{T<:Real, I<:Interpolations.InterpolationType} <: AbstractVectorField
+struct VectorField2DInterpolantSPH{T<:Real, I<:Interpolations.InterpolationType} <: AbstractVectorFieldInterpolant
     lon::AbstractRange{T}
     lat::AbstractRange{T}
     time0::DateTime
@@ -169,7 +182,7 @@ struct VectorField2DInterpolantSPH{T<:Real, I<:Interpolations.InterpolationType}
 end
 
 """
-VectorField2DInterpolantSPH(vf_grid; interpolant_type)
+    VectorField2DInterpolantSPH(vf_grid; interpolant_type)
 
 Construct an `VectorField2DInterpolantSPH` from a [`VectorField2DGridSPH`](@ref).
 
@@ -205,7 +218,7 @@ A container for a two-dimensional vector field interpolated over equirectangular
 - `u`: An interpolant for the x component of the vector field. Call as `u(x, y, t)`.
 - `v`: An interpolant for the y component of the vector field. Call as `v(x, y, t)`.
 """
-struct VectorField2DInterpolantEQR{T<:Real, I<:Interpolations.InterpolationType} <: AbstractVectorField
+struct VectorField2DInterpolantEQR{T<:Real, I<:Interpolations.InterpolationType} <: AbstractVectorFieldInterpolant
     ref::EquirectangularReference
     x::AbstractRange{T}
     y::AbstractRange{T}
@@ -216,34 +229,65 @@ struct VectorField2DInterpolantEQR{T<:Real, I<:Interpolations.InterpolationType}
 end
 
 """
-VectorField2DInterpolantEQR(vf_grid, ref; interpolant_type)
+    VectorField2DInterpolantEQR(vf_grid, ref; interpolant_type, R)
 
 Construct an `VectorField2DInterpolantEQR` from a [`VectorField2DGridSPH`](@ref) and `ref::EquirectangularReference`.
 
 ### Optional Arguments
 
 - `interpolant_type`: The type of interpolation to use from the `Interpolations` module. Default cubic B-spline.
+- `R`: The radius of the Earth. The units of the `x` and `y` coordinates are the same as the units of `R`. Default 6371 km.
 """
 function VectorField2DInterpolantEQR(
     vf_grid::VectorField2DGridSPH,
     ref::EquirectangularReference; 
-    interpolant_type = BSpline(Cubic(Line(OnGrid()))) 
+    interpolant_type = BSpline(Cubic(Line(OnGrid()))),
+    R = 6371
     )
 
+    # construct the interpolant in spherical coordinates
     lon, lat, time, time0, u, v = (vf_grid.lon, vf_grid.lat, vf_grid.time, vf_grid.time0, vf_grid.u, vf_grid.v)
 
     u_itp = scale(interpolate(u, interpolant_type), lon, lat, time)
     v_itp = scale(interpolate(v, interpolant_type), lon, lat, time)
 
-    xmin, ymin = sph2xy(first(lon), first(lat), ref)
-    xmax, ymax = sph2xy(last(lon), last(lat), ref)
+    # re-interpolate in rectilinear coordinates
+    xmin, ymin = sph2xy(first(lon), first(lat), ref, R = R)
+    xmax, ymax = sph2xy(last(lon), last(lat), ref, R = R)
     x = range(start = xmin, stop = xmax, length = length(lon))
     y = range(start = ymin, stop = ymax, length = length(lat))
-    u_data = [u_itp(xy2sph(x, y, ref)..., t) for x in x, y in y, t in time]
-    v_data = [v_itp(xy2sph(x, y, ref)..., t) for x in x, y in y, t in time]
+    u_data = [u_itp(xy2sph(x, y, ref, R = R)..., t) for x in x, y in y, t in time]
+    v_data = [v_itp(xy2sph(x, y, ref, R = R)..., t) for x in x, y in y, t in time]
 
     u_itp = scale(interpolate(u_data, interpolant_type), x, y, time)
     v_itp = scale(interpolate(v_data, interpolant_type), x, y, time)    
 
     return VectorField2DInterpolantEQR(ref, x, y, time0, time, u_itp, v_itp)
+end
+
+"""
+    MaterialDerivativeX(vector_field, x, y, t)
+
+Compute the material derivative of the x component of the vector field `vector_field` at coordinates `(x, y, t)`.
+"""
+function MaterialDerivativeX(vector_field::VectorField2DInterpolantEQR, x::Real, y::Real, t::Real)
+    return gradient(vector_field.u, x, y, t) ⋅ [vector_field.u(x, y, t), vector_field.v(x, y, t), 1.0]
+end
+
+"""
+    MaterialDerivativeY(vector_field, x, y, t)
+
+Compute the material derivative of the y component of the vector field `vector_field` at coordinates `(x, y, t)`.
+"""
+function MaterialDerivativeY(vector_field::VectorField2DInterpolantEQR, x::Real, y::Real, t::Real)
+    return gradient(vector_field.v, x, y, t) ⋅ [vector_field.u(x, y, t), vector_field.v(x, y, t), 1.0]
+end
+
+"""
+    Vorticity(vector_field, x, y, t)
+
+Compute the vorticity of the vector field `vector_field` at coordinates `(x, y, t)`.
+"""
+function Vorticity(vector_field::VectorField2DInterpolantEQR, x::Real, y::Real, t::Real)
+    return gradient(vector_field.v, x, y, t)[1] - gradient(vector_field.u, x, y, t)[2]
 end

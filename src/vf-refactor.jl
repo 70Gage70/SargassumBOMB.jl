@@ -41,13 +41,13 @@ numbers in Rata Die format. See [`rata2datetime_minute`](@ref).
 
 ### Optional Arguments
 
-`lon_alias`: The name of the variable in `infile` which stores the longitudes. Default `"lon"`.
-`lat_alias`: The name of the variable in `infile` which stores the latitudes. Default `"lat"`.
-`time_alias`: The name of the variable in `infile` which stores the times. Default `"t"`.
-`u_alias`: The name of the variable in `infile` which stores the x component of the vector field. Default `"u"`.
-`v_alias`: The name of the variable in `infile` which stores the y component of the vector field. Default `"v"`.
-`NaN_replacement`: Any `NaN`s in `u` and `v` will be replaced by this. Default `0.0`.
-`lon_lat_time_order`: A permutation that will be applied to `u` and `v`. Use if `u`, `v` do not follow the convention [lon, lat, time]. Default `[1, 2, 3]`.
+- `lon_alias`: The name of the variable in `infile` which stores the longitudes. Default `"lon"`.
+- `lat_alias`: The name of the variable in `infile` which stores the latitudes. Default `"lat"`.
+- `time_alias`: The name of the variable in `infile` which stores the times. Default `"t"`.
+- `u_alias`: The name of the variable in `infile` which stores the x component of the vector field. Default `"u"`.
+- `v_alias`: The name of the variable in `infile` which stores the y component of the vector field. Default `"v"`.
+- `NaN_replacement`: Any `NaN`s in `u` and `v` will be replaced by this. Default `0.0`.
+- `lon_lat_time_order`: A permutation that will be applied to `u` and `v`. Use if `u`, `v` do not follow the convention [lon, lat, time]. Default `[1, 2, 3]`.
 """
 function VectorField2DGrid(
     infile::String;

@@ -2,26 +2,27 @@ using MAT
 using Interpolations
 
 include("helpers.jl")
+include("coordinates.jl")
 
 ##############################################
 
 abstract type AbstractVectorField end
 
 """
-    mutable struct VectorField2DGrid{T}
+    mutable struct VectorField2DGridSPH{T}
 
-A container for a two-dimensional vector field defined over a linearly spaced grid of longitude, latitude and time.
+A container for a two-dimensional vector field defined at each point on a linearly spaced grid of longitude, latitude and time.
 
 ### Fields
 
 - `lon`: The range of longitudes (East/West) over which the grid is defined.
 - `lat`: The range of latitudes (North/South) over which the grid is defined.
 - `time0`: The initial `DateTime` at which the vector field is defined.
-- `time`: The range of times (North/South) since `time0` over which the grid is defined.
+- `time`: The range of times since `time0` over which the grid is defined.
 - `u`: The x component of the vector field, conventionally u[lon, lat, time].
 - `v`: The y component of the vector field, conventionally v[lon, lat, time].
 """
-mutable struct VectorField2DGrid{T<:Real} <: AbstractVectorField
+mutable struct VectorField2DGridSPH{T<:Real} <: AbstractVectorField
     lon::AbstractRange{T}
     lat::AbstractRange{T}
     time0::DateTime
@@ -31,9 +32,9 @@ mutable struct VectorField2DGrid{T<:Real} <: AbstractVectorField
 end
 
 """
-    VectorField2DGrid(infile; kwargs...)
+    VectorField2DGridSPH(infile; kwargs...)
 
-Create a `VectorField2DGrid` object from the file `infile`. 
+Create a `VectorField2DGridSPH` object from the file `infile`. 
 
 `infile` must be of the form `"filename.mat"`.
 
@@ -50,7 +51,7 @@ days in Rata Die format. See [`rata2datetime_minute`](@ref).
 - `NaN_replacement`: Any `NaN`s in `u` and `v` will be replaced by this. Default `0.0`.
 - `lon_lat_time_order`: A permutation that will be applied to `u` and `v`. Use if `u`, `v` do not follow the convention [lon, lat, time]. Default `[1, 2, 3]`.
 """
-function VectorField2DGrid(
+function VectorField2DGridSPH(
     infile::String;
     lon_alias::String = "lon",
     lat_alias::String = "lat",
@@ -126,7 +127,7 @@ function VectorField2DGrid(
 
     # ensure that longitudes and latitudes are in the allowed earthly range
     @assert (-180.0 <= first(lon) <= 180.0) && (-180.0 <= last(lon) <= 180.0) "The given longitudes are not between -180 degrees and 180 degrees."
-    @assert (-90.0 <= first(lon) <= 90.0) && (90.0 <= last(lon) <= 90.0) "The given lastitudes are not between -90 degrees and 90 degrees."
+    @assert (-90.0 <= first(lat) <= 90.0) && (-90.0 <= last(lat) <= 90.0) "The given latitudes are not between -90 degrees and 90 degrees."
 
     # NaN replacement
     u[isnan.(u)] .= NaN_replacement
@@ -141,28 +142,108 @@ function VectorField2DGrid(
     lon, lat, time = promote(lon, lat, time)
     u, v = promote(u, v)
 
-    return VectorField2DGrid(lon, lat, time0, time, u, v)
+    return VectorField2DGridSPH(lon, lat, time0, time, u, v)
 end
 
 """
-    struct VectorField2DInterpolant{T, I}
+    struct VectorField2DInterpolantSPH{T, I}
 
-A container for a two-dimensional vector field interpolated over a linearly spaced grid of longitude, latitude and time.
+A container for a two-dimensional vector field interpolated over spherical longitude, latitude and time coordinates.
 
 ### Fields
 
 - `lon`: The range of longitudes (East/West) over which the grid is defined.
 - `lat`: The range of latitudes (North/South) over which the grid is defined.
 - `time0`: The initial `DateTime` at which the vector field is defined.
-- `time`: The range of times (North/South) since `time0` over which the grid is defined.
-- `u`: The x component of the vector field, conventionally u[lon, lat, time].
-- `v`: The y component of the vector field, conventionally v[lon, lat, time].
+- `time`: The range of times since `time0` over which the grid is defined.
+- `u`: An interpolant for the x component of the vector field. Call as `u(lon, lat, t)`.
+- `v`: An interpolant for the y component of the vector field. Call as `v(lon, lat, t)`.
 """
-struct VectorField2DInterpolant{T<:Real, I<:Interpolations.InterpolationType} <: AbstractVectorField
+struct VectorField2DInterpolantSPH{T<:Real, I<:Interpolations.InterpolationType} <: AbstractVectorField
     lon::AbstractRange{T}
     lat::AbstractRange{T}
     time0::DateTime
     time::AbstractRange{T}
     u::AbstractInterpolation{T, 3, I}
     v::AbstractInterpolation{T, 3, I}
+end
+
+"""
+VectorField2DInterpolantSPH(vf_grid; interpolant_type)
+
+Construct an `VectorField2DInterpolantSPH` from a [`VectorField2DGridSPH`](@ref).
+
+### Optional Arguments
+
+- `interpolant_type`: The type of interpolation to use from the `Interpolations` module. Default cubic B-spline.
+"""
+function VectorField2DInterpolantSPH(
+    vf_grid::VectorField2DGridSPH; 
+    interpolant_type = BSpline(Cubic(Line(OnGrid()))) 
+    )
+
+    lon, lat, time, time0, u, v = (vf_grid.lon, vf_grid.lat, vf_grid.time, vf_grid.time0, vf_grid.u, vf_grid.v)
+
+    u_itp = scale(interpolate(u, interpolant_type), lon, lat, time)
+    v_itp = scale(interpolate(v, interpolant_type), lon, lat, time)
+
+    return VectorField2DInterpolantSPH(lon, lat, time0, time, u_itp, v_itp)
+end
+
+"""
+    struct VectorField2DInterpolantEQR{T, I}
+
+A container for a two-dimensional vector field interpolated over equirectangular x, y and time coordinates.
+
+### Fields
+
+- `ref`: The `EquirectangularReference` with whcih the projection is defined.
+- `x`: The range of x values over which the grid is defined.
+- `y`: The range of y values over which the grid is defined.
+- `time0`: The initial `DateTime` at which the vector field is defined.
+- `time`: The range of times since `time0` over which the grid is defined.
+- `u`: An interpolant for the x component of the vector field. Call as `u(x, y, t)`.
+- `v`: An interpolant for the y component of the vector field. Call as `v(x, y, t)`.
+"""
+struct VectorField2DInterpolantEQR{T<:Real, I<:Interpolations.InterpolationType} <: AbstractVectorField
+    ref::EquirectangularReference
+    x::AbstractRange{T}
+    y::AbstractRange{T}
+    time0::DateTime
+    time::AbstractRange{T}
+    u::AbstractInterpolation{T, 3, I}
+    v::AbstractInterpolation{T, 3, I}
+end
+
+"""
+VectorField2DInterpolantEQR(vf_grid, ref; interpolant_type)
+
+Construct an `VectorField2DInterpolantEQR` from a [`VectorField2DGridSPH`](@ref) and `ref::EquirectangularReference`.
+
+### Optional Arguments
+
+- `interpolant_type`: The type of interpolation to use from the `Interpolations` module. Default cubic B-spline.
+"""
+function VectorField2DInterpolantEQR(
+    vf_grid::VectorField2DGridSPH,
+    ref::EquirectangularReference; 
+    interpolant_type = BSpline(Cubic(Line(OnGrid()))) 
+    )
+
+    lon, lat, time, time0, u, v = (vf_grid.lon, vf_grid.lat, vf_grid.time, vf_grid.time0, vf_grid.u, vf_grid.v)
+
+    u_itp = scale(interpolate(u, interpolant_type), lon, lat, time)
+    v_itp = scale(interpolate(v, interpolant_type), lon, lat, time)
+
+    xmin, ymin = sph2xy(first(lon), first(lat), ref)
+    xmax, ymax = sph2xy(last(lon), last(lat), ref)
+    x = range(start = xmin, stop = xmax, length = length(lon))
+    y = range(start = ymin, stop = ymax, length = length(lat))
+    u_data = [u_itp(xy2sph(x, y, ref)..., t) for x in x, y in y, t in time]
+    v_data = [v_itp(xy2sph(x, y, ref)..., t) for x in x, y in y, t in time]
+
+    u_itp = scale(interpolate(u_data, interpolant_type), x, y, time)
+    v_itp = scale(interpolate(v_data, interpolant_type), x, y, time)    
+
+    return VectorField2DInterpolantEQR(ref, x, y, time0, time, u_itp, v_itp)
 end

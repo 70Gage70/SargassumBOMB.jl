@@ -13,29 +13,32 @@ struct EquirectangularReference{T<:Real}
     lat0::T
 end
 
+"""
+    EquirectangularReference(; lon0, lat0)
 
-function EquirectangularReference(; lon0::T, lat0::T) where {T<:Real}
+Construct an `EquirectangularReference` with longitude `lon0` in degrees (East/West) and latitude `lat0` in degrees (North/South).
+"""
+function EquirectangularReference(; lon0::Real, lat0::Real)
     @assert -180.0 <= lon0 <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
     @assert -90 <= lat0 <= 90 "The latitude must be between -90 degrees and 90 degrees."
 
+    lon0, lat0 = promote(lon0, lat0)
+    
     return EquirectangularReference(lon0, lat0)
 end
-
 
 """
     sph2xy(lon, lat, ref; R = 6371)
 
-Compute planar coordinates `[x, y]` [km] from spherical coordinates `(lon, lat)` [deg] with reference `ref::EquirectangularReference`.
+Compute planar coordinates `[x, y]` from spherical coordinates `(lon, lat)` [deg] with reference `ref::EquirectangularReference`.
+
+The units of `x` and `y` are controlled by the optional argument `R`, the radius of the Earth. The default is `R = 6371 km.`
 
 ### Arguments
 
 `lon`: Longitude in degrees (East/West).
 `lat`: Latitude in degrees (North/South).
 `ref`: An [`EquirectangularReference`](@ref).
-
-### Optional Arguments
-
-`R`: The radius of the Earth; x and y are returned in the units of R. Default `6371 km`.
 """
 function sph2xy(lon, lat, ref; R = 6371)
     @assert -180.0 <= lon <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
@@ -53,17 +56,15 @@ end
 """
     xy2sph(x, y, ref; R = 6371)
 
-Compute spherical coordinates `[lon, lat]` [deg] from rectilinear coordinates `(x, y)` [km] from with references `ref::EquirectangularReference`.
+Compute spherical coordinates `[lon, lat]` [deg] from rectilinear coordinates `(x, y)` from with references `ref::EquirectangularReference`.
+
+The units of `x` and `y` should be the same as the optional argument `R`, the radius of the Earth. The default is `R = 6371 km.`
 
 ### Arguments
 
 `x`: The x Cartesian coordinate in km (East/West).
 `y`: The y Cartesian coordinate in km (North/South).
 `ref`: An [`EquirectangularReference`](@ref).
-
-### Optional Arguments 
-
-`R`: The radius of the Earth; should be in the same units as x and y. Default 6371 km.
 """
 function xy2sph(x, y, ref; R = 6371)
     lon0, lat0 = (ref.lon0, ref.lat0)

@@ -23,7 +23,7 @@ function EquirectangularReference(; lon0::Real, lat0::Real)
     @assert -90 <= lat0 <= 90 "The latitude must be between -90 degrees and 90 degrees."
 
     lon0, lat0 = promote(lon0, lat0)
-    
+
     return EquirectangularReference(lon0, lat0)
 end
 
@@ -40,7 +40,7 @@ The units of `x` and `y` are controlled by the optional argument `R`, the radius
 `lat`: Latitude in degrees (North/South).
 `ref`: An [`EquirectangularReference`](@ref).
 """
-function sph2xy(lon, lat, ref; R = 6371)
+function sph2xy(lon::Real, lat::Real, ref::EquirectangularReference; R::Real = 6371)
     @assert -180.0 <= lon <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
     @assert -90 <= lat <= 90 "The latitude must be between -90 degrees and 90 degrees."
 
@@ -66,7 +66,7 @@ The units of `x` and `y` should be the same as the optional argument `R`, the ra
 `y`: The y Cartesian coordinate in km (North/South).
 `ref`: An [`EquirectangularReference`](@ref).
 """
-function xy2sph(x, y, ref; R = 6371)
+function xy2sph(x::Real, y::Real, ref::EquirectangularReference; R::Real = 6371)
     lon0, lat0 = (ref.lon0, ref.lat0)
     deg2rad = π/180
     rad2deg = 1/deg2rad
@@ -75,4 +75,26 @@ function xy2sph(x, y, ref; R = 6371)
     lat = lat0 + rad2deg*y/R 
 
     return [lon, lat]
+end
+
+"""
+    xy2sph(xy, ref; R = 6371)
+
+Convert the rectilinear coordinates in the vector of vectors `xy` into an `N x 2` matrix of longitude and latitudes with respect to `ref::EquirectangularReference`.
+
+The units of `x` and `y` should be the same as the optional argument `R`, the radius of the Earth. The default is `R = 6371 km.`
+
+### Arguments
+
+`xy`: A vector of `[x, y]` coordinates.
+`ref`: An [`EquirectangularReference`](@ref).
+"""
+function xy2sph(xy::Vector{<:Vector{T}}, ref; R = 6371) where {T<:Real}
+    lonlat = Matrix{T}(undef, length(xy), 2)
+    
+    for i = 1:length(xy)
+        lonlat[i,:] = xy2sph(xy[i]...,ref, R = R)
+    end
+
+    return lonlat
 end

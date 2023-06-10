@@ -248,8 +248,8 @@ function VectorField2DInterpolantEQR(
     # construct the interpolant in spherical coordinates
     lon, lat, time, time0, u, v = (vf_grid.lon, vf_grid.lat, vf_grid.time, vf_grid.time0, vf_grid.u, vf_grid.v)
 
-    u_itp = scale(interpolate(u, interpolant_type), lon, lat, time)
-    v_itp = scale(interpolate(v, interpolant_type), lon, lat, time)
+    u_itp = extrapolate(scale(interpolate(u, interpolant_type), lon, lat, time), Flat())
+    v_itp = extrapolate(scale(interpolate(v, interpolant_type), lon, lat, time), Flat())
 
     # re-interpolate in rectilinear coordinates
     xmin, ymin = sph2xy(first(lon), first(lat), ref, R = R)

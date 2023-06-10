@@ -81,3 +81,6 @@ Temporary Items
 /extras
 **/src/data
 
+# JLD files (store interpolants)
+*.jld
+

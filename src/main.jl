@@ -4,37 +4,37 @@ using GeoMakie, CairoMakie
 
 include("parameters.jl")
 include("coordinates.jl")
-include("vector-fields.jl")
+include("vector-field-files.jl")
+include("vector-field-methods.jl")
 
 #############################################
 
 # variables can have bounds, parameters can have distributions
 
+@info "Loading interpolants."
+
+ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
+
+# construct_wind_itp(wind_file_default, ref)
+# construct_water_itp(water_file_default, ref)
+
+@load "water_itp.jld"
+@load "wind_itp.jld" 
+
+@info "Generating model."
+
 @parameters α τ R f
-@variables t x(t) y(t)
+@variables t, x(t), y(t)
 
-vfs = vector_fields()
-# v_x(x, y, t) = vfs[1](x, y, t)
-# v_y(x, y, t) = vfs[2](x, y, t)
-# Dv_xDt(x, y, t) = vfs[3](x, y, t)
-# Dv_yDt(x, y, t) = vfs[4](x, y, t)
-# u_x(x, y, t, α) = vfs[5](x, y, t, α)
-# u_y(x, y, t, α) = vfs[6](x, y, t, α)
-# Du_xDt(x, y, t, α) = vfs[7](x, y, t, α)
-# Du_yDt(x, y, t, α) = vfs[8](x, y, t, α)
-# ω(x, y, t) = vfs[9](x, y, t)
-
-lon0 = -75
-lat0 = 10.0
-v_x(x, y, t) = vfs[1](xy2sph(x, y, lon0, lat0)..., t)
-v_y(x, y, t) = vfs[2](xy2sph(x, y, lon0, lat0)..., t)
-Dv_xDt(x, y, t) = vfs[3](xy2sph(x, y, lon0, lat0)..., t)
-Dv_yDt(x, y, t) = vfs[4](xy2sph(x, y, lon0, lat0)..., t)
-u_x(x, y, t, α) = vfs[5](xy2sph(x, y, lon0, lat0)..., t, α)
-u_y(x, y, t, α) = vfs[6](xy2sph(x, y, lon0, lat0)..., t, α)
-Du_xDt(x, y, t, α) = vfs[7](xy2sph(x, y, lon0, lat0)..., t, α)
-Du_yDt(x, y, t, α) = vfs[8](xy2sph(x, y, lon0, lat0)..., t, α)
-ω(x, y, t) = vfs[9](xy2sph(x, y, lon0, lat0)..., t)
+v_x(x, y, t) = water_itp.u(x, y, t)
+v_y(x, y, t) =  water_itp.v(x, y, t)
+Dv_xDt(x, y, t) = MaterialDerivativeX(water_itp, x, y, t)
+Dv_yDt(x, y, t) = MaterialDerivativeY(water_itp, x, y, t)
+u_x(x, y, t, α) = (1 - α) * water_itp.u(x, y, t) + α * wind_itp.u(x, y, t)
+u_y(x, y, t, α) = (1 - α) * water_itp.v(x, y, t) + α * wind_itp.v(x, y, t)
+Du_xDt(x, y, t, α) = (1 - α) * MaterialDerivativeX(water_itp, x, y, t) + α * MaterialDerivativeX(wind_itp, x, y, t) 
+Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * MaterialDerivativeY(wind_itp, x, y, t) 
+ω(x, y, t) = Vorticity(water_itp, x, y, t)
 
 @register_symbolic v_x(x, y, t)
 @register_symbolic v_y(x, y, t)
@@ -48,7 +48,6 @@ Du_yDt(x, y, t, α) = vfs[8](xy2sph(x, y, lon0, lat0)..., t, α)
 
 ddt = Differential(t)
 
-
 @named BOM1 = ODESystem([
     ddt(x) ~ u_x(x, y, t, α) + τ * (
         R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)
@@ -58,9 +57,10 @@ ddt = Differential(t)
     )
 ])
 
-ics = sph2xy(-83.4, 24.6, lon0, lat0)
+# ics = sph2xy(-79.5, 25.5, ref) # gulf stream, use t_range = (0.0, 10.0)
+ics = sph2xy(-64, 14, ref) # loop current, use t_range = (0.0, 200.0)
 initial_conditions = [x => ics[1], y => ics[2]]
-t_range = (0.0, 1.0)
+t_range = (0.0, 200.0)
 params = BOM_parameters()
 params = [α => params[1], τ => params[2], R => params[3], f => params[4]]
 
@@ -71,11 +71,14 @@ prob = ODEProblem(
     params
 )
 
+@info "Solving model."
+
 sol = solve(prob)
-traj = stack(sol.u)
-x_traj, y_traj = (traj[1,:], traj[2, :]) # map(x -> xy2sph(x..., lon0, lat0), eachcol(traj)) |> stack
+traj = xy2sph(sol.u, ref)
+lon_traj, lat_traj = (traj[:,1], traj[:, 2]) #
 times = sol.t
 
+@info "Plotting results."
 
 fig = Figure(resolution = (1920, 1080))
 
@@ -89,18 +92,28 @@ ga(fig, row, col, title) = GeoAxis(
 )
 
 
-# lines!(ga(fig, 1, 1, "traj"), x_traj, y_traj; color = times, linewidth = 4)
+ln = lines!(ga(fig, 1, 1, "traj"), lon_traj, lat_traj; color = times, linewidth = 4)
+Colorbar(fig[1,2], ln, label = "Days")
 
 
+# wind_itp = VectorField2DGridSPH(wind_file_default, lon_alias = "Lon", lat_alias = "Lat", lon_lat_time_order = [2, 1, 3])
+# wind_itp = VectorField2DInterpolantSPH(wind_itp)
 
-# lon_wind, lat_wind, t_wind, u_wind, v_wind, lon_wtr, lat_wtr, t_wtr, u_wtr, v_wtr = load_vector_fields()
-# u_wtr_itp = [v_x(lon, lat, 1) for lon in lon_wtr, lat in lat_wtr]
-# v_wtr_itp = [v_y(lon, lat, 1) for lon in lon_wtr, lat in lat_wtr]
+# lon_wind, lat_wind, t_wind, u_wind, v_wind = (wind_itp.lon, wind_itp.lat, wind_itp.time, wind_itp.u, wind_itp.v)
+# u_wind_itp = [u_wind(lon, lat, 1) for lon in lon_wind, lat in lat_wind]
+# v_wind_itp = [v_wind(lon, lat, 1) for lon in lon_wind, lat in lat_wind]
 
-# surface!(ga(fig, 2, 1, "water_x"), lon_wtr, lat_wtr, u_wtr[:,:,1])
-# surface!(ga(fig, 2, 2, "water_y"), lon_wtr, lat_wtr, v_wtr[:,:,1])
+# surface!(ga(fig, 2, 1, "wind_x"), lon_wind, lat_wind, u_wind_itp[:,:,1])
+# surface!(ga(fig, 2, 2, "wind_y"), lon_wind, lat_wind, v_wind_itp[:,:,1])
 
-# surface!(ga(fig, 3, 1, "wind_x_itp"), lon_wtr, lat_wtr, u_wtr_itp)
-# surface!(ga(fig, 3, 2, "wind_y_itp"), lon_wtr, lat_wtr, v_wtr_itp)
+# water_itp = VectorField2DGridSPH(water_file_default, lon_lat_time_order = [2, 1, 3])
+# water_itp = VectorField2DInterpolantSPH(water_itp)
 
-# fig
+# lon_water, lat_water, t_water, u_water, v_water = (water_itp.lon, water_itp.lat, water_itp.time, water_itp.u, water_itp.v)
+# u_water_itp = [u_water(lon, lat, 1) for lon in lon_water, lat in lat_water]
+# v_water_itp = [v_water(lon, lat, 1) for lon in lon_water, lat in lat_water]
+
+# surface!(ga(fig, 3, 1, "water_x"), lon_water, lat_water, u_water_itp[:,:,1])
+# surface!(ga(fig, 3, 2, "water_y"), lon_water, lat_water, v_water_itp[:,:,1])
+
+fig

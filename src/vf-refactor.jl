@@ -1,4 +1,5 @@
 using MAT
+using Interpolations
 
 include("helpers.jl")
 
@@ -123,6 +124,10 @@ function VectorField2DGrid(
         time = reverse(time)
     end
 
+    # ensure that longitudes and latitudes are in the allowed earthly range
+    @assert (-180.0 <= first(lon) <= 180.0) && (-180.0 <= last(lon) <= 180.0) "The given longitudes are not between -180 degrees and 180 degrees."
+    @assert (-90.0 <= first(lon) <= 90.0) && (90.0 <= last(lon) <= 90.0) "The given lastitudes are not between -90 degrees and 90 degrees."
+
     # NaN replacement
     u[isnan.(u)] .= NaN_replacement
     v[isnan.(v)] .= NaN_replacement
@@ -137,4 +142,27 @@ function VectorField2DGrid(
     u, v = promote(u, v)
 
     return VectorField2DGrid(lon, lat, time0, time, u, v)
+end
+
+"""
+    struct VectorField2DInterpolant{T, I}
+
+A container for a two-dimensional vector field interpolated over a linearly spaced grid of longitude, latitude and time.
+
+### Fields
+
+- `lon`: The range of longitudes (East/West) over which the grid is defined.
+- `lat`: The range of latitudes (North/South) over which the grid is defined.
+- `time0`: The initial `DateTime` at which the vector field is defined.
+- `time`: The range of times (North/South) since `time0` over which the grid is defined.
+- `u`: The x component of the vector field, conventionally u[lon, lat, time].
+- `v`: The y component of the vector field, conventionally v[lon, lat, time].
+"""
+struct VectorField2DInterpolant{T<:Real, I<:Interpolations.InterpolationType} <: AbstractVectorField
+    lon::AbstractRange{T}
+    lat::AbstractRange{T}
+    time0::DateTime
+    time::AbstractRange{T}
+    u::AbstractInterpolation{T, 3, I}
+    v::AbstractInterpolation{T, 3, I}
 end

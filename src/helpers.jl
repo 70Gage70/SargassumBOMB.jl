@@ -22,7 +22,7 @@ function reduce_vector_to_range(vector::Vector{<:Real})
         end
     end
 
-    start, stop = extrema(vector)
+    start, stop = (vector[1], vector[end])
     return start:delta:stop
 end
 

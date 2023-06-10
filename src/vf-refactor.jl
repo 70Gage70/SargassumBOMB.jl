@@ -37,7 +37,7 @@ Create a `VectorField2DGrid` object from the file `infile`.
 `infile` must be of the form `"filename.mat"`.
 
 The longitudes, latitudes and times must all be defined on linearly spaced grids. In particular, the times should be given as
-numbers in Rata Die format. See [`rata2datetime_minute`](@ref).
+days in Rata Die format. See [`rata2datetime_minute`](@ref).
 
 ### Optional Arguments
 

@@ -1,5 +1,6 @@
 using DifferentialEquations
 using ModelingToolkit
+using JLD2
 
 include("parameters.jl")
 include("vector-field-methods.jl")
@@ -106,9 +107,11 @@ function Raft(
     @assert size(xy0, 2) == 2 "`xy0` must be an N x 2 matrix."
     @assert size(xy0, 1) == length(clump_parameters) == size(spring_parameters, 1) == size(spring_parameters, 2) "The dimensions of the input variables must be consistent."
 
+    # a raft is a composition of several clumps
     N_clumps = size(xy0, 1)
     @named clump 1:N_clumps i -> Clump(xy0[i,:], clump_parameters[i], forced = true)
 
+    # the force on each clump is the sum of the spring forces between it and every other clump
     forces_x = [clump[i].Fx ~ sum([spring_force_x(clump[i].x, clump[j].x, clump[i].y, clump[j].y, spring_parameters[i, j])] for j = 1:N_clumps if j != i)[1]
         for i = 1:N_clumps
     ]
@@ -117,20 +120,92 @@ function Raft(
         for i = 1:N_clumps
     ]
 
-    eqs = [forces_x ; forces_y]
+    # we keep track of the center of mass as an observable
+    @variables COM(t)[1:2]
+    eq_com = [COM[1] ~ sum([clump[i].x for i = 1:N_clumps])[1]/N_clumps, COM[2] ~ sum([clump[i].y for i = 1:N_clumps])[1]/N_clumps]
+
+    eqs = [forces_x ; forces_y ; eq_com]
 
     return compose(ODESystem(eqs, t; name = name), clump[1:N_clumps]...)
 end
 
-# xy01 = [1.0, 2.0]
-# xy0 = [1.0 2.0 ; 3.0 4.0]
-# ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0);
-# cp1 = BOMParameters(ref);
-# cps = [cp1, cp1]
+"""
+    RectangularRaft
+"""
+function RectangularRaft(
+    x_range::AbstractRange{<:Real}, 
+    y_range::AbstractRange{<:Real},
+    clump_parameters::BOMParameters, 
+    spring_parameters::SpringParameters; 
+    network_type::String = "nearest",
+    name::Symbol)
 
-# k_const(d) = 3
-# sp = [SpringParameters(k_const, 0) SpringParameters(k_const, 4) ; SpringParameters(k_const, 6) SpringParameters(k_const, 0)];
+    @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
 
-# @named clump_no_force = Clump(xy01, cp1)
-# @named clump_with_force = Clump(xy01, cp1, forced = true)
-# @named net = Raft(xy0, cps, sp)
+    # a rectangular mesh
+    network = collect(Iterators.product(x_range, y_range))
+    nx = length(x_range)
+    ny = length(y_range)
+    N_clumps = length(network)
+
+    xy0 = Matrix{Float64}(undef, N_clumps, 2)
+    clump_parameters_raft = Vector{BOMParameters}(undef, N_clumps)
+    spring_parameters_raft = Matrix{SpringParameters}(undef, N_clumps, N_clumps)
+
+    n(i, j) = (i - 1) * ny + j
+
+    for i = 1:nx
+        for j = 1:ny
+            # initial conditions
+            xy0[n(i, j), :] .= network[i, j] 
+
+            # all clumps have the same parameters
+            clump_parameters_raft[n(i, j)] = clump_parameters
+
+            # identify the appropriate connections
+            if network_type == "nearest"
+                connections = filter(idx -> (1 <= idx[1] <= nx) && (1 <= idx[2] <= ny), [(i-1, j), (i+1, j), (i, j-1), (i, j+1)])
+            elseif network_type == "full"
+                connections = [(a, b) for a = 1:nx for b = 1:ny]
+            elseif network_type == "none"
+                connections = []
+            end
+            
+            connections = map(x->n(x...), connections)
+
+            # all connected springs have the same parameters, `spring_parameters`
+            # all unconnected springs have SpringParameters(k->0, 0) (effectively no spring)
+            spring_parameters_raft[n(i, j), connections] .= spring_parameters
+            spring_parameters_raft[n(i, j), setdiff(1:N_clumps, connections)] .= SpringParameters(k->0, 0)
+        end
+    end
+
+    return (xy0, clump_parameters_raft, spring_parameters_raft)
+
+    return Raft(xy0, clump_parameters_raft, spring_parameters_raft, name = name)
+end
+
+ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0);
+
+@load "water_itp.jld"
+@load "wind_itp.jld" 
+
+xy01 = [1.0, 2.0]
+xy0 = [1.0 2.0 ; 3.0 4.0]
+
+cp1 = BOMParameters(ref);
+cps = [cp1, cp1]
+
+k_const(d) = 3
+sp = [SpringParameters(k_const, 0) SpringParameters(k_const, 4) ; SpringParameters(k_const, 6) SpringParameters(k_const, 0)];
+
+@named clump_no_force = Clump(xy01, cp1)
+@named clump_with_force = Clump(xy01, cp1, forced = true)
+@named raft = Raft(xy0, cps, sp)
+
+x_range = range(start = 5.0, length = 3, stop = 16.8)
+y_range = range(start = 3.0, length = 4, stop = 30.7)
+clump_parameters = BOMParameters(ref)
+spring_parameters = SpringParameters(k -> 2.1, 1.5)
+
+@named rRaft = RectangularRaft(x_range, y_range, clump_parameters, spring_parameters)

@@ -45,10 +45,10 @@ sim(n_traj) = solve(Eprob, Tsit5(), EnsembleThreads(), trajectories = n_traj)
 
 # @info "Solving model."
 
-sol = solve(prob)
-traj = xy2sph(sol.u, ref)
-lon_traj, lat_traj = (traj[:,1], traj[:, 2]) #
-times = sol.t
+# sol = solve(prob)
+# traj = xy2sph(sol.u, ref)
+# lon_traj, lat_traj = (traj[:,1], traj[:, 2]) #
+# times = sol.t
 
 # @info "Plotting results."
 

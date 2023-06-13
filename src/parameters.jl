@@ -80,6 +80,18 @@ struct SpringParameters{F<:Function, T<:Real}
     L::T
 end
 
+function Base.length(::SpringParameters)
+    return 1
+end
+
+function Base.iterate(sp::SpringParameters)
+    return (sp, nothing)
+end
+
+function Base.iterate(::SpringParameters, ::Nothing)
+    return nothing
+end
+
 """
     spring_force_x(x1, x2, y1, y2, parameters)
 

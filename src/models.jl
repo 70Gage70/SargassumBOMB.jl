@@ -143,19 +143,20 @@ function RectangularRaft(
     @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
 
     # a rectangular mesh
-    network = collect(Iterators.product(x_range, y_range))
-    nx = length(x_range)
-    ny = length(y_range)
+    network = reverse.(collect(Iterators.product(reverse(y_range), x_range))) # reverse so that the first row has the largest y
+    n_col = length(x_range)
+    n_row = length(y_range)
     N_clumps = length(network)
 
     xy0 = Matrix{Float64}(undef, N_clumps, 2)
     clump_parameters_raft = Vector{BOMParameters}(undef, N_clumps)
     spring_parameters_raft = Matrix{SpringParameters}(undef, N_clumps, N_clumps)
 
-    n(i, j) = (i - 1) * ny + j
+    # these arrays are all constructed in dictionary order (across rows, then down columns)
+    n(i, j) = (i - 1) * n_col + j
 
-    for i = 1:nx
-        for j = 1:ny
+    for i = 1:n_row
+        for j = 1:n_col
             # initial conditions
             xy0[n(i, j), :] .= network[i, j] 
 
@@ -164,9 +165,9 @@ function RectangularRaft(
 
             # identify the appropriate connections
             if network_type == "nearest"
-                connections = filter(idx -> (1 <= idx[1] <= nx) && (1 <= idx[2] <= ny), [(i-1, j), (i+1, j), (i, j-1), (i, j+1)])
+                connections = filter(idx -> (1 <= idx[1] <= n_row) && (1 <= idx[2] <= n_col), [(i-1, j), (i+1, j), (i, j-1), (i, j+1)])
             elseif network_type == "full"
-                connections = [(a, b) for a = 1:nx for b = 1:ny]
+                connections = [(a, b) for a = 1:n_row for b = 1:n_col]
             elseif network_type == "none"
                 connections = []
             end
@@ -180,7 +181,7 @@ function RectangularRaft(
         end
     end
 
-    return (xy0, clump_parameters_raft, spring_parameters_raft)
+    # return (xy0, clump_parameters_raft, spring_parameters_raft)
 
     return Raft(xy0, clump_parameters_raft, spring_parameters_raft, name = name)
 end

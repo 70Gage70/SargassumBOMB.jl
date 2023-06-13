@@ -92,6 +92,14 @@ function Base.iterate(::SpringParameters, ::Nothing)
     return nothing
 end
 
+function Base.show(io::IO, x::SpringParameters)
+    print(io, "SpringParameters[1->")
+    show(io, x.k(1))
+    print(io, ", ")
+    show(io, length(x.L))
+    print(io, "]")
+end
+
 """
     spring_force_x(x1, x2, y1, y2, parameters)
 

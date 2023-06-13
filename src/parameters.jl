@@ -72,22 +72,22 @@ end
 A container for the parameters defining a spring.
    
 ### Fields
-- `k` [kg/d^2]: The spring constant.
+- `k` [kg/d^2]: The spring function. This should be a scalar function of one variable.
 - `L` [km]: The natural length of the spring.
 """
-struct SpringParameters{T<:Real}
-    k::T
+struct SpringParameters{F<:Function, T<:Real}
+    k::F
     L::T
 end
 
 function spring_force_x(x1::Real, x2::Real, y1::Real, y2::Real, parameters::SpringParameters)
     k, L = (parameters.k, parameters.L)
     d = sqrt((x1 - x2)^2 + (y1 - y2)^2)
-    return k*(x1 - x2)*(L/d - 1)
+    return k(d)*(x1 - x2)*(L/d - 1)
 end
 
 function spring_force_y(x1::Real, x2::Real, y1::Real, y2::Real, parameters::SpringParameters)
     k, L = (parameters.k, parameters.L)
     d = sqrt((x1 - x2)^2 + (y1 - y2)^2)
-    return k*(y1 - y2)*(L/d - 1)
+    return k(d)*(y1 - y2)*(L/d - 1)
 end

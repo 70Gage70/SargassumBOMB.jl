@@ -1,6 +1,5 @@
 using DifferentialEquations
 using ModelingToolkit
-# using Symbolics: scalarize
 
 include("parameters.jl")
 include("vector-field-methods.jl")
@@ -88,13 +87,15 @@ function Net(
     return compose(ODESystem(eqs, t; name = name), clump[1:N_clumps]...)
 end
 
-xy01 = [1.0, 2.0]
-xy0 = [1.0 2.0 ; 3.0 4.0]
-ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0);
-cp1 = BOMParameters(ref);
-cp = [cp1, cp1]
-sp = [SpringParameters(0, 0) SpringParameters(3, 4) ; SpringParameters(5, 6) SpringParameters(0, 0)];
+# xy01 = [1.0, 2.0]
+# xy0 = [1.0 2.0 ; 3.0 4.0]
+# ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0);
+# cp1 = BOMParameters(ref);
+# cps = [cp1, cp1]
 
-@named clump_no_force = Clump(xy01, cp1)
-@named clump_with_force = Clump(xy01, cp1, forced = true)
-@named net = Net(xy0, cp, sp)
+# k_const(d) = 3
+# sp = [SpringParameters(k_const, 0) SpringParameters(k_const, 4) ; SpringParameters(k_const, 6) SpringParameters(k_const, 0)];
+
+# @named clump_no_force = Clump(xy01, cp1)
+# @named clump_with_force = Clump(xy01, cp1, forced = true)
+# @named net = Net(xy0, cps, sp)

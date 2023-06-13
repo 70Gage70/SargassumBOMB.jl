@@ -1,27 +1,52 @@
+include("coordinates.jl")
+
+#################################
+
 """
-    BOM_parameters(;constants...)
+    struct BOMParameters{T}
+
+A container for the high-level parameters of the BOM equations.
+
+### Fields
+- `ref`: The `EquirectangularReference` with which the projection is defined.
+- `α` []: The fraction of the wind field acting on the particle.
+- `τ` [d]: Measures the inertial response time of the medium to the particle
+- `R` []: A geometric parameter.
+- `f` [1/d]: The Coriolis parameter in the β plane.
+"""
+struct BOMParameters{T<:Real}
+    ref::EquirectangularReference{T}
+    α::T
+    τ::T
+    R::T
+    f::T
+end
+
+"""
+    BOMParameters(;constants...)
 
 Compute the parameters required for the BOM equations from physical constants.
 
-## Arguments [units]
-- δ []: The bouancy of the particle.
-- a [km]: The radius of the particle.
-- ρ [kg/km^3]: The density of the water.
-- ρa [kg/km^3]: The density of the air.
-- ν [km^2/d]: The viscosity of the water.
-- νa [km^2/d]: The viscosity of the air.
-- Ω [rad/d]: The angular velocity of the Earth.
-- ϑ0 [deg]: A reference latitude for the β plane.
+### Arguments [units]
+
+- `δ` []: The bouancy of the particle.
+- `a` [km]: The radius of the particle.
+- `ρ` [kg/km^3]: The density of the water.
+- `ρa` [kg/km^3]: The density of the air.
+- `ν` [km^2/d]: The viscosity of the water.
+- `νa` [km^2/d]: The viscosity of the air.
+- `Ω` [rad/d]: The angular velocity of the Earth.
+- `ref`: The `EquirectangularReference` with which the projection is defined.
 """
-function BOM_parameters(;
+function BOMParameters(
+    ref::EquirectangularReference;
     δ::Real = 1.25,
     a::Real = 1.0e-4,
     ρ::Real = 1027.0e9,
     ρa::Real = 1.2e9,
     ν::Real = 8.64e-8,
     νa::Real = 1.296e-6,
-    Ω::Real = 2*π,
-    ϑ0::Real = 10.0)
+    Ω::Real = 2*π)
 
     μ = ν * ρ
     μa = νa * ρa
@@ -35,7 +60,34 @@ function BOM_parameters(;
     τ = (1 - Φ/6)/(1 - (1 - γ)*Ψ) * (a^2 * ρ / (3*μ*δ^4))
     R = (1 - Φ/2)/(1 - Φ/6)
 
+    ϑ0 = ref.lat0
     f = 2*Ω*sin(ϑ0*π/180)
 
-    return (α, τ, R, f)
+    return BOMParameters(ref, α, τ, R, f)
+end
+
+"""
+    SpringParameters{T}
+
+A container for the parameters defining a spring.
+   
+### Fields
+- `k` [kg/d^2]: The spring constant.
+- `L` [km]: The natural length of the spring.
+"""
+struct SpringParameters{T<:Real}
+    k::T
+    L::T
+end
+
+function spring_force_x(x1::Real, x2::Real, y1::Real, y2::Real, parameters::SpringParameters)
+    k, L = (parameters.k, parameters.L)
+    d = sqrt((x1 - x2)^2 + (y1 - y2)^2)
+    return k*(x1 - x2)*(L/d - 1)
+end
+
+function spring_force_y(x1::Real, x2::Real, y1::Real, y2::Real, parameters::SpringParameters)
+    k, L = (parameters.k, parameters.L)
+    d = sqrt((x1 - x2)^2 + (y1 - y2)^2)
+    return k*(y1 - y2)*(L/d - 1)
 end

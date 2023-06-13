@@ -219,7 +219,7 @@ A container for a two-dimensional vector field interpolated over equirectangular
 - `v`: An interpolant for the y component of the vector field. Call as `v(x, y, t)`.
 """
 struct VectorField2DInterpolantEQR{T<:Real, I<:Interpolations.InterpolationType} <: AbstractVectorFieldInterpolant
-    ref::EquirectangularReference
+    ref::EquirectangularReference{T}
     x::AbstractRange{T}
     y::AbstractRange{T}
     time0::DateTime

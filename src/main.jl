@@ -61,8 +61,8 @@ ddt = Differential(t)
 ics = sph2xy(-64, 14, ref) # loop current, use t_range = (0.0, 200.0)
 initial_conditions = [x => ics[1], y => ics[2]]
 t_range = (0.0, 200.0)
-params = BOM_parameters()
-params = [α => params[1], τ => params[2], R => params[3], f => params[4]]
+params = BOMParameters(ref)
+params = [α => params.α, τ => params.τ, R => params.R, f => params.f]
 
 prob = ODEProblem(
     BOM1, 

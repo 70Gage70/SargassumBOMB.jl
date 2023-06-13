@@ -22,7 +22,7 @@ function EquirectangularReference(; lon0::Real, lat0::Real)
     @assert -180.0 <= lon0 <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
     @assert -90 <= lat0 <= 90 "The latitude must be between -90 degrees and 90 degrees."
 
-    lon0, lat0 = promote(lon0, lat0)
+    lon0, lat0 = promote(float(lon0), float(lat0))
 
     return EquirectangularReference(lon0, lat0)
 end
@@ -89,7 +89,7 @@ The units of `x` and `y` should be the same as the optional argument `R`, the ra
 `xy`: A vector of `[x, y]` coordinates.
 `ref`: An [`EquirectangularReference`](@ref).
 """
-function xy2sph(xy::Vector{<:Vector{T}}, ref; R = 6371) where {T<:Real}
+function xy2sph(xy::Vector{<:Vector{T}}, ref::EquirectangularReference; R::Real = 6371) where {T<:Real}
     lonlat = Matrix{T}(undef, length(xy), 2)
     
     for i = 1:length(xy)

@@ -1,4 +1,4 @@
-using GeoMakie, CairoMakie
+using GeoMakie, CairoMakie, GeoDatasets
 
 include("models.jl")
 include("vector-field-files.jl")
@@ -27,7 +27,7 @@ spring_parameters = SpringParameters(k -> 20, 0.4)
 RRaft = structural_simplify(RRaft)
 
 t_range = (0.0, 150.0)
-# t_range = (0.0, 100.0)
+# t_range = (0.0, 2.0)
 
 prob = ODEProblem(
     RRaft, 
@@ -48,18 +48,69 @@ times = sol.t
 
 @info "Plotting results."
 
-fig = Figure(resolution = (1920, 1080))
+function x_labeler(x::Real)
+    if x > 0.0
+        return L"%$(x)^\circ\,\textrm{E}"
+    elseif x == 0.0
+        return "0^\circ"
+    else if x < 0.0 
+        return L"%$(x)^\circ\,\textrm{W}"
+    end
+end
 
-ga(fig, row, col, title) = GeoAxis(
-    fig[row, col],
-    dest = "+proj=eqc", # https://proj.org/en/9.2/operations/projections/eqc.html
-    lonlims = (-100, -50),
-    latlims = (5, 35),
-    coastlines = true,
-    title = title
-)
+function y_labeler(y::Real)
+    if y > 0.0
+        return "$(y)^\circ\,\textrm{N}"
+    elseif y == 0.0
+        return "0^\circ"
+    else if y < 0.0 
+        return "$(y)^\circ\,\textrm{S}"
+    end
+end
 
-ln = lines!(ga(fig, 1, 1, "traj"), lon_traj, lat_traj; color = times, linewidth = 4)
-Colorbar(fig[1,2], ln, label = "Days")
+fig = Figure(
+    resolution = (1920, 1080), 
+    fontsize = 50,
+    figure_padding = (5, 50, 5, 5));
+
+ax = Axis(
+    fig[1, 1],
+    limits = (-100, -50, 5, 35), 
+    title = L"\textrm{COM of a } 5 \times 5 \textrm{ raft}",
+    xticklabelsize = 40,
+    yticklabelsize = 40,
+    xtickformat = values -> [
+        if value > 0 
+            L"%$(abs(value))^\circ \, \mathrm{E}" 
+        elseif value == 0 
+            L"0^\circ"
+        elseif value < 0
+            L"%$(abs(value))^\circ \, \mathrm{W}" 
+        end
+    for value in values],
+    ytickformat = values -> [
+        if value > 0 
+            L"%$(abs(value))^\circ \, \mathrm{N}" 
+        elseif value == 0 
+            L"0^\circ"
+        elseif value < 0
+            L"%$(abs(value))^\circ \, \mathrm{S}" 
+        end
+    for value in values]
+);
+
+lon, lat, data = GeoDatasets.landseamask(; resolution = 'i', grid = 1.25);
+contour!(ax, lon, lat, data, levels = [0.5], color = :black);
+
+ln = lines!(ax, lon_traj, lat_traj; color = times, linewidth = 4);
+Colorbar(
+    fig[1,2], 
+    ln, 
+    label = L"\textrm{Days}",
+    ticklabelsize = 40, 
+    ticks = [0, 50, 100, 150], 
+    tickformat = values -> [L"%$(value)" for value in values],
+    height = Relative(2/4)
+);
 
 fig

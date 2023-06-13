@@ -60,6 +60,8 @@ Compute spherical coordinates `[lon, lat]` [deg] from rectilinear coordinates `(
 
 The units of `x` and `y` should be the same as the optional argument `R`, the radius of the Earth. The default is `R = 6371 km.`
 
+Can be applied as `xy2sph(xy, ref; R = 6371)` where `xy` is a vector of vectors or a `Matrix`.
+
 ### Arguments
 
 `x`: The x Cartesian coordinate in km (East/West).
@@ -77,23 +79,21 @@ function xy2sph(x::Real, y::Real, ref::EquirectangularReference; R::Real = 6371)
     return [lon, lat]
 end
 
-"""
-    xy2sph(xy, ref; R = 6371)
-
-Convert the rectilinear coordinates in the vector of vectors `xy` into an `N x 2` matrix of longitude and latitudes with respect to `ref::EquirectangularReference`.
-
-The units of `x` and `y` should be the same as the optional argument `R`, the radius of the Earth. The default is `R = 6371 km.`
-
-### Arguments
-
-`xy`: A vector of `[x, y]` coordinates.
-`ref`: An [`EquirectangularReference`](@ref).
-"""
 function xy2sph(xy::Vector{<:Vector{T}}, ref::EquirectangularReference; R::Real = 6371) where {T<:Real}
     lonlat = Matrix{T}(undef, length(xy), 2)
     
     for i = 1:length(xy)
         lonlat[i,:] = xy2sph(xy[i]...,ref, R = R)
+    end
+
+    return lonlat
+end
+
+function xy2sph(xy::Matrix{T}, ref::EquirectangularReference; R::Real = 6371) where {T<:Real}
+    lonlat = Matrix{T}(undef, size(xy)...)
+    
+    for i = 1:size(xy, 1)
+        lonlat[i,:] = xy2sph(xy[i,:]...,ref, R = R)
     end
 
     return lonlat

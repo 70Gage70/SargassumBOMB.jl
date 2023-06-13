@@ -1,9 +1,8 @@
 using DifferentialEquations
 using ModelingToolkit
-using JLD2
 
 include("parameters.jl")
-include("vector-field-methods.jl")
+include("vector-field-files.jl")
 
 ##################################################
 
@@ -130,7 +129,24 @@ function Raft(
 end
 
 """
-    RectangularRaft
+    RectangularRaft(x_range, y_range, clump_parameters, spring_parameters; network_type, name)
+
+Construct a [`Raft`](@ref) in a rectangular arrangement such that each clump and spring have the same parameters.
+
+### Arguments
+
+- `x_range` [km]: A range which gives the x coordinates of the clumps in the raft. Should be increasing.
+- `y_range` [km]: A range which gives the y coordinates of the clumps in the raft. Should be increasing.
+- `clump_parameters`: The [`BOMParameters`](@ref) shared by each clump.
+- `spring_parameters`: The [`spring_parameters`](@ref) shared by each spring.
+
+### Optional Arguments
+
+- `network_type`: How the springs are conencted in the raft.
+    - `"nearest"`: The default value. Each clump is connected to its perpendicular neighbors.
+    - `"full"`: Each clump is connected to each other clump.
+    - `"none"`: No clumps are connected.
+- `name`: A `Symbol` which is passed down to the name of the returned `ODESystem`.
 """
 function RectangularRaft(
     x_range::AbstractRange{<:Real}, 
@@ -141,6 +157,8 @@ function RectangularRaft(
     name::Symbol)
 
     @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
+    @assert step(x_range) > 0 "x range should be increasing."
+    @assert step(y_range) > 0 "y range should be increasing."
 
     # a rectangular mesh
     network = reverse.(collect(Iterators.product(reverse(y_range), x_range))) # reverse so that the first row has the largest y
@@ -181,32 +199,37 @@ function RectangularRaft(
         end
     end
 
-    # return (xy0, clump_parameters_raft, spring_parameters_raft)
-
     return Raft(xy0, clump_parameters_raft, spring_parameters_raft, name = name)
 end
 
-ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0);
 
-@load "water_itp.jld"
-@load "wind_itp.jld" 
+#########################################################################################################
+#########################################################################################################
+#########################################################################################################
+#########################################################################################################
+#########################################################################################################
 
-xy01 = [1.0, 2.0]
-xy0 = [1.0 2.0 ; 3.0 4.0]
+# ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0);
 
-cp1 = BOMParameters(ref);
-cps = [cp1, cp1]
+# @load "water_itp.jld"
+# @load "wind_itp.jld" 
 
-k_const(d) = 3
-sp = [SpringParameters(k_const, 0) SpringParameters(k_const, 4) ; SpringParameters(k_const, 6) SpringParameters(k_const, 0)];
+# xy01 = [1.0, 2.0]
+# xy0 = [1.0 2.0 ; 3.0 4.0]
 
-@named clump_no_force = Clump(xy01, cp1)
-@named clump_with_force = Clump(xy01, cp1, forced = true)
-@named raft = Raft(xy0, cps, sp)
+# cp1 = BOMParameters(ref);
+# cps = [cp1, cp1]
 
-x_range = range(start = 5.0, length = 3, stop = 16.8)
-y_range = range(start = 3.0, length = 4, stop = 30.7)
-clump_parameters = BOMParameters(ref)
-spring_parameters = SpringParameters(k -> 2.1, 1.5)
+# k_const(d) = 3
+# sp = [SpringParameters(k_const, 0) SpringParameters(k_const, 4) ; SpringParameters(k_const, 6) SpringParameters(k_const, 0)];
 
-@named rRaft = RectangularRaft(x_range, y_range, clump_parameters, spring_parameters)
+# @named clump_no_force = Clump(xy01, cp1)
+# @named clump_with_force = Clump(xy01, cp1, forced = true)
+# @named raft = Raft(xy0, cps, sp)
+
+# x_range = range(start = 5.0, length = 2, stop = 16.8)
+# y_range = range(start = 3.0, length = 2, stop = 30.7)
+# clump_parameters = BOMParameters(ref)
+# spring_parameters = SpringParameters(k -> 2.1, 1.5)
+
+# @named rRaft = RectangularRaft(x_range, y_range, clump_parameters, spring_parameters)

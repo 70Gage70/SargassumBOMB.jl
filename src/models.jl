@@ -6,9 +6,12 @@ include("vector-field-methods.jl")
 
 ##################################################
 
-@variables t
+# the time variable, shared by all objects and the derivative with respect to it
+@variables t            
 ddt = Differential(t)
 
+# All the functions depending on wind and water vector fields.
+# Note that `water_itp` and `wind_itp` must be loaded before using these.
 v_x(x, y, t) = water_itp.u(x, y, t)
 v_y(x, y, t) =  water_itp.v(x, y, t)
 Dv_xDt(x, y, t) = MaterialDerivativeX(water_itp, x, y, t)
@@ -19,6 +22,7 @@ Du_xDt(x, y, t, α) = (1 - α) * MaterialDerivativeX(water_itp, x, y, t) + α * 
 Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * MaterialDerivativeY(wind_itp, x, y, t) 
 ω(x, y, t) = Vorticity(water_itp, x, y, t)
 
+# Each function must be registered to allow symbolic computations
 @register_symbolic v_x(x, y, t)
 @register_symbolic v_y(x, y, t)
 @register_symbolic Dv_xDt(x, y, t)
@@ -29,9 +33,25 @@ Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * 
 @register_symbolic Du_yDt(x, y, t, α)
 @register_symbolic ω(x, y, t)
 
+# Symbolic functions computing the spring force
 @register_symbolic spring_force_x(x1, x2, y1, y2, parameters)
 @register_symbolic spring_force_y(x1, x2, y1, y2, parameters)
 
+"""
+    Clump(xy0, clump_parameters; name, forced)
+
+Create an `ODESystem` representing a single clump which obey the BOM equations.
+
+### Arguments
+
+- `xy0` [km]: A vector with two elements representing the initial `[x, y]` coordinates of the clump.
+- `clump_parameters`: A [`BOMParameters`](@ref) object which contains the physics parameters of the clump.
+
+### Optional Arguments
+
+- `name`: A `Symbol` which is passed down to the name of the returned `ODESystem`.
+- `forced`: A `Bool` which controls the extra force terms `Fx` and `Fy` in the equations. If `forced = false`, then these force terms are identically zero. If `forced = true` then the returned `ODESystem` does not contain equations for the `Fx` and `Fy` so that they can be provided manually.
+"""
 function Clump(
     xy0::Vector{<:Real},
     clump_parameters::BOMParameters;
@@ -61,8 +81,23 @@ function Clump(
     return ODESystem(eqs, t, [x, y, Fx, Fy], ps; name)
 end
 
+"""
+    Raft(xy0, clump_parameters, spring_parameters; name)
+    
 
-function Net(
+Create an `ODESystem` representing a network of `N` clumps connected by springs; the eBOM equations.
+
+### Arguments
+
+- `xy0` [km]: An `N x 2` matrix such that `xy0[i,:]` gives the `[x, y]` coordinates of the `i`th clump.
+- `clump_parameters`: A vector of length `N` of [`BOMParameters`](@ref) objects such that `clump_parameters[i]` are the parameters for the `i`th clump.
+- `spring_parameters`: An `N x N` symmetric matrix of [`SpringParameters`](@ref) objects such that `spring_parameters[i, j]` gives the spring parameters for the spring connecting clump `i` with clump `j`. This matrix should be symmetric.
+
+### Optional Arguments
+
+- `name`: A `Symbol` which is passed down to the name of the returned `ODESystem`.
+"""
+function Raft(
     xy0::Matrix{<:Real},
     clump_parameters::Vector{<:BOMParameters},
     spring_parameters::Matrix{<:SpringParameters};
@@ -98,4 +133,4 @@ end
 
 # @named clump_no_force = Clump(xy01, cp1)
 # @named clump_with_force = Clump(xy01, cp1, forced = true)
-# @named net = Net(xy0, cps, sp)
+# @named net = Raft(xy0, cps, sp)

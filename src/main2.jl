@@ -1,6 +1,6 @@
 using GeoMakie, CairoMakie
 
-include("objects.jl")
+include("models.jl")
 include("vector-field-files.jl")
 
 ###########################################

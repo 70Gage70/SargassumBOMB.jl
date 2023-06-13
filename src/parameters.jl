@@ -72,7 +72,7 @@ end
 A container for the parameters defining a spring.
    
 ### Fields
-- `k` [kg/d^2]: The spring function. This should be a scalar function of one variable.
+- `k` [kg/d^2]: A scalar function of one variable which represents the stiffness of the spring. Recover a spring constant by providing, e.g. k(d) =  5.
 - `L` [km]: The natural length of the spring.
 """
 struct SpringParameters{F<:Function, T<:Real}
@@ -80,12 +80,22 @@ struct SpringParameters{F<:Function, T<:Real}
     L::T
 end
 
+"""
+    spring_force_x(x1, x2, y1, y2, parameters)
+
+Calculate the x component of the force on a point particle with coordinates `(x1, y1)` which is attached by a spring defined by `parameters` to another point particle with coordinates `(x2, y2)`.
+"""
 function spring_force_x(x1::Real, x2::Real, y1::Real, y2::Real, parameters::SpringParameters)
     k, L = (parameters.k, parameters.L)
     d = sqrt((x1 - x2)^2 + (y1 - y2)^2)
     return k(d)*(x1 - x2)*(L/d - 1)
 end
 
+"""
+    spring_force_y(x1, x2, y1, y2, parameters)
+
+Calculate the y component of the force on a point particle with coordinates `(x1, y1)` which is attached by a spring defined by `parameters` to another point particle with coordinates `(x2, y2)`.
+"""
 function spring_force_y(x1::Real, x2::Real, y1::Real, y2::Real, parameters::SpringParameters)
     k, L = (parameters.k, parameters.L)
     d = sqrt((x1 - x2)^2 + (y1 - y2)^2)

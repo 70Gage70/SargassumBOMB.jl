@@ -3,6 +3,8 @@ import Pkg
 Pkg.activate(pwd())
 cd("src")
 
+const incldue(x) = include(x)
+
 # include(joinpath(@__DIR__, "src/data-files.jl"))
 # include(joinpath(@__DIR__, "src/vector-fields.jl"))
 

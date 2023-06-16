@@ -1,6 +1,7 @@
 using MAT
 using Interpolations
 using LinearAlgebra: ⋅
+import LinearAlgebra.BLAS.nrm2 as norm
 
 include("helpers.jl")
 include("coordinates.jl")
@@ -197,8 +198,8 @@ function VectorField2DInterpolantSPH(
 
     lon, lat, time, time0, u, v = (vf_grid.lon, vf_grid.lat, vf_grid.time, vf_grid.time0, vf_grid.u, vf_grid.v)
 
-    u_itp = scale(interpolate(u, interpolant_type), lon, lat, time)
-    v_itp = scale(interpolate(v, interpolant_type), lon, lat, time)
+    u_itp = extrapolate(scale(interpolate(u, interpolant_type), lon, lat, time), Flat())
+    v_itp = extrapolate(scale(interpolate(v, interpolant_type), lon, lat, time), Flat())
 
     return VectorField2DInterpolantSPH(lon, lat, time0, time, u_itp, v_itp)
 end
@@ -259,8 +260,8 @@ function VectorField2DInterpolantEQR(
     u_data = [u_itp(xy2sph(x, y, ref, R = R)..., t) for x in x, y in y, t in time]
     v_data = [v_itp(xy2sph(x, y, ref, R = R)..., t) for x in x, y in y, t in time]
 
-    u_itp = scale(interpolate(u_data, interpolant_type), x, y, time)
-    v_itp = scale(interpolate(v_data, interpolant_type), x, y, time)    
+    u_itp = extrapolate(scale(interpolate(u_data, interpolant_type), x, y, time), Flat())
+    v_itp = extrapolate(scale(interpolate(v_data, interpolant_type), x, y, time), Flat())  
 
     return VectorField2DInterpolantEQR(ref, x, y, time0, time, u_itp, v_itp)
 end

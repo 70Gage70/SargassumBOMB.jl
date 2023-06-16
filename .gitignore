@@ -84,3 +84,5 @@ Temporary Items
 # JLD files (store interpolants)
 *.jld
 
+# so files (sysimages
+*.so

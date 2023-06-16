@@ -45,7 +45,7 @@ Create an `ODESystem` representing a single clump which obey the BOM equations.
 ### Arguments
 
 - `xy0` [km]: A vector with two elements representing the initial `[x, y]` coordinates of the clump.
-- `clump_parameters`: A [`BOMParameters`](@ref) object which contains the physics parameters of the clump.
+- `clump_parameters`: A [`ClumpParameters`](@ref) object which contains the physics parameters of the clump.
 
 ### Optional Arguments
 
@@ -54,7 +54,7 @@ Create an `ODESystem` representing a single clump which obey the BOM equations.
 """
 function Clump(
     xy0::Vector{<:Real},
-    clump_parameters::BOMParameters;
+    clump_parameters::ClumpParameters;
     name::Symbol,
     forced::Bool = false)
 
@@ -90,7 +90,7 @@ Create an `ODESystem` representing a network of `N` clumps connected by springs;
 ### Arguments
 
 - `xy0` [km]: An `N x 2` matrix such that `xy0[i,:]` gives the `[x, y]` coordinates of the `i`th clump.
-- `clump_parameters`: A vector of length `N` of [`BOMParameters`](@ref) objects such that `clump_parameters[i]` are the parameters for the `i`th clump.
+- `clump_parameters`: A vector of length `N` of [`ClumpParameters`](@ref) objects such that `clump_parameters[i]` are the parameters for the `i`th clump.
 - `spring_parameters`: An `N x N` symmetric matrix of [`SpringParameters`](@ref) objects such that `spring_parameters[i, j]` gives the spring parameters for the spring connecting clump `i` with clump `j`. This matrix should be symmetric.
 
 ### Optional Arguments
@@ -99,7 +99,7 @@ Create an `ODESystem` representing a network of `N` clumps connected by springs;
 """
 function Raft(
     xy0::Matrix{<:Real},
-    clump_parameters::Vector{<:BOMParameters},
+    clump_parameters::Vector{<:ClumpParameters},
     spring_parameters::Matrix{<:SpringParameters};
     name::Symbol)
 
@@ -137,7 +137,7 @@ Construct a [`Raft`](@ref) in a rectangular arrangement such that each clump and
 
 - `x_range` [km]: A range which gives the x coordinates of the clumps in the raft. Should be increasing.
 - `y_range` [km]: A range which gives the y coordinates of the clumps in the raft. Should be increasing.
-- `clump_parameters`: The [`BOMParameters`](@ref) shared by each clump.
+- `clump_parameters`: The [`ClumpParameters`](@ref) shared by each clump.
 - `spring_parameters`: The [`spring_parameters`](@ref) shared by each spring.
 
 ### Optional Arguments
@@ -151,7 +151,7 @@ Construct a [`Raft`](@ref) in a rectangular arrangement such that each clump and
 function RectangularRaft(
     x_range::AbstractRange{<:Real}, 
     y_range::AbstractRange{<:Real},
-    clump_parameters::BOMParameters, 
+    clump_parameters::ClumpParameters, 
     spring_parameters::SpringParameters; 
     network_type::String = "nearest",
     name::Symbol)
@@ -167,7 +167,7 @@ function RectangularRaft(
     N_clumps = length(network)
 
     xy0 = Matrix{Float64}(undef, N_clumps, 2)
-    clump_parameters_raft = Vector{BOMParameters}(undef, N_clumps)
+    clump_parameters_raft = Vector{ClumpParameters}(undef, N_clumps)
     spring_parameters_raft = Matrix{SpringParameters}(undef, N_clumps, N_clumps)
 
     # these arrays are all constructed in dictionary order (across rows, then down columns)
@@ -217,7 +217,7 @@ end
 # xy01 = [1.0, 2.0]
 # xy0 = [1.0 2.0 ; 3.0 4.0]
 
-# cp1 = BOMParameters(ref);
+# cp1 = ClumpParameters(ref);
 # cps = [cp1, cp1]
 
 # k_const(d) = 3
@@ -229,7 +229,7 @@ end
 
 # x_range = range(start = 5.0, length = 2, stop = 16.8)
 # y_range = range(start = 3.0, length = 2, stop = 30.7)
-# clump_parameters = BOMParameters(ref)
+# clump_parameters = ClumpParameters(ref)
 # spring_parameters = SpringParameters(k -> 2.1, 1.5)
 
 # @named rRaft = RectangularRaft(x_range, y_range, clump_parameters, spring_parameters)

@@ -3,7 +3,7 @@ include("coordinates.jl")
 #################################
 
 """
-    struct BOMParameters{T}
+    struct ClumpParameters{T}
 
 A container for the high-level parameters of the BOM equations.
 
@@ -14,7 +14,7 @@ A container for the high-level parameters of the BOM equations.
 - `R` []: A geometric parameter.
 - `f` [1/d]: The Coriolis parameter in the β plane.
 """
-struct BOMParameters{T<:Real}
+struct ClumpParameters{T<:Real}
     ref::EquirectangularReference{T}
     α::T
     τ::T
@@ -23,7 +23,7 @@ struct BOMParameters{T<:Real}
 end
 
 """
-    BOMParameters(;constants...)
+    ClumpParameters(;constants...)
 
 Compute the parameters required for the BOM equations from physical constants.
 
@@ -38,7 +38,7 @@ Compute the parameters required for the BOM equations from physical constants.
 - `Ω` [rad/d]: The angular velocity of the Earth.
 - `ref`: The `EquirectangularReference` with which the projection is defined.
 """
-function BOMParameters(
+function ClumpParameters(
     ref::EquirectangularReference;
     δ::Real = 1.25,
     a::Real = 1.0e-4,
@@ -63,7 +63,7 @@ function BOMParameters(
     ϑ0 = ref.lat0
     f = 2*Ω*sin(ϑ0*π/180)
 
-    return BOMParameters(ref, α, τ, R, f)
+    return ClumpParameters(ref, α, τ, R, f)
 end
 
 """
@@ -120,4 +120,117 @@ function spring_force_y(x1::Real, x2::Real, y1::Real, y2::Real, parameters::Spri
     k, L = (parameters.k, parameters.L)
     d = sqrt((x1 - x2)^2 + (y1 - y2)^2)
     return k(d)*(y1 - y2)*(L/d - 1)
+end
+
+"""
+    spring_force(xy1, xy2, parameters)
+
+Calculate the x and y components of the force on a point particle with coordinates `xy1` which is attached by a spring defined by `parameters` to another point particle with coordinates `xy2`.
+"""
+function spring_force(xy1::Vector{<:Real}, xy2::Vector{<:Real}, parameters::SpringParameters)
+    d = norm(xy1 - xy2)
+    if isapprox(d, 0.0)
+        return 0.0
+    else
+        return parameters.k(d)*(parameters.L/norm(xy1 - xy2) - 1)*(xy1 - xy2)
+    end
+end
+
+# """
+#     spring_force(xy1, xy2, parameters)
+
+# Calculate the x and y components of the force on a point particle with coordinates `xy1` which is attached by a spring defined by `parameters` to another point particle with coordinates `xy2`.
+# """
+# function spring_force(xy1::Vector{<:Real}, xy2::Vector{<:Real}, parameters::AbstractDict)
+#     k, L = (parameters[:k], parameters[:L])
+#     d = norm(xy1 - xy2)
+#     return k(d)*(L/d - 1)*(xy1 - xy2)
+# end
+
+"""
+    struct RaftParameters{C, S}
+
+A container for the parameters defining a raft.
+
+### Fields
+- `xy0`: A `N x 2` matrix such that `xy0[i,:]` gives the `[x, y]` coordinates of the `i`th clump.
+- `clumps`: A vector of [`ClumpParameters`](@ref) such that `clumps[i]` gives the parameters of the `i`th clump.
+- `springs`: A matrix of [`SpringParameters`](@ref) such that `springs[i, j]` gives the parameters of the spring joining the `i`th and `j`th clump.
+"""
+struct RaftParameters{T<:Matrix{<:Real}, C<:Vector{<:ClumpParameters}, S<:Matrix{<:SpringParameters}}
+    xy0::T
+    clumps::C
+    springs::S
+end
+
+"""
+    RectangularRaft(x_range, y_range, clump_parameters, spring_parameters; network_type, name)
+
+Construct [`RaftParameters`](@ref) in a rectangular arrangement such that each clump and spring have the same parameters.
+
+### Arguments
+
+- `x_range` [km]: A range which gives the x coordinates of the clumps in the raft. Should be increasing.
+- `y_range` [km]: A range which gives the y coordinates of the clumps in the raft. Should be increasing.
+- `clump_parameters`: The [`ClumpParameters`](@ref) shared by each clump.
+- `spring_parameters`: The [`spring_parameters`](@ref) shared by each spring.
+
+### Optional Arguments
+
+- `network_type`: How the springs are conencted in the raft.
+    - `"nearest"`: The default value. Each clump is connected to its perpendicular neighbors.
+    - `"full"`: Each clump is connected to each other clump.
+    - `"none"`: No clumps are connected.
+"""
+function RectangularRaftParameters(
+    x_range::AbstractRange{<:Real}, 
+    y_range::AbstractRange{<:Real},
+    clump_parameters::ClumpParameters, 
+    spring_parameters::SpringParameters; 
+    network_type::String = "nearest")
+
+    @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
+    @assert step(x_range) > 0 "x range should be increasing."
+    @assert step(y_range) > 0 "y range should be increasing."
+
+    # a rectangular mesh
+    network = reverse.(collect(Iterators.product(reverse(y_range), x_range))) # reverse so that the first row has the largest y
+    n_col = length(x_range)
+    n_row = length(y_range)
+    N_clumps = length(network)
+
+    xy0 = Matrix{Float64}(undef, N_clumps, 2)
+    clump_parameters_raft = Vector{ClumpParameters}(undef, N_clumps)
+    spring_parameters_raft = Matrix{SpringParameters}(undef, N_clumps, N_clumps)
+
+    # these arrays are all constructed in dictionary order (across rows, then down columns)
+    n(i, j) = (i - 1) * n_col + j
+
+    for i = 1:n_row
+        for j = 1:n_col
+            # linearized initial conditions
+            xy0[n(i, j), :] .= network[i, j] 
+
+            # all clumps have the same parameters
+            clump_parameters_raft[n(i, j)] = clump_parameters
+
+            # identify the appropriate connections
+            if network_type == "nearest"
+                connections = filter(idx -> (1 <= idx[1] <= n_row) && (1 <= idx[2] <= n_col), [(i-1, j), (i+1, j), (i, j-1), (i, j+1)])
+            elseif network_type == "full"
+                connections = [(a, b) for a = 1:n_row for b = 1:n_col if (a, b) != (i, j)]
+            elseif network_type == "none"
+                connections = []
+            end
+            
+            connections = map(x->n(x...), connections)
+
+            # all connected springs have the same parameters, `spring_parameters`
+            # all unconnected springs have SpringParameters(k->0, 0) (effectively no spring)
+            spring_parameters_raft[n(i, j), connections] .= spring_parameters
+            spring_parameters_raft[n(i, j), setdiff(1:N_clumps, connections)] .= SpringParameters(k->0, 0)
+        end
+    end
+
+    return RaftParameters(xy0, clump_parameters_raft, spring_parameters_raft)
 end

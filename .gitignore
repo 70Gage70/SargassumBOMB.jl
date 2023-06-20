@@ -68,6 +68,7 @@ Temporary Items
 *.nb
 
 # Matlab, HDF5
+**/interpolants/*.mat
 **/src/*.mat
 **/src/*.h5
 

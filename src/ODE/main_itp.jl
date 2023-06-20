@@ -1,16 +1,14 @@
+using DifferentialEquations
 
-using DifferentialEquations, JLD2
-
-include("vector-field-files.jl")
-include("parameters.jl")
-include("plotting.jl")
+include(joinpath(@__DIR__, "..", "parameters.jl"))
+include(joinpath(@__DIR__, "..", "vector-fields", "vector-field-methods.jl"))
 
 ##########################################################
 
 ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
 
-
-v_x, v_y, Dv_xDt, Dv_yDt, u_x, u_y, Du_xDt, Du_yDt, ω = load("itp.jld2", 
+itp_path = joinpath(@__DIR__, "..", "..", "interpolants", "itp.jld2")
+v_x, v_y, Dv_xDt, Dv_yDt, u_x, u_y, Du_xDt, Du_yDt, ω = load(itp_path, 
     "v_x", "v_y", "Dv_xDt", "Dv_yDt", "u_x", "u_y", "Du_xDt", "Du_yDt","ω")
 
 # Computing the spring force

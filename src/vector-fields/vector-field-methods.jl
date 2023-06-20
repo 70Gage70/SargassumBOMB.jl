@@ -3,9 +3,8 @@ using Interpolations
 using LinearAlgebra: ⋅
 import LinearAlgebra.BLAS.nrm2 as norm
 
-include("helpers.jl")
-include("coordinates.jl")
-include("parameters.jl")
+include(joinpath(@__DIR__, "..", "helpers.jl"))
+include(joinpath(@__DIR__, "..", "parameters.jl"))
 
 ##############################################
 

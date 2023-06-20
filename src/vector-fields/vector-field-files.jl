@@ -5,7 +5,7 @@ include("vector-field-methods.jl")
 #######################################
 
 """
-    wind_file_default = "viento_2021.mat"
+    const wind_file_default = "viento_2021.mat"
 
 This is wind velocity data from 2021 in the north Atlantic. The dataset contains 5 keys:
 
@@ -15,11 +15,10 @@ This is wind velocity data from 2021 in the north Atlantic. The dataset contains
 "u" [360 x 399 x 364] [lat, lon, time] [km/day]: The x component (East/West) of the wind velocity.
 "v" [360 x 399 x 364] [lat, lon, time] [km/day]: The y component (North/South) of the wind velocity.
 """
-const wind_file_default = joinpath(@__DIR__, "..", "MATLAB", "viento_2021.mat")
-
+const wind_file_default = joinpath(@__DIR__, "..", "..", "interpolants", "viento_2021.mat")
 
 """
-    water_file_default = "merged-2021-IAS.mat"
+    const water_file_default = "merged-2021-IAS.mat"
 
 This is water velocity data from 2021 in the north Atlantic. The dataset contains 5 keys:
 
@@ -29,20 +28,33 @@ This is water velocity data from 2021 in the north Atlantic. The dataset contain
 "u" [120 x 200 x 365] [lat, lon, time] [km/day]: The x component (East/West) of the wind velocity.
 "v" [120 x 200 x 365] [lat, lon, time] [km/day]: The y component (North/South) of the wind velocity.
 """
-const water_file_default = joinpath(@__DIR__, "..", "MATLAB", "merged-2021-IAS.mat")
+const water_file_default = joinpath(@__DIR__, "..", "..", "interpolants", "merged-2021-IAS.mat")
+
+"""
+    const ref_default
+    
+The default [`EquirectangularReference`](@ref) for the tropical Atlantic.
+"""
+const ref_default = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
 
 """
     construct_wind_itp_EQR(infile, ref; outfile)
 
 Build an interpolant for the wind data in `infile` on the equirectangular projection defined by `ref`. 
     
-Save the result to a `.jld` file with the name `outfile`.
+Save the result to `outfile` which should be of the form `filename.jld2`.
 """
-function construct_wind_itp_EQR(infile::String, ref::EquirectangularReference; outfile::String = "wind_itp.jld")
+function construct_wind_itp_EQR(
+    infile::String = wind_file_default, 
+    ref::EquirectangularReference = ref_default; 
+    outfile::String = "wind_itp.jld2")
+
     @info "Constructing wind interpolant."
+
     wind_itp = VectorField2DGridSPH(infile, lon_alias = "Lon", lat_alias = "Lat", lon_lat_time_order = [2, 1, 3])
     wind_itp = VectorField2DInterpolantEQR(wind_itp, ref)
-    @save outfile wind_itp
+    jldsave(outfile, wind_itp = wind_itp, ref_itp = ref)
+
     @info "Wind interpolant written to $(outfile)."
 
     return nothing
@@ -53,13 +65,19 @@ end
 
 Build an interpolant for the wind data in `infile` on the equirectangular projection defined by `ref`. 
     
-Save the result to a `.jld` file with the name `outfile`.
+    Save the result to `outfile` which should be of the form `filename.jld2`.
 """
-function construct_water_itp_EQR(infile::String,ref::EquirectangularReference; outfile::String = "water_itp.jld")
+function construct_water_itp_EQR(
+    infile::String = water_file_default,
+    ref::EquirectangularReference = ref_default; 
+    outfile::String = "water_itp.jld2")
+
     @info "Constructing water interpolant."
+
     water_itp = VectorField2DGridSPH(infile, lon_lat_time_order = [2, 1, 3])
     water_itp = VectorField2DInterpolantEQR(water_itp, ref)
-    @save outfile water_itp
+    jldsave(outfile, water_itp = water_itp, ref_itp = ref)
+
     @info "Water interpolant written to $(outfile)."
 
     return nothing
@@ -68,10 +86,10 @@ end
 ##############
 
 function construct_itp_EQR(
-    water_infile::String, 
-    wind_infile::String, 
-    ref::EquirectangularReference, 
-    clump_parameters::ClumpParameters; 
+    water_infile::String = water_file_default, 
+    wind_infile::String = wind_file_default, 
+    ref::EquirectangularReference = ref_default, 
+    clump_parameters::ClumpParameters = ClumpParameters(ref); 
     outfile::String = "itp.jld2")
 
     @info "Constructing wind interpolant."
@@ -102,7 +120,8 @@ function construct_itp_EQR(
         u_y = UY,
         Du_xDt = DUX, 
         Du_yDt = DUY,
-        ω = V
+        ω = V, 
+        ref_itp = ref
     )
 
     @info "Interpolants written to $(outfile)."

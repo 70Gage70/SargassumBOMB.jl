@@ -1,15 +1,13 @@
-using DifferentialEquations, JLD2
+using DifferentialEquations
+using JLD2
 
-include("vector-field-files.jl")
-include("parameters.jl")
-include("plotting.jl")
+include(joinpath(@__DIR__, "..", "parameters.jl"))
+include(joinpath(@__DIR__, "..", "vector-fields", "vector-field-methods.jl"))
 
-##########################################################
-
-ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
-
-const water_itp = load("water_itp.jld", "water_itp")
-const wind_itp = load("wind_itp.jld", "wind_itp")
+itp_path = joinpath(@__DIR__, "..", "..", "interpolants")
+const ref_itp = load(joinpath(itp_path, "water_itp.jld2"), "ref_itp")
+const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp")
+const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp")
 
 # All the functions depending on wind and water vector fields.
 # Note that `water_itp` and `wind_itp` must be loaded before using these.
@@ -23,20 +21,8 @@ Du_xDt(x, y, t, α) = (1 - α) * MaterialDerivativeX(water_itp, x, y, t) + α * 
 Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * MaterialDerivativeY(wind_itp, x, y, t) 
 ω(x, y, t) = Vorticity(water_itp, x, y, t)
 
-# v_x(x, y, t) = 1
-# v_y(x, y, t) =  1
-# Dv_xDt(x, y, t) = 1
-# Dv_yDt(x, y, t) = 1
-# u_x(x, y, t, α) = 1
-# u_y(x, y, t, α) = 1
-# Du_xDt(x, y, t, α) = 1 
-# Du_yDt(x, y, t, α) = 1
-# ω(x, y, t) = 1
-
 # Computing the spring force
 Fs(xy1, xy2, parameters) = spring_force(xy1, xy2, parameters)
-# Fs(xy1, xy2, parameters) = [1.0, 1.0]
-
 
 function Clump!(du, u, p::ClumpParameters, t)
     x, y = u
@@ -120,7 +106,7 @@ end
 
 # plot_traj(lon_traj, lat_traj)
 
-function get_prob(n, tmax)
+function get_prob(n, tmax, ref = ref_itp)
     @info "Building Problem."
     x0, y0 = sph2xy(-64, 14, ref) 
     x_range = range(start = x0 - 5, length = n, stop = x0 + 5)

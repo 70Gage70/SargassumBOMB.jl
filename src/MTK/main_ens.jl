@@ -1,25 +1,23 @@
-using GeoMakie, CairoMakie
-
 include("models.jl")
-include("vector-field-files.jl")
+include(joinpath(@__DIR__, "..", "plotting.jl"))
 
 ###########################################
 
 @info "Loading interpolants."
 
-ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
+# ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
 
 # construct_wind_itp(wind_file_default, ref)
 # construct_water_itp(water_file_default, ref)
 
-@load "water_itp.jld"
-@load "wind_itp.jld" 
+# @load "water_itp.jld"
+# @load "wind_itp.jld" 
 
 @info "Generating model."
 
 # ics = sph2xy(-79.5, 25.5, ref) # gulf stream, use t_range = (0.0, 10.0)
-xy0 = sph2xy(-64, 14, ref) # loop current, use t_range = (0.0, 200.0)
-params = BOMParameters(ref)
+xy0 = sph2xy(-64, 14, ref_itp) # loop current, use t_range = (0.0, 200.0)
+params = ClumpParameters(ref_itp)
 @named clump = Clump(xy0, params)
 clump = structural_simplify(clump)
 
@@ -32,8 +30,11 @@ prob = ODEProblem(
     []
 )
 
+n_traj = 10000
+xy0_ens = [xy0 .+ rand() for i = 1:n_traj]
+
 function prob_func(prob, i, repeat)
-    remake(prob, u0 = xy0 .+ rand())
+    remake(prob, u0 = xy0_ens[i])
 end
 
 Eprob = EnsembleProblem(
@@ -41,12 +42,12 @@ Eprob = EnsembleProblem(
     prob_func = prob_func
 )
 
-sim(n_traj) = solve(Eprob, Tsit5(), EnsembleThreads(), trajectories = n_traj)
+@time sim = solve(Eprob, EnsembleThreads(), trajectories = n_traj, saveat = 5.0);
 
 # @info "Solving model."
 
 # sol = solve(prob)
-# traj = xy2sph(sol.u, ref)
+# traj = xy2sph(sol.u, ref_itp)
 # lon_traj, lat_traj = (traj[:,1], traj[:, 2]) #
 # times = sol.t
 

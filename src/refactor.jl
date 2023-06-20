@@ -64,21 +64,23 @@ function Clump(u, p::ClumpParameters, t)
 end
 
 
-function Raft!(du, u, p::RaftParameters, t)
-    for i = 1:length(p.clumps)
-        du[i, :] .= Clump(u[i, :], p.clumps[i], t) + sum([Fs(u[i,:], u[j,:], p.springs[i, j]) for j = 1:length(p.clumps) if j != i])
-    end
-end
-
 # function Raft!(du, u, p::RaftParameters, t)
 #     for i = 1:length(p.clumps)
-#         du[i, :] .= Clump(u[i, :], p.clumps[i], t)
-
-#         for j = 1:length(p.clumps)
-#             du[i, :] .+= Fs(u[i,:], u[j,:], p.springs[i, j])
-#         end
+#         du[i, :] .= Clump(u[i, :], p.clumps[i], t) + sum([Fs(u[i,:], u[j,:], p.springs[i, j]) for j = 1:length(p.clumps) if j != i])
 #     end
 # end
+
+function Raft!(du, u, p::RaftParameters, t)
+    for i = 1:length(p.clumps)
+        du[i, :] .= Clump(u[i, :], p.clumps[i], t)
+
+        for j = 1:length(p.clumps)
+            if j != i
+                du[i, :] .+= Fs(u[i,:], u[j,:], p.springs[i, j])
+            end
+        end
+    end
+end
 
 # function Raft!(du, u, p::RaftParameters, t)
 #     for i = 1:length(p.clumps)

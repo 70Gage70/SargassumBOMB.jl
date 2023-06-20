@@ -130,7 +130,8 @@ Calculate the x and y components of the force on a point particle with coordinat
 function spring_force(xy1::Vector{<:Real}, xy2::Vector{<:Real}, parameters::SpringParameters)
     d = norm(xy1 - xy2)
     if isapprox(d, 0.0)
-        return 0.0
+        # @warn "Clumps very close together!"
+        return [0.0, 0.0]
     else
         return parameters.k(d)*(parameters.L/norm(xy1 - xy2) - 1)*(xy1 - xy2)
     end

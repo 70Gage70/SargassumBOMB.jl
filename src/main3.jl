@@ -18,8 +18,8 @@ ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
 @info "Generating model."
 
 x0, y0 = sph2xy(-64, 14, ref) 
-x_range = range(start = x0 - 5, length = 25, stop = x0 + 5)
-y_range = range(start = y0 - 5, length = 25, stop = y0 + 5)
+x_range = range(start = x0 - 5, length = 5, stop = x0 + 5)
+y_range = range(start = y0 - 5, length = 5, stop = y0 + 5)
 clump_parameters = ClumpParameters(ref)
 spring_parameters = SpringParameters(k -> 20, step(x_range))
 
@@ -27,7 +27,7 @@ spring_parameters = SpringParameters(k -> 20, step(x_range))
 RRaft = structural_simplify(RRaft)
 
 # t_range = (0.0, 150.0)
-t_range = (0.0, 1.0)
+t_range = (0.0, 10.0)
 
 @info "Generating problem."
 

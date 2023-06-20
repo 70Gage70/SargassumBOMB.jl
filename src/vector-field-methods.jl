@@ -5,6 +5,7 @@ import LinearAlgebra.BLAS.nrm2 as norm
 
 include("helpers.jl")
 include("coordinates.jl")
+include("parameters.jl")
 
 ##############################################
 
@@ -291,4 +292,76 @@ Compute the vorticity of the vector field `vector_field` at coordinates `(x, y, 
 """
 function Vorticity(vector_field::VectorField2DInterpolantEQR, x::Real, y::Real, t::Real)
     return gradient(vector_field.v, x, y, t)[1] - gradient(vector_field.u, x, y, t)[2]
+end
+
+#######################
+
+function MaterialDerivativeX(water_vf::VectorField2DInterpolantEQR; interpolant_type = BSpline(Cubic(Line(OnGrid()))))
+    x, y, time = (water_vf.x, water_vf.y, water_vf.time)
+    data = [MaterialDerivativeX(water_vf, x, y, t) for x in x, y in y, t in time]
+    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+end
+
+function MaterialDerivativeY(water_vf::VectorField2DInterpolantEQR; interpolant_type = BSpline(Cubic(Line(OnGrid()))))
+    x, y, time = (water_vf.x, water_vf.y, water_vf.time)
+    data = [MaterialDerivativeY(water_vf, x, y, t) for x in x, y in y, t in time]
+    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+end
+
+function Vorticity(water_vf::VectorField2DInterpolantEQR; interpolant_type = BSpline(Cubic(Line(OnGrid()))))
+    x, y, time = (water_vf.x, water_vf.y, water_vf.time)
+    data = [Vorticity(water_vf, x, y, t) for x in x, y in y, t in time]
+    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+end
+
+function WindWaterAlphaX(
+    wind_vf::VectorField2DInterpolantEQR, 
+    water_vf::VectorField2DInterpolantEQR,
+    clump_parameters::ClumpParameters; 
+    interpolant_type = BSpline(Cubic(Line(OnGrid()))))
+
+    α = clump_parameters.α
+
+    x, y, time = (wind_vf.x, wind_vf.y, wind_vf.time)
+    data = [(1 - α) * water_vf.u(x, y, t) + α * wind_vf.u(x, y, t) for x in x, y in y, t in time]
+    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+end
+
+function WindWaterAlphaY(
+    wind_vf::VectorField2DInterpolantEQR, 
+    water_vf::VectorField2DInterpolantEQR,
+    clump_parameters::ClumpParameters; 
+    interpolant_type = BSpline(Cubic(Line(OnGrid()))))
+
+    α = clump_parameters.α
+
+    x, y, time = (wind_vf.x, wind_vf.y, wind_vf.time)
+    data = [(1 - α) * water_vf.v(x, y, t) + α * wind_vf.v(x, y, t) for x in x, y in y, t in time]
+    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+end
+
+function DDtWindWaterAlphaX(
+    wind_vf::VectorField2DInterpolantEQR, 
+    water_vf::VectorField2DInterpolantEQR,
+    clump_parameters::ClumpParameters; 
+    interpolant_type = BSpline(Cubic(Line(OnGrid()))))
+
+    α = clump_parameters.α
+
+    x, y, time = (wind_vf.x, wind_vf.y, wind_vf.time)
+    data = [(1 - α) * MaterialDerivativeX(water_vf, x, y, t) + α * MaterialDerivativeX(wind_vf, x, y, t) for x in x, y in y, t in time]
+    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+end
+
+function DDtWindWaterAlphaY(
+    wind_vf::VectorField2DInterpolantEQR, 
+    water_vf::VectorField2DInterpolantEQR,
+    clump_parameters::ClumpParameters; 
+    interpolant_type = BSpline(Cubic(Line(OnGrid()))))
+
+    α = clump_parameters.α
+
+    x, y, time = (wind_vf.x, wind_vf.y, wind_vf.time)
+    data = [(1 - α) * MaterialDerivativeY(water_vf, x, y, t) + α * MaterialDerivativeY(wind_vf, x, y, t) for x in x, y in y, t in time]
+    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
 end

@@ -30,17 +30,9 @@ function geo_axis(fig; fig_pos = [1, 1], limits = (-100, -50, 5, 35), title = "T
     )
  end
 
-function geo_fig(;title = "Title")
-    fig = Figure(
-        resolution = (1920, 1080), 
-        fontsize = 50,
-        figure_padding = (5, 50, 5, 5));
-
-    ax = geo_axis(fig, fig_pos = [1, 1], limits = (-100, -50, 5, 35))
-
+function coastlines!(axis)
     lon, lat, data = lsm
-    contour!(ax, lon, lat, data, levels = [0.5], color = :black);
-
+    contour!(axis, lon, lat, data, levels = [0.5], color = :black)
 end
 
 
@@ -51,9 +43,7 @@ function plot_traj(lon_traj, lat_traj, times)
         figure_padding = (5, 50, 5, 5));
 
     ax = geo_axis(fig, fig_pos = [1, 1], limits = (-100, -50, 5, 35))
-
-    lon, lat, data = lsm
-    contour!(ax, lon, lat, data, levels = [0.5], color = :black);
+    coastlines!(ax)
 
     ln = lines!(ax, lon_traj, lat_traj; color = times, linewidth = 4);
     Colorbar(

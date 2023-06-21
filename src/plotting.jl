@@ -1,4 +1,5 @@
-using CairoMakie, GeoDatasets
+using GLMakie # use CairoMakie for vector graphics (slower)
+using GeoDatasets
 
 include("vector-fields/vector-field-files.jl")
 
@@ -10,7 +11,7 @@ function geo_axis(fig; fig_pos = [1, 1], limits = (-100, -50, 5, 35), title = "T
     Axis(
         fig[fig_pos[1], fig_pos[2]],
         limits = limits, 
-        title = L"%$(title)",
+        title = title,
         xticklabelsize = 40,
         yticklabelsize = 40,
         xtickformat = values -> [
@@ -37,6 +38,11 @@ function geo_axis(fig; fig_pos = [1, 1], limits = (-100, -50, 5, 35), title = "T
 function coastlines!(axis)
     lon, lat, data = lsm
     contour!(axis, lon, lat, data, levels = [0.5], color = :black)
+end
+
+function land!(axis)
+    lon, lat, data = lsm
+    heatmap!(axis, lon, lat, data, colorrange = (0.3, 0.4), lowclip = :white, highclip = :grey)
 end
 
 function arrows_timeslice(ax, t::Real, vf::VectorField2DInterpolantEQR)
@@ -87,14 +93,16 @@ function colorbar(fig, line; fig_pos = [1, 2])
     )
 end   
 
-function geo_fig()
+function geo_fig(;title = "Test")
     fig = Figure(
         resolution = (1920, 1080), 
         fontsize = 50,
         figure_padding = (5, 50, 5, 5));
 
-    ax = geo_axis(fig, fig_pos = [1, 1], limits = (-100, -50, 5, 35))
-    coastlines!(ax)
+    ax = geo_axis(fig, fig_pos = [1, 1], limits = (-100, -50, 5, 35), title = title)
+    land!(ax)
+    # coastlines!(ax)
+    
     
     return (fig, ax)
 end

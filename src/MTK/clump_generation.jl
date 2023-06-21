@@ -42,19 +42,21 @@ Eprob = EnsembleProblem(
     prob_func = prob_func
 )
 
+
 @info "Solving model."
 
 @time sim = solve(Eprob, EnsembleThreads(), trajectories = n_traj, saveat = 5.0, callback = cb);
 
 
-# @info "Plotting results."
-# traj = xy2sph(sol.u, ref_itp)
-# lon_traj, lat_traj = (traj[:,1], traj[:, 2])
-# times = sol.t
+@info "Plotting results."
 
-# fig, ax = geo_fig()
-# ln = trajectory(ax, lon_traj, lat_traj, times)
+fig, ax = geo_fig(title = L"\mathrm{BOM} \, 100 \, \mathrm{day} \,  \mathrm{trajectories}")
+
+for sol in sim.u
+    ln = trajectory(ax, sol, ref_itp)
+end
+
 # colorbar(fig, ln)
-# fig
+fig
 
 

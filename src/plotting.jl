@@ -65,8 +65,14 @@ function streamlines_timeslice(ax, t::Real, vf::VectorField2DInterpolantEQR)
         colormap = :buda)
 end
 
-function trajectory(ax, lons, lats, times)
-    return lines!(ax, lons, lats; color = times, linewidth = 4); 
+function trajectory(ax, lons, lats, times; linewidth = 4)
+    return lines!(ax, lons, lats; color = times, linewidth = linewidth)
+end
+
+function trajectory(ax, sol, ref::EquirectangularReference; linewidth = 4)
+    traj = xy2sph(sol.u, ref)
+    lons, lats = (traj[:, 1], traj[:, 2])
+    return trajectory(ax, lons, lats, sol.t, linewidth = linewidth) 
 end
 
 function colorbar(fig, line; fig_pos = [1, 2])    

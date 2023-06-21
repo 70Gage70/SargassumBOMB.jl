@@ -36,9 +36,9 @@ The units of `x` and `y` are controlled by the optional argument `R`, the radius
 
 ### Arguments
 
-`lon`: Longitude in degrees (East/West).
-`lat`: Latitude in degrees (North/South).
-`ref`: An [`EquirectangularReference`](@ref).
+- `lon`: Longitude in degrees (East/West).
+- `lat`: Latitude in degrees (North/South).
+- `ref`: An [`EquirectangularReference`](@ref).
 """
 function sph2xy(lon::Real, lat::Real, ref::EquirectangularReference; R::Real = 6371)
     @assert -180.0 <= lon <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
@@ -53,6 +53,14 @@ function sph2xy(lon::Real, lat::Real, ref::EquirectangularReference; R::Real = 6
     return [x, y]
 end
 
+function sph2xy(lon_range::AbstractRange, lat_range::AbstractRange, ref::EquirectangularReference; R::Real = 6371)
+    # uses the fact that the translation between eqr and spherical is linear
+    lonmin, latmin = sph2xy(first(lon_range), first(lat_range), ref, R = R)
+    lonmax, latmax = sph2xy(last(lon_range), last(lat_range), ref, R = R)
+
+    return (range(start = lonmin, length = length(lon_range), stop = lonmax), range(start = latmin, length = length(lat_range), stop = latmax))
+end
+
 """
     xy2sph(x, y, ref; R = 6371)
 
@@ -62,11 +70,13 @@ The units of `x` and `y` should be the same as the optional argument `R`, the ra
 
 Can be applied as `xy2sph(xy, ref; R = 6371)` where `xy` is a vector of vectors or a `Matrix`.
 
+Can be applied as `xy2sph(x_range, y_range, ref; R = 6371)` where `x_range` and `y_range` are `AbstractRange`. Returns `(lon_range, lat_range)`.
+
 ### Arguments
 
-`x`: The x Cartesian coordinate in km (East/West).
-`y`: The y Cartesian coordinate in km (North/South).
-`ref`: An [`EquirectangularReference`](@ref).
+- `x`: The x Cartesian coordinate in km (East/West).
+- `y`: The y Cartesian coordinate in km (North/South).
+- `ref`: An [`EquirectangularReference`](@ref).
 """
 function xy2sph(x::Real, y::Real, ref::EquirectangularReference; R::Real = 6371)
     lon0, lat0 = (ref.lon0, ref.lat0)
@@ -80,7 +90,7 @@ function xy2sph(x::Real, y::Real, ref::EquirectangularReference; R::Real = 6371)
 end
 
 function xy2sph(xy::Vector{<:Vector{T}}, ref::EquirectangularReference; R::Real = 6371) where {T<:Real}
-    lonlat = Matrix{T}(undef, length(xy), 2)
+    lonlat = zeros(length(xy), 2) 
     
     for i = 1:length(xy)
         lonlat[i,:] = xy2sph(xy[i]...,ref, R = R)
@@ -90,11 +100,19 @@ function xy2sph(xy::Vector{<:Vector{T}}, ref::EquirectangularReference; R::Real 
 end
 
 function xy2sph(xy::Matrix{T}, ref::EquirectangularReference; R::Real = 6371) where {T<:Real}
-    lonlat = Matrix{T}(undef, size(xy)...)
+    lonlat = zeros(size(xy)...)
     
     for i = 1:size(xy, 1)
         lonlat[i,:] = xy2sph(xy[i,:]...,ref, R = R)
     end
 
     return lonlat
+end
+
+function xy2sph(x_range::AbstractRange, y_range::AbstractRange, ref::EquirectangularReference; R::Real = 6371)
+    # uses the fact that the translation between eqr and spherical is linear
+    xmin, ymin = xy2sph(first(x_range), first(y_range), ref, R = R)
+    xmax, ymax = xy2sph(last(x_range), last(y_range), ref, R = R)
+
+    return (range(start = xmin, length = length(x_range), stop = xmax), range(start = ymin, length = length(y_range), stop = ymax))
 end

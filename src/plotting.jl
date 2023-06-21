@@ -1,5 +1,9 @@
 using CairoMakie, GeoDatasets
 
+include("vector-fields/vector-field-files.jl")
+
+########################################################
+
 const lsm = GeoDatasets.landseamask(; resolution = 'i', grid = 1.25);
 
 function geo_axis(fig; fig_pos = [1, 1], limits = (-100, -50, 5, 35), title = "Test")
@@ -35,8 +39,49 @@ function coastlines!(axis)
     contour!(axis, lon, lat, data, levels = [0.5], color = :black)
 end
 
+function arrows_timeslice(ax, t::Real, vf::VectorField2DInterpolantEQR)
+    u = [vf.u(x, y, t) for x in vf.x, y in vf.y]
+    v = [vf.v(x, y, t) for x in vf.x, y in vf.y]
+    x, y = xy2sph(vf.x, vf.y, vf.ref)
 
-function plot_traj(lon_traj, lat_traj, times)
+    strength = vec(sqrt.(u .^ 2 .+ v .^ 2)) # color is proportional to norm
+
+    return arrows!(ax, x, y, u, v,
+        lengthscale = 0.01, # color indicates strength, not length of actual arrow
+        arrowcolor = strength, linecolor = strength)
+end
+
+function streamlines_timeslice(ax, t::Real, vf::VectorField2DInterpolantEQR)
+    function streamfunc(lon, lat; t = t)
+        x, y = sph2xy(lon, lat, vf.ref)
+        return Point2f(vf.u(x, y, t), vf.v(x, y, t))
+    end
+
+    lon, lat = xy2sph(water_itp.x, water_itp.y, water_itp.ref)
+
+    return streamplot!(ax, streamfunc, lon, lat,
+        density = 10.0, 
+        # arrowsize = 6.0, linewidth = 6.0, 
+        colormap = :buda)
+end
+
+function trajectory(ax, lons, lats, times)
+    return lines!(ax, lons, lats; color = times, linewidth = 4); 
+end
+
+function colorbar(fig, line; fig_pos = [1, 2])    
+    return Colorbar(
+        fig[fig_pos[1], fig_pos[2]], 
+        line, 
+        label = L"\textrm{Days}",
+        ticklabelsize = 40, 
+        # ticks = [0, 50, 100, 150], 
+        tickformat = values -> [L"%$(value)" for value in values],
+        height = Relative(2/4)
+    )
+end   
+
+function geo_fig()
     fig = Figure(
         resolution = (1920, 1080), 
         fontsize = 50,
@@ -44,17 +89,29 @@ function plot_traj(lon_traj, lat_traj, times)
 
     ax = geo_axis(fig, fig_pos = [1, 1], limits = (-100, -50, 5, 35))
     coastlines!(ax)
-
-    ln = lines!(ax, lon_traj, lat_traj; color = times, linewidth = 4);
-    Colorbar(
-        fig[1,2], 
-        ln, 
-        label = L"\textrm{Days}",
-        ticklabelsize = 40, 
-        # ticks = [0, 50, 100, 150], 
-        tickformat = values -> [L"%$(value)" for value in values],
-        height = Relative(2/4)
-    );
-
-    return fig
+    
+    return (fig, ax)
 end
+
+# function plot_traj(lon_traj, lat_traj, times)
+#     fig = Figure(
+#         resolution = (1920, 1080), 
+#         fontsize = 50,
+#         figure_padding = (5, 50, 5, 5));
+
+#     ax = geo_axis(fig, fig_pos = [1, 1], limits = (-100, -50, 5, 35))
+#     coastlines!(ax)
+
+#     ln = lines!(ax, lon_traj, lat_traj; color = times, linewidth = 4);
+#     Colorbar(
+#         fig[1,2], 
+#         ln, 
+#         label = L"\textrm{Days}",
+#         ticklabelsize = 40, 
+#         # ticks = [0, 50, 100, 150], 
+#         tickformat = values -> [L"%$(value)" for value in values],
+#         height = Relative(2/4)
+#     );
+
+#     return fig
+# end

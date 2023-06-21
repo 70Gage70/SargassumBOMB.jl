@@ -153,6 +153,24 @@ function VectorField2DGridSPH(
 end
 
 """
+    interpolate_field(x, y, t, u; interpolant_type)
+
+Construct an interpolant for the field `u[x, y, t]`. Outside of the range defined by `x`, `y` and `t` defaults to 0.0 via extrapolation.
+
+### Optional Arguments
+- `interpolant_type`: The type of the interpolant used at the interpolation stage. Default a cubic spline, `BSpline(Cubic(Line(OnGrid()))))`.
+"""
+function interpolate_field(
+    x::AbstractRange, 
+    y::AbstractRange, 
+    t::AbstractRange, 
+    u::AbstractArray; 
+    interpolant_type = BSpline(Cubic(Line(OnGrid()))))
+
+    return extrapolate(scale(interpolate(u, interpolant_type), x, y, t), 0.0)
+end
+
+"""
     AbstractVectorFieldInterpolant
 
 The abstract type for interpolated vector fields.
@@ -185,21 +203,13 @@ end
 """
     VectorField2DInterpolantSPH(vf_grid; interpolant_type)
 
-Construct an `VectorField2DInterpolantSPH` from a [`VectorField2DGridSPH`](@ref).
-
-### Optional Arguments
-
-- `interpolant_type`: The type of interpolation to use from the `Interpolations` module. Default cubic B-spline.
+Construct an `VectorField2DInterpolantSPH` from a [`VectorField2DGridSPH`](@ref) using [`interpolate_field`](@ref).
 """
-function VectorField2DInterpolantSPH(
-    vf_grid::VectorField2DGridSPH; 
-    interpolant_type = BSpline(Cubic(Line(OnGrid()))) 
-    )
-
+function VectorField2DInterpolantSPH(vf_grid::VectorField2DGridSPH)
     lon, lat, time, time0, u, v = (vf_grid.lon, vf_grid.lat, vf_grid.time, vf_grid.time0, vf_grid.u, vf_grid.v)
 
-    u_itp = extrapolate(scale(interpolate(u, interpolant_type), lon, lat, time), Flat())
-    v_itp = extrapolate(scale(interpolate(v, interpolant_type), lon, lat, time), Flat())
+    u_itp = interpolate_field(lon, lat, time, u, interpolant_type = interpolant_type)
+    v_itp = interpolate_field(lon, lat, time, v, interpolant_type = interpolant_type)
 
     return VectorField2DInterpolantSPH(lon, lat, time0, time, u_itp, v_itp)
 end
@@ -232,7 +242,7 @@ end
 """
     VectorField2DInterpolantEQR(vf_grid, ref; interpolant_type, R)
 
-Construct an `VectorField2DInterpolantEQR` from a [`VectorField2DGridSPH`](@ref) and `ref::EquirectangularReference`.
+Construct an `VectorField2DInterpolantEQR` from a [`VectorField2DGridSPH`](@ref) and `ref::EquirectangularReference` using [`interpolate_field`](@ref).
 
 ### Optional Arguments
 
@@ -246,22 +256,12 @@ function VectorField2DInterpolantEQR(
     R = 6371
     )
 
-    # construct the interpolant in spherical coordinates
     lon, lat, time, time0, u, v = (vf_grid.lon, vf_grid.lat, vf_grid.time, vf_grid.time0, vf_grid.u, vf_grid.v)
 
-    u_itp = extrapolate(scale(interpolate(u, interpolant_type), lon, lat, time), Flat())
-    v_itp = extrapolate(scale(interpolate(v, interpolant_type), lon, lat, time), Flat())
+    x, y = sph2xy(lon, lat, ref, R = R)
 
-    # re-interpolate in rectilinear coordinates
-    xmin, ymin = sph2xy(first(lon), first(lat), ref, R = R)
-    xmax, ymax = sph2xy(last(lon), last(lat), ref, R = R)
-    x = range(start = xmin, stop = xmax, length = length(lon))
-    y = range(start = ymin, stop = ymax, length = length(lat))
-    u_data = [u_itp(xy2sph(x, y, ref, R = R)..., t) for x in x, y in y, t in time]
-    v_data = [v_itp(xy2sph(x, y, ref, R = R)..., t) for x in x, y in y, t in time]
-
-    u_itp = extrapolate(scale(interpolate(u_data, interpolant_type), x, y, time), Flat())
-    v_itp = extrapolate(scale(interpolate(v_data, interpolant_type), x, y, time), Flat())  
+    u_itp = interpolate_field(x, y, time, u, interpolant_type = interpolant_type)
+    v_itp = interpolate_field(x, y, time, v, interpolant_type = interpolant_type)
 
     return VectorField2DInterpolantEQR(ref, x, y, time0, time, u_itp, v_itp)
 end
@@ -298,19 +298,19 @@ end
 function MaterialDerivativeX(water_vf::VectorField2DInterpolantEQR; interpolant_type = BSpline(Cubic(Line(OnGrid()))))
     x, y, time = (water_vf.x, water_vf.y, water_vf.time)
     data = [MaterialDerivativeX(water_vf, x, y, t) for x in x, y in y, t in time]
-    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+    return interpolate_field(x, y, time, data, interpolant_type = interpolant_type)
 end
 
 function MaterialDerivativeY(water_vf::VectorField2DInterpolantEQR; interpolant_type = BSpline(Cubic(Line(OnGrid()))))
     x, y, time = (water_vf.x, water_vf.y, water_vf.time)
     data = [MaterialDerivativeY(water_vf, x, y, t) for x in x, y in y, t in time]
-    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+    return interpolate_field(x, y, time, data, interpolant_type = interpolant_type)
 end
 
 function Vorticity(water_vf::VectorField2DInterpolantEQR; interpolant_type = BSpline(Cubic(Line(OnGrid()))))
     x, y, time = (water_vf.x, water_vf.y, water_vf.time)
     data = [Vorticity(water_vf, x, y, t) for x in x, y in y, t in time]
-    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+    return interpolate_field(x, y, time, data, interpolant_type = interpolant_type)
 end
 
 function WindWaterAlphaX(
@@ -323,7 +323,7 @@ function WindWaterAlphaX(
 
     x, y, time = (wind_vf.x, wind_vf.y, wind_vf.time)
     data = [(1 - α) * water_vf.u(x, y, t) + α * wind_vf.u(x, y, t) for x in x, y in y, t in time]
-    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+    return interpolate_field(x, y, time, data, interpolant_type = interpolant_type)
 end
 
 function WindWaterAlphaY(
@@ -336,7 +336,7 @@ function WindWaterAlphaY(
 
     x, y, time = (wind_vf.x, wind_vf.y, wind_vf.time)
     data = [(1 - α) * water_vf.v(x, y, t) + α * wind_vf.v(x, y, t) for x in x, y in y, t in time]
-    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+    return interpolate_field(x, y, time, data, interpolant_type = interpolant_type)
 end
 
 function DDtWindWaterAlphaX(
@@ -349,7 +349,7 @@ function DDtWindWaterAlphaX(
 
     x, y, time = (wind_vf.x, wind_vf.y, wind_vf.time)
     data = [(1 - α) * MaterialDerivativeX(water_vf, x, y, t) + α * MaterialDerivativeX(wind_vf, x, y, t) for x in x, y in y, t in time]
-    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+    return interpolate_field(x, y, time, data, interpolant_type = interpolant_type)
 end
 
 function DDtWindWaterAlphaY(
@@ -362,5 +362,5 @@ function DDtWindWaterAlphaY(
 
     x, y, time = (wind_vf.x, wind_vf.y, wind_vf.time)
     data = [(1 - α) * MaterialDerivativeY(water_vf, x, y, t) + α * MaterialDerivativeY(wind_vf, x, y, t) for x in x, y in y, t in time]
-    return extrapolate(scale(interpolate(data, interpolant_type), x, y, time), Flat())
+    return interpolate_field(x, y, time, data, interpolant_type = interpolant_type)
 end

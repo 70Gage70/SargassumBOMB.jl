@@ -53,7 +53,7 @@ function construct_wind_itp_EQR(
 
     wind_itp = VectorField2DGridSPH(infile, lon_alias = "Lon", lat_alias = "Lat", lon_lat_time_order = [2, 1, 3])
     wind_itp = VectorField2DInterpolantEQR(wind_itp, ref)
-    jldsave(outfile, wind_itp = wind_itp, ref_itp = ref)
+    jldsave(outfile, wind_itp = wind_itp)
 
     @info "Wind interpolant written to $(outfile)."
 
@@ -76,7 +76,7 @@ function construct_water_itp_EQR(
 
     water_itp = VectorField2DGridSPH(infile, lon_lat_time_order = [2, 1, 3])
     water_itp = VectorField2DInterpolantEQR(water_itp, ref)
-    jldsave(outfile, water_itp = water_itp, ref_itp = ref)
+    jldsave(outfile, water_itp = water_itp)
 
     @info "Water interpolant written to $(outfile)."
 
@@ -121,7 +121,7 @@ function construct_itp_EQR(
         Du_xDt = DUX, 
         Du_yDt = DUY,
         ω = V, 
-        ref_itp = ref
+        ref = ref
     )
 
     @info "Interpolants written to $(outfile)."

@@ -42,7 +42,7 @@ end
 
 function land!(axis)
     lon, lat, data = lsm
-    heatmap!(axis, lon, lat, data, colorrange = (0.3, 0.4), lowclip = :white, highclip = :grey)
+    heatmap!(axis, lon, lat, data, colorrange = (0.3, 0.4), lowclip = RGBAf(1.0,1.0,1.0,0.0), highclip = RGBAf(0.6,0.6,0.6,1.0))
 end
 
 function arrows_timeslice(ax, t::Real, vf::VectorField2DInterpolantEQR)

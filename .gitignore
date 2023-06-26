@@ -69,8 +69,8 @@ Temporary Items
 
 # Matlab, HDF5
 **/interpolants/*.mat
-**/src/*.mat
-**/src/*.h5
+**/src/*/*.mat
+**/src/*/*.h5
 
 # workspace
 /src/workspaces.jl

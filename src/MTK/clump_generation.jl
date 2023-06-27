@@ -72,16 +72,16 @@ finish!(progress)
 
 @info "Plotting results."
 
-fig, ax = geo_fig(title = L"\mathrm{BOM} \, 100 \, \mathrm{day} \,  \mathrm{trajectories}")
+# fig, ax = geo_fig(title = L"\mathrm{BOM} \, 100 \, \mathrm{day} \,  \mathrm{trajectories}")
 
-for sol in sim.u
-    if length(sol.t) == n_steps
-        ln = trajectory(ax, sol, ref_itp)
-    end
-end
+# for sol in sim.u
+#     if length(sol.t) == n_steps
+#         ln = trajectory(ax, sol, ref_itp)
+#     end
+# end
 
-# colorbar(fig, ln)
-fig
+# # colorbar(fig, ln)
+# fig
 
 @info "Writing results."
 

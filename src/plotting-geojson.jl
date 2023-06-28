@@ -1,11 +1,13 @@
-using GLMakie # use CairoMakie for vector graphics (slower)
-using GeoDatasets
+using Makie, CairoMakie, GeoMakie
+using GeoMakie.GeoJSON
+using GeometryBasics
 
 include("vector-fields/vector-field-files.jl")
 
 ########################################################
 
-const lsm = GeoDatasets.landseamask(; resolution = 'i', grid = 1.25);
+landpath = joinpath(@__DIR__, "..", "geojson/ne_50m_land.geojson")
+const landpoly = GeoJSON.read(read(landpath, String))
 
 function geo_axis(fig; fig_pos = [1, 1], limits = (-100, -50, 5, 35), title = "Test")
     Axis(
@@ -35,14 +37,8 @@ function geo_axis(fig; fig_pos = [1, 1], limits = (-100, -50, 5, 35), title = "T
     )
 end
 
-function coastlines!(axis)
-    lon, lat, data = lsm
-    contour!(axis, lon, lat, data, levels = [0.5], color = :black)
-end
-
 function land!(axis)
-    lon, lat, data = lsm
-    heatmap!(axis, lon, lat, data, colorrange = (0.3, 0.4), lowclip = RGBAf(1.0,1.0,1.0,0.0), highclip = RGBAf(0.6,0.6,0.6,1.0))
+    poly!(axis, landpoly, color = RGBf(0.6,0.6,0.6))
 end
 
 function arrows_timeslice(ax, t::Real, vf::VectorField2DInterpolantEQR)
@@ -100,7 +96,7 @@ function geo_fig(;title = "Test")
         figure_padding = (5, 50, 5, 5));
 
     ax = geo_axis(fig, fig_pos = [1, 1], limits = (-100, -50, 5, 35), title = title)
-    land!(ax)
+    # land!(ax)
     # coastlines!(ax)
     
     

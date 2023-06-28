@@ -110,7 +110,7 @@ function all_clumps(n_traj_x, n_traj_y, t_short, t_long, t_stop)
     xT_short = Float64[]
     yT_short = Float64[]
 
-    t_spans = [(i, i + 100.0) for i = 0.0:1.0:t_stop]
+    t_spans = [(i, i + t_long) for i = 0.0:1.0:t_stop]
 
     for i = 1:length(t_spans)
         x0_long_t, y0_long_t, xT_long_t, yT_long_t, x0_short_t, y0_short_t, xT_short_t, yT_short_t = clump_t(n_traj_x, n_traj_y, t_short, t_long, t_spans[i])
@@ -128,8 +128,11 @@ function all_clumps(n_traj_x, n_traj_y, t_short, t_long, t_stop)
         println(i/length(t_spans))
     end
 
-    matwrite("x0xT_BOM_clump_5days.mat", Dict("x0" => x0_short, "y0" => y0_short, "xT" => xT_short, "yT" => yT_short))
-    matwrite("x0xT_BOM_clump_100days.mat", Dict("x0" => x0_long, "y0" => y0_long, "xT" => xT_long, "yT" => yT_long))
+    ts = round(Integer, t_short)
+    tl = round(Integer, t_long)
+
+    matwrite("x0xT_BOM_clump_$(ts)days.mat", Dict("x0" => x0_short, "y0" => y0_short, "xT" => xT_short, "yT" => yT_short))
+    matwrite("x0xT_BOM_clump_$(tl)days.mat", Dict("x0" => x0_long, "y0" => y0_long, "xT" => xT_long, "yT" => yT_long))
 
     return nothing
 end

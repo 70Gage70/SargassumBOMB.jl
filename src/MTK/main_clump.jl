@@ -1,5 +1,6 @@
 include("models.jl")
-include(joinpath(@__DIR__, "..", "plotting.jl"))
+# include(joinpath(@__DIR__, "..", "plotting.jl"))
+include(joinpath(@__DIR__, "..", "plotting-geojson.jl"))
 
 ###########################################
 
@@ -15,13 +16,13 @@ include(joinpath(@__DIR__, "..", "plotting.jl"))
 
 @info "Generating model."
 
-# xy0 = sph2xy(-64, 14, ref_itp) # loop current, use t_range = (0.0, 200.0)
-xy0 = sph2xy(-75, 20, ref_itp) # loop current, use t_range = (0.0, 200.0)
+xy0 = sph2xy(-64, 14, ref_itp) # loop current, use t_range = (0.0, 200.0)
+# xy0 = sph2xy(-75, 20, ref_itp) # loop current, use t_range = (0.0, 200.0)
 params = ClumpParameters(ref_itp)
 @named clump = Clump(xy0, params)
 clump = structural_simplify(clump)
 
-t_range = (0.0, 100.0)
+t_range = (0.0, 200.0)
 
 prob = ODEProblem(
     clump, 
@@ -45,6 +46,7 @@ times = sol.t
 fig, ax = geo_fig()
 ln = trajectory(ax, lon_traj, lat_traj, times)
 colorbar(fig, ln)
+land!(ax)
 fig
 
 # CAN GET OBSERVABLES with 

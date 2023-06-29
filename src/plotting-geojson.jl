@@ -9,7 +9,7 @@ include("vector-fields/vector-field-files.jl")
 landpath = joinpath(@__DIR__, "..", "geojson/ne_50m_land.geojson")
 const landpoly = GeoJSON.read(read(landpath, String))
 
-function geo_axis(fig; fig_pos = [1, 1], limits = (-100, -50, 5, 35), title = "Test")
+function geo_axis(fig; fig_pos = [1, 1], limits = (-100, -50, 5, 35), title = L"\mathrm{Title}")
     Axis(
         fig[fig_pos[1], fig_pos[2]],
         limits = limits, 
@@ -89,13 +89,13 @@ function colorbar(fig, line; fig_pos = [1, 2])
     )
 end   
 
-function geo_fig(;title = "Test")
+function geo_fig(;title = L"\mathrm{Title}", limits = (-100, -50, 5, 35))
     fig = Figure(
         resolution = (1920, 1080), 
         fontsize = 50,
         figure_padding = (5, 50, 5, 5));
 
-    ax = geo_axis(fig, fig_pos = [1, 1], limits = (-100, -50, 5, 35), title = title)
+    ax = geo_axis(fig, fig_pos = [1, 1], limits = limits, title = title)
     # land!(ax)
     # coastlines!(ax)
     

@@ -1,17 +1,8 @@
-include("models.jl")
-include(joinpath(@__DIR__, "..", "plotting.jl"))
+include("../models.jl")
+include("../control.jl")
+include("../../../../CustomMakie.jl/src/geo-methods.jl")
 
-###########################################
-
-@info "Loading interpolants."
-
-# ref = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
-
-# construct_wind_itp(wind_file_default, ref)
-# construct_water_itp(water_file_default, ref)
-
-# @load "water_itp.jld"
-# @load "wind_itp.jld" 
+######################################################################
 
 @info "Generating model."
 

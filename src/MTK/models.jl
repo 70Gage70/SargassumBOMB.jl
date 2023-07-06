@@ -6,9 +6,13 @@ include(joinpath(@__DIR__, "..", "parameters.jl"))
 include(joinpath(@__DIR__, "..", "vector-fields", "vector-field-methods.jl"))
 
 itp_path = joinpath(@__DIR__, "..", "..", "interpolants")
-const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp")
-const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp")
-const ref_itp = water_itp.ref
+isdefined(@__MODULE__, :water_itp) || (const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp"))
+isdefined(@__MODULE__, :wind_itp) || (const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp"))
+isdefined(@__MODULE__, :ref_itp) || (const ref_itp = water_itp.ref)
+
+# const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp")
+# const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp")
+# const ref_itp = water_itp.ref
 
 ##################################################
 

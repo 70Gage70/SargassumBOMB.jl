@@ -1,0 +1,3 @@
+struct TrajectoryGenerator
+    
+end

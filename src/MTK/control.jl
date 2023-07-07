@@ -11,3 +11,17 @@ function avoid_shore(
     affect!(integrator) = terminate!(integrator)
     return DiscreteCallback(condition, affect!, save_positions = save_positions)
 end
+
+function growth_decay(tmax::Real)
+    condition(u, t, integrator) = tmax - t
+
+    function affect!(integrator)
+        u = integrator.u
+        resize!(integrator, length(u) + 1)
+        maxidx = findmax(u)[2]
+        Θ = rand()
+        u[maxidx] = Θ
+        u[end] = 1 - Θ
+        nothing
+    end
+end

@@ -1,12 +1,18 @@
 include("../models.jl")
 include("../control.jl")
 include("../../../../CustomMakie.jl/src/geo-methods.jl")
+include("../../../../CustomMakie.jl/src/statistic-methods.jl")
+
+
 
 ######################################################################
 
 @info "Generating model."
 
-x0, y0 = sph2xy(-64, 14, ref_itp) 
+# x0, y0 = sph2xy(-64, 14, ref_itp) # loop current
+x0, y0 = sph2xy(-60, 25, ref_itp)
+t_range = (0.0, 100.0)
+
 x_range = range(start = x0 - 5, length = 5, stop = x0 + 5)
 y_range = range(start = y0 - 5, length = 5, stop = y0 + 5)
 clump_parameters = ClumpParameters(ref_itp)
@@ -14,9 +20,6 @@ spring_parameters = SpringParameters(k -> 20, step(x_range))
 
 @named RRaft = RectangularRaft(x_range, y_range, clump_parameters, spring_parameters)
 RRaft = structural_simplify(RRaft)
-
-# t_range = (0.0, 150.0)
-t_range = (0.0, 10.0)
 
 @info "Generating problem."
 
@@ -29,33 +32,105 @@ prob = ODEProblem(
     sparse = true
 )
 
+@info "Solving model."
+
 @time sol = solve(prob)
 
-# n_traj = 10
-# # xy0_ens = [xy0 .+ rand() for i = 1:n_traj]
-
-# function prob_func(prob, i, repeat)
-#     remake(prob, u0 = prob.u0 .+ 2*rand())
-# end
-
-# Eprob = EnsembleProblem(
-#     prob, 
-#     prob_func = prob_func
+# sol = solve(prob, 
+#     saveat = 0.1, 
+#     callback = avoid_shore(water_itp, tol = 0.1, save_positions = (true, false))
 # )
 
-# @time sim = solve(Eprob, EnsembleThreads(), trajectories = n_traj, saveat = 5.0);
+@info "Generating reference clump."
 
+@named clump = Clump([x0, y0], params)
+clump = structural_simplify(clump)
 
-# @info "Solving model."
+prob = ODEProblem(
+    clump, 
+    [],
+    t_range, 
+    []
+)
 
-# sol = solve(prob)
+sol_clump = solve(prob)
+clump_traj = xy2sph(sol_clump.u, ref_itp)
+clump_times = sol_clump.t
 
-# @variables COM(t)[1:2]
-# com = [sol[COM[1]] ;; sol[COM[2]]]
-# traj = xy2sph(com, ref_itp)
-# lon_traj, lat_traj = (traj[:, 1], traj[:, 2]) 
-# times = sol.t
+@info "Plotting results."
 
-# @info "Plotting results."
+limits = (-65, -55, 22, 28)
 
+### Trajectory COM
 
+fig_COM = default_fig()
+ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
+
+traj = xy2sph(sol[RRaft.COM], ref_itp)
+times = sol.t
+trajectory!(ax, traj, times)
+land!(ax)
+
+tticks = collect(range(start = minimum(times), stop = maximum(times), length = 5))
+data_legend!(fig_COM[1,2], L"\mathrm{Days}", ticks = tticks)
+
+fig_COM
+
+### Trajectory NET
+
+fig_NET = default_fig()
+ax = geo_axis(fig_NET[1, 1], limits = limits, title = L"\mathrm{Raft NET}")
+
+for i = 1:Integer(length(states(RRaft))/2)
+    clump_x = Symbol("clump_$(i)₊x")
+    clump_y = Symbol("clump_$(i)₊y")
+    traj = xy2sph([sol[getproperty(RRaft, clump_x)] ;; sol[getproperty(RRaft, clump_y)]], ref_itp)
+    times = sol.t
+    trajectory!(ax, traj, times)
+end
+
+trajectory!(ax, clump_traj, clump_times)
+
+land!(ax)
+
+tticks = collect(range(start = minimum(times), stop = maximum(times), length = 5))
+data_legend!(fig_NET[1,2], L"\mathrm{Days}", ticks = tticks)
+
+fig_NET
+
+### Forces
+
+fig_forces = default_fig()
+ax = Axis(fig_forces[1, 1])
+
+Fsx = stack(sol[RRaft.clump_1₊τF], dims = 1)[:,1];
+τUx = stack(sol[RRaft.clump_1₊τU], dims = 1)[:,1];
+Ux = stack(sol[RRaft.clump_1₊U], dims = 1)[:,1];
+
+lines!(ax, sol.t, Fsx)
+lines!(ax, sol.t, τUx)
+lines!(ax, sol.t, Ux)
+
+fig_forces
+
+# force_U = stack(sol[clump.U], dims = 1)
+# force_τU = stack(sol[clump.τU], dims = 1)
+# force_ratio = log10.(abs.(force_U ./ force_τU))
+# fr_x = force_ratio[:,1]
+# fr_y = force_ratio[:,2]
+
+# tmin, tmax = extrema(sol.t)
+# ymin, ymax = min(minimum(fr_x), minimum(fr_y)), max(maximum(fr_x), maximum(fr_y))
+
+# ax = axis(fig[1, 1], 
+#     title = L"\mathrm{Clump}", 
+#     limits = (tmin, tmax, ymin, ymax), 
+#     xlabel = L"t \, \text{(days)}",
+#     ylabel = L"\log_{10}\left(\frac{F(u)}{F(u_\tau)}\right)",
+#     xticks = range(start = tmin, stop = tmax, length = 10),
+#     yticks = range(start = ymin, stop = ymax, length = 5))
+
+# lines!(ax, sol.t, force_ratio[:,1], color = :blue)
+# lines!(ax, sol.t, force_ratio[:,2], color = :red)
+
+# fig

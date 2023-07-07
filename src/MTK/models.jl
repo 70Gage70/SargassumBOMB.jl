@@ -72,23 +72,34 @@ function Clump(
 
     ps = @parameters α = clump_parameters.α τ = clump_parameters.τ R = clump_parameters.R f = clump_parameters.f
     @variables x(t) = xy0[1] y(t) = xy0[2]
-    @variables Fx(t) Fy(t)
+    @variables U(t)[1:2]
+    @variables τU(t)[1:2]
+    @variables τF(t)[1:2]
 
-    eqs = [
-    ddt(x) ~ u_x(x, y, t, α) + τ * (
-        R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α) + Fx
-    ),
-    ddt(y) ~ u_y(x, y, t, α) + τ * (
-        R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α) + Fy
-    )
+    eqs_U = [
+        U[1] ~ u_x(x, y, t, α),
+        U[2] ~ u_y(x, y, t, α)
     ]
 
-    if !forced
-        forces = [Fx ~ 0, Fy ~ 0]
-        eqs = [eqs ; forces]
-    end
+    eqs_τU = [
+        τU[1] ~ τ * (R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)),
+        τU[2] ~ τ * (R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α))
+    ]
 
-    return ODESystem(eqs, t, [x, y, Fx, Fy], ps; name)
+    eqs_xy = [
+        ddt(x) ~ U[1] + τU[1] + τF[1],
+        ddt(y) ~ U[2] + τU[2] + τF[2]
+    ]
+
+    eqs = [eqs_U ; eqs_τU ; eqs_xy]
+
+    if !forced
+        forces = [τF[1] ~ 0, τF[2] ~ 0]
+        eqs = [eqs ; forces]
+    end    
+
+
+    return ODESystem(eqs, t, [x, y, U[1:2]..., τU[1:2]..., τF[1:2]...], ps; name)
 end
 
 """
@@ -121,11 +132,11 @@ function Raft(
     @named clump 1:N_clumps i -> Clump(xy0[i,:], clump_parameters[i], forced = true)
 
     # the force on each clump is the sum of the spring forces between it and every other clump
-    forces_x = [clump[i].Fx ~ sum([spring_force_x(clump[i].x, clump[j].x, clump[i].y, clump[j].y, spring_parameters[i, j])] for j = 1:N_clumps if j != i)[1]
+    forces_x = [clump[i].τF[1] ~ clump[i].τ*sum([spring_force_x(clump[i].x, clump[j].x, clump[i].y, clump[j].y, spring_parameters[i, j])] for j = 1:N_clumps if j != i)[1]
         for i = 1:N_clumps
     ]
 
-    forces_y = [clump[i].Fy ~ sum([spring_force_y(clump[i].x, clump[j].x, clump[i].y, clump[j].y, spring_parameters[i, j])] for j = 1:N_clumps if j != i)[1]
+    forces_y = [clump[i].τF[2] ~ clump[i].τ*sum([spring_force_y(clump[i].x, clump[j].x, clump[i].y, clump[j].y, spring_parameters[i, j])] for j = 1:N_clumps if j != i)[1]
         for i = 1:N_clumps
     ]
 

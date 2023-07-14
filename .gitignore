@@ -67,10 +67,11 @@ Temporary Items
 # Mathematica
 *.nb
 
-# Matlab, HDF5
-**/interpolants/*.mat
-**/src/*/*.mat
-**/src/*/*.h5
+# Matlab
+*.mat
+
+# HDF5
+*.h5
 
 # NetCDF
 *.nc
@@ -89,5 +90,5 @@ Temporary Items
 *.jld
 *.jld2
 
-# so files (sysimages
+# so files (sysimages)
 *.so

@@ -153,6 +153,76 @@ function VectorField2DGridSPH(
 end
 
 """
+    AbstractScalarFieldGrid
+
+The abstract type for gridded scalar fields.
+"""
+abstract type AbstractScalarFieldGrid end
+
+"""
+    mutable struct ScalarField2DGridSPH{T}
+
+A container for a two-dimensional scalar field defined at each point on a linearly spaced grid of longitude, latitude and time.
+
+### Fields
+
+- `lon`: The range of longitudes (East/West) over which the grid is defined.
+- `lat`: The range of latitudes (North/South) over which the grid is defined.
+- `time0`: The initial `DateTime` at which the vector field is defined.
+- `time`: The range of times since `time0` over which the grid is defined.
+- `u`: The value of the scalar field, conventionally u[lon, lat, time].
+"""
+mutable struct ScalarField2DGridSPH{T<:Real} <: AbstractScalarFieldGrid
+    lon::AbstractRange{T}
+    lat::AbstractRange{T}
+    time0::DateTime
+    time::AbstractRange{T}
+    u::Array{T,3}
+end
+
+"""
+    ScalarField2DGridSPH(infile; kwargs...)
+
+Create a `ScalarField2DGridSPH` object from the file `infile`. 
+
+`infile` must be of the form `"filename.mat"`.
+
+The longitudes, latitudes and times must all be defined on linearly spaced grids. In particular, the times should be given as
+days in Rata Die format. See [`rata2datetime_minute`](@ref).
+
+### Optional Arguments
+
+- `lon_alias`: The name of the variable in `infile` which stores the longitudes. Default `"lon"`.
+- `lat_alias`: The name of the variable in `infile` which stores the latitudes. Default `"lat"`.
+- `time_alias`: The name of the variable in `infile` which stores the times. Default `"t"`.
+- `u_alias`: The name of the variable in `infile` which stores the x component of the vector field. Default `"u"`.
+- `NaN_replacement`: Any `NaN`s in `u` and `v` will be replaced by this. Default `0.0`.
+- `lon_lat_time_order`: A permutation that will be applied to `u` and `v`. Use if `u`, `v` do not follow the convention [lon, lat, time]. Default `[1, 2, 3]`.
+"""
+function ScalarField2DGridSPH(
+    infile::String;
+    lon_alias::String = "lon",
+    lat_alias::String = "lat",
+    time_alias::String = "t",
+    u_alias::String = "u",
+    NaN_replacement::Any = 0.0,
+    lon_lat_time_order::Vector{<:Integer} = [1, 2, 3])
+
+    vf = VectorField2DGridSPH(
+        infile,
+        lon_alias = lon_alias,
+        lat_alias = lat_alias,
+        time_alias = time_alias,
+        u_alias = u_alias,
+        v_alias = u_alias, # just set v = u
+        NaN_replacement = NaN_replacement,
+        lon_lat_time_order = lon_lat_time_order
+    )
+
+    return ScalarField2DGridSPH(vf.lon, vf.lat, vf.time0, vf.time, vf.u)
+end
+
+"""
     interpolate_field(x, y, t, u; interpolant_type)
 
 Construct an interpolant for the field `u[x, y, t]`. Outside of the range defined by `x`, `y` and `t` defaults to 0.0 via extrapolation.

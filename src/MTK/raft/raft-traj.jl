@@ -23,7 +23,7 @@ RRaft = structural_simplify(RRaft)
 
 @info "Generating problem."
 
-prob = ODEProblem(
+prob_raft = ODEProblem(
     RRaft, 
     [],
     t_range, 
@@ -34,7 +34,7 @@ prob = ODEProblem(
 
 @info "Solving model."
 
-@time sol = solve(prob)
+@time sol = solve(prob_raft)
 
 # sol = solve(prob, 
 #     saveat = 0.1, 
@@ -43,17 +43,17 @@ prob = ODEProblem(
 
 @info "Generating reference clump."
 
-@named clump = Clump([x0, y0], params)
+@named clump = Clump([x0, y0], clump_parameters)
 clump = structural_simplify(clump)
 
-prob = ODEProblem(
+prob_clump = ODEProblem(
     clump, 
     [],
     t_range, 
     []
 )
 
-sol_clump = solve(prob)
+sol_clump = solve(prob_clump)
 clump_traj = xy2sph(sol_clump.u, ref_itp)
 clump_times = sol_clump.t
 

@@ -72,6 +72,9 @@ Temporary Items
 **/src/*/*.mat
 **/src/*/*.h5
 
+# NetCDF
+*.nc
+
 # workspace
 /src/workspaces.jl
 

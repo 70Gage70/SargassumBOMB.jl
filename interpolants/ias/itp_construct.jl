@@ -34,6 +34,11 @@ const water_file_ias = joinpath(@__DIR__, "water-2021-ias.mat")
     const ref_ias
     
 The default [`EquirectangularReference`](@ref) for the tropical Atlantic.
+
+### Fields
+-`lon0`: -75.0 degrees
+-`lat0`: 10.0 degrees
+-`R`: 6731 km (default)
 """
 const ref_ias = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
 
@@ -44,6 +49,7 @@ const ref_ias = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
 @info "Constructing wind interpolant."
 
 outfile = joinpath(@__DIR__, "wind_itp.jld2") 
+rm(outfile, force = true)
 
 wind_itp = VectorField2DGridSPH(wind_file_ias, lon_alias = "Lon", lat_alias = "Lat", lon_lat_time_order = [2, 1, 3])
 wind_itp = VectorField2DInterpolantEQR(wind_itp, ref_ias)
@@ -56,6 +62,7 @@ jldsave(outfile, wind_itp = wind_itp)
 @info "Constructing water interpolant."
 
 outfile = joinpath(@__DIR__, "water_itp.jld2") 
+rm(outfile, force = true)
 
 water_itp = VectorField2DGridSPH(water_file_ias, lon_lat_time_order = [2, 1, 3])
 water_itp = VectorField2DInterpolantEQR(water_itp, ref_ias)

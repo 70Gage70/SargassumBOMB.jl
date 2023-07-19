@@ -315,18 +315,16 @@ Construct an `VectorField2DInterpolantEQR` from a [`VectorField2DGridSPH`](@ref)
 ### Optional Arguments
 
 - `interpolant_type`: The type of interpolation to use from the `Interpolations` module. Default cubic B-spline.
-- `R`: The radius of the Earth. The units of the `x` and `y` coordinates are the same as the units of `R`. Default 6371 km.
 """
 function VectorField2DInterpolantEQR(
     vf_grid::VectorField2DGridSPH,
     ref::EquirectangularReference; 
-    interpolant_type = BSpline(Cubic(Line(OnGrid()))),
-    R = 6371
+    interpolant_type = BSpline(Cubic(Line(OnGrid())))
     )
 
     lon, lat, time, time0, u, v = (vf_grid.lon, vf_grid.lat, vf_grid.time, vf_grid.time0, vf_grid.u, vf_grid.v)
 
-    x, y = sph2xy(lon, lat, ref, R = R)
+    x, y = sph2xy(lon, lat, ref)
 
     u_itp = interpolate_field(x, y, time, u, interpolant_type = interpolant_type)
     v_itp = interpolate_field(x, y, time, v, interpolant_type = interpolant_type)

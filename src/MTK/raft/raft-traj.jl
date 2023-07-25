@@ -9,8 +9,8 @@ include("../../../../CustomMakie.jl/src/statistic-methods.jl")
 
 @info "Generating model."
 
-# x0, y0 = sph2xy(-64, 14, ref_itp) # loop current
-x0, y0 = sph2xy(-60, 25, ref_itp)
+x0, y0 = sph2xy(-64, 14, ref_itp) # loop current
+# x0, y0 = sph2xy(-60, 25, ref_itp)
 t_range = (0.0, 100.0)
 
 x_range = range(start = x0 - 5, length = 5, stop = x0 + 5)
@@ -59,7 +59,7 @@ clump_times = sol_clump.t
 
 @info "Plotting results."
 
-limits = (-63, -58, 24, 35)
+limits = (-100, -50, 5, 35)
 
 ### Trajectory COM
 

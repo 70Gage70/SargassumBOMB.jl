@@ -233,19 +233,26 @@ end
 ###########################
 
 """
+    const DEFAULT_INTERPOLATION
+
+The default interpolation method, `BSpline(Cubic(Line(OnGrid())))`.
+"""
+const DEFAULT_INTERPOLATION = BSpline(Cubic(Interpolations.Line(OnGrid())))
+
+"""
     interpolate_field(x, y, t, u; interpolant_type)
 
 Construct an interpolant for the field `u[x, y, t]`. Outside of the range defined by `x`, `y` and `t` defaults to 0.0 via extrapolation.
 
 ### Optional Arguments
-- `interpolant_type`: The type of the interpolant used at the interpolation stage. Default a cubic spline, `BSpline(Cubic(Line(OnGrid()))))`.
+- `interpolant_type`: The type of the interpolant used at the interpolation stage. Default to [DEFAULT_INTERPOLATION](@ref).
 """
 function interpolate_field(
     x::AbstractRange, 
     y::AbstractRange, 
     t::AbstractRange, 
     u::AbstractArray; 
-    interpolant_type = BSpline(Cubic(Line(OnGrid()))))
+    interpolant_type = DEFAULT_INTERPOLATION)
 
     return extrapolate(scale(interpolate(u, interpolant_type), x, y, t), 0.0)
 end

@@ -5,8 +5,11 @@ using Unitful # ms = "m/s", val = 2.0 * uparse(ms)
 
 ####################################################################
 
-wind_file = joinpath(@__DIR__, "KNMI-GLO-WIND_L3-REP-OBS_METOP-A_ASCAT_25_DES_1688757095019.nc")
+# wind_file = joinpath(@__DIR__, "KNMI-GLO-WIND_L3-REP-OBS_METOP-A_ASCAT_25_DES_1688757095019.nc")
+wind_file = joinpath(@__DIR__, "cmems_obs-wind_glo_phy_my_l4_P1M_1690305893418.nc")
+
 water_temp_file = joinpath(@__DIR__, "global-reanalysis-phy-001-031-grepv2-daily_1688755986955.nc")
+
 nutr_file = joinpath(@__DIR__, "cmems_mod_glo_bgc_my_0.25_P1D-m_1688755326762.nc")
 
 NOAA_units = Dict(
@@ -32,11 +35,12 @@ const UNITS_OUT_NUTR = u"Mmol/km^3"
 # time is in seconds since 1990-01-01 00:00:00
 # eastward_wind and northward_wind are in m/s
 
-lon_wind = ncread(wind_file, "lon") .|> Float64 .|> (x -> x - 360.0)
+lon_wind = ncread(wind_file, "lon") .|> Float64 # .|> (x -> x - 360.0)
 lat_wind = ncread(wind_file, "lat") .|> Float64
 
-tref = DateTime(1990, 1, 1, 0, 0, 0) |> datetime2unix
-time_wind = ncread(wind_file, "time") .|> (x -> x + tref) .|> unix2datetime .|> datetime2rata
+# tref = DateTime(1990, 1, 1, 0, 0, 0) |> datetime2unix
+# time_wind = ncread(wind_file, "time") .|> (x -> x + tref) .|> unix2datetime .|> datetime2rata
+time_wind = [736664 + 30*i for i = 0:13] # for monthy gird
 
 # u
 

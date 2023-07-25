@@ -59,7 +59,7 @@ clump_times = sol_clump.t
 
 @info "Plotting results."
 
-limits = (-65, -55, 22, 28)
+limits = (-63, -58, 24, 35)
 
 ### Trajectory COM
 

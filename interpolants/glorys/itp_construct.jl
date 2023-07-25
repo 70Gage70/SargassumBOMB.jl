@@ -89,3 +89,10 @@ itp = ScalarField2DInterpolantEQR(itp, ref_glor)
 jldsave(outfile, no3_itp = itp)
 
 @info "NO3 interpolant written to $(outfile)."
+
+# Plotting
+
+# include("../../../CustomMakie.jl/src/geo-methods.jl");
+# fig = fig = default_fig();
+# ax = geo_axis(fig[1, 1], title = "Wind", limits = (-100, -50, 5, 35));
+# wind_itp_test = load("wind_itp.jld2", "wind_itp");

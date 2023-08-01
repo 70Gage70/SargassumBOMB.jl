@@ -2,12 +2,19 @@ using DifferentialEquations
 using JLD2
 
 include(joinpath(@__DIR__, "..", "parameters.jl"))
-include(joinpath(@__DIR__, "..", "vector-fields", "vector-field-methods.jl"))
+include(joinpath(@__DIR__, "..", "..", "interpolants", "interpolant-derivatives.jl"))
 
-itp_path = joinpath(@__DIR__, "..", "..", "interpolants")
-const ref_itp = load(joinpath(itp_path, "water_itp.jld2"), "ref_itp")
-const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp")
-const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp")
+# itp_path = joinpath(@__DIR__, "..", "..", "interpolants", "ias")
+# isdefined(@__MODULE__, :water_itp) || (const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp"))
+# isdefined(@__MODULE__, :wind_itp) || (const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp"))
+# isdefined(@__MODULE__, :ref_itp) || (const ref_itp = water_itp.ref)
+
+itp_path = joinpath(@__DIR__, "..", "..", "interpolants", "glorys")
+isdefined(@__MODULE__, :water_itp) || (const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp"))
+isdefined(@__MODULE__, :wind_itp) || (const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp"))
+isdefined(@__MODULE__, :temp_itp) || (const temp_itp = load(joinpath(itp_path, "temp_itp.jld2"), "temp_itp"))
+isdefined(@__MODULE__, :no3_itp) || (const no3_itp = load(joinpath(itp_path, "no3_itp.jld2"), "no3_itp"))
+isdefined(@__MODULE__, :ref_itp) || (const ref_itp = water_itp.ref)
 
 # All the functions depending on wind and water vector fields.
 # Note that `water_itp` and `wind_itp` must be loaded before using these.
@@ -56,43 +63,45 @@ end
 #     end
 # end
 
-function Raft!(du, u, p::RaftParameters, t)
-    for i = 1:length(p.clumps)
-        du[i, :] .= Clump(u[i, :], p.clumps[i], t)
-
-        for j = 1:length(p.clumps)
-            if j != i
-                du[i, :] .+= Fs(u[i,:], u[j,:], p.springs[i, j])
-            end
-        end
-    end
-end
-
 # function Raft!(du, u, p::RaftParameters, t)
 #     for i = 1:length(p.clumps)
-#         x = u[i, 1]
-#         y = u[i, 2]
+#         du[i, :] .= Clump(u[i, :], p.clumps[i], t)
 
-#         α, τ, R, f = (p.clumps[i].α, p.clumps[i].τ, p.clumps[i].R, p.clumps[i].f)
-
-#         du[i, 1] = u_x(x, y, t, α) + τ * (
-#             R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)
-#         )
-#         du[i, 2] = u_y(x, y, t, α) + τ * (
-#             R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
-#         )
-
-#         xyi = u[i, :]
 #         for j = 1:length(p.clumps)
 #             if j != i
-#                 xyj = u[j, :]
-
-#                 du[i, 1] += (p.springs[i,j]).k(norm(xyi - xyj))*((p.springs[i,j]).L/norm(xyi - xyj) - 1)*(xyi[1] - xyj[1])
-#                 du[i, 2] += (p.springs[i,j]).k(norm(xyi - xyj))*((p.springs[i,j]).L/norm(xyi - xyj) - 1)*(xyi[2] - xyj[2])
+#                 du[i, :] .+= Fs(u[i,:], u[j,:], p.springs[i, j])
 #             end
 #         end
 #     end
 # end
+
+
+# think of u[i, j, xy], i.e. u[3, 4, 1:2] as the [x y] coordinates of the clump in row 3, column 4
+function Raft!(du, u, p::RaftParameters, t)
+    for i = 1:length(p.clumps)
+        x = u[i, 1]
+        y = u[i, 2]
+
+        α, τ, R, f = (p.clumps[i].α, p.clumps[i].τ, p.clumps[i].R, p.clumps[i].f)
+
+        du[i, 1] = u_x(x, y, t, α) + τ * (
+            R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)
+        )
+        du[i, 2] = u_y(x, y, t, α) + τ * (
+            R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
+        )
+
+        xyi = u[i, :]
+        for j = 1:length(p.clumps)
+            if j != i
+                xyj = u[j, :]
+
+                du[i, 1] += (p.springs[i,j]).k(norm(xyi - xyj))*((p.springs[i,j]).L/norm(xyi - xyj) - 1)*(xyi[1] - xyj[1])
+                du[i, 2] += (p.springs[i,j]).k(norm(xyi - xyj))*((p.springs[i,j]).L/norm(xyi - xyj) - 1)*(xyi[2] - xyj[2])
+            end
+        end
+    end
+end
 
 # xy0 = sph2xy(-64, 14, ref) 
 # tspan = (0.0, 150.0)

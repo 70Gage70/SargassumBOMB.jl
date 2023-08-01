@@ -29,6 +29,7 @@ Compute the parameters required for the BOM equations from physical constants.
 
 ### Arguments [units]
 
+- `ref`: The `EquirectangularReference` with which the projection is defined.
 - `δ` []: The bouancy of the particle.
 - `a` [km]: The radius of the particle.
 - `ρ` [kg/km^3]: The density of the water.
@@ -36,7 +37,6 @@ Compute the parameters required for the BOM equations from physical constants.
 - `ν` [km^2/d]: The viscosity of the water.
 - `νa` [km^2/d]: The viscosity of the air.
 - `Ω` [rad/d]: The angular velocity of the Earth.
-- `ref`: The `EquirectangularReference` with which the projection is defined.
 """
 function ClumpParameters(
     ref::EquirectangularReference;
@@ -129,45 +129,37 @@ Calculate the x and y components of the force on a point particle with coordinat
 """
 function spring_force(xy1::Vector{<:Real}, xy2::Vector{<:Real}, parameters::SpringParameters)
     d = norm(xy1 - xy2)
-    if isapprox(d, 0.0)
-        # @warn "Clumps very close together!"
-        return [0.0, 0.0]
-    else
-        return parameters.k(d)*(parameters.L/norm(xy1 - xy2) - 1)*(xy1 - xy2)
-    end
+    return parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)
 end
-
-# """
-#     spring_force(xy1, xy2, parameters)
-
-# Calculate the x and y components of the force on a point particle with coordinates `xy1` which is attached by a spring defined by `parameters` to another point particle with coordinates `xy2`.
-# """
-# function spring_force(xy1::Vector{<:Real}, xy2::Vector{<:Real}, parameters::AbstractDict)
-#     k, L = (parameters[:k], parameters[:L])
-#     d = norm(xy1 - xy2)
-#     return k(d)*(L/d - 1)*(xy1 - xy2)
-# end
 
 """
     struct RaftParameters{C, S}
 
-A container for the parameters defining a raft.
+A container for the parameters defining a raft. Each clump and spring are identical.
 
 ### Fields
-- `xy0`: A `N x 2` matrix such that `xy0[i,:]` gives the `[x, y]` coordinates of the `i`th clump.
-- `clumps`: A vector of [`ClumpParameters`](@ref) such that `clumps[i]` gives the parameters of the `i`th clump.
-- `springs`: A matrix of [`SpringParameters`](@ref) such that `springs[i, j]` gives the parameters of the spring joining the `i`th and `j`th clump.
+- `xy0`: A `nrow x ncol x 2` array such that `xy0[i, j, 1:2]` gives the `[x, y]` coordinates of the `(i, j)`th clump.
+- `clumps`: The [`ClumpParameters`](@ref) shared by each clump in the raft.
+- `springs`: The [`SpringParameters`](@ref) shared by each spring joining the clumps.
+- `connections`: A `Dict` such that `connections[(i, j])` is a vector of indices `(i', j')` where a spring is connected between clumps `(i, j)` and `(i', j')`. 
 """
-struct RaftParameters{T<:Matrix{<:Real}, C<:Vector{<:ClumpParameters}, S<:Matrix{<:SpringParameters}}
+struct RaftParameters{
+    T<:Array{<:Real, 3}, 
+    C<:ClumpParameters, 
+    S<:SpringParameters, 
+    N<:Dict{<:NTuple{2, Integer}, <:Vector{<:NTuple{2, Integer}}}
+    }
+
     xy0::T
     clumps::C
     springs::S
+    connections::N
 end
 
 """
-    RectangularRaft(x_range, y_range, clump_parameters, spring_parameters; network_type, name)
+    RaftParameters(x_range, y_range, clump_parameters, spring_parameters; network_type, name)
 
-Construct [`RaftParameters`](@ref) in a rectangular arrangement such that each clump and spring have the same parameters.
+Construct [`RaftParameters`](@ref) in a rectangular arrangement.
 
 ### Arguments
 
@@ -183,7 +175,7 @@ Construct [`RaftParameters`](@ref) in a rectangular arrangement such that each c
     - `"full"`: Each clump is connected to each other clump.
     - `"none"`: No clumps are connected.
 """
-function RectangularRaftParameters(
+function RaftParameters(
     x_range::AbstractRange{<:Real}, 
     y_range::AbstractRange{<:Real},
     clump_parameters::ClumpParameters, 
@@ -196,42 +188,20 @@ function RectangularRaftParameters(
 
     # a rectangular mesh
     network = reverse.(collect(Iterators.product(reverse(y_range), x_range))) # reverse so that the first row has the largest y
+    network = reshape(stack(network, dims = 1), (size(network, 1), size(network, 2), 2)) # convert from matrix of tuples to array
     n_col = length(x_range)
     n_row = length(y_range)
-    N_clumps = length(network)
+    connections = Dict{NTuple{2, Int64}, Vector{NTuple{2, Int64}}}()
 
-    xy0 = Matrix{Float64}(undef, N_clumps, 2)
-    clump_parameters_raft = Vector{ClumpParameters}(undef, N_clumps)
-    spring_parameters_raft = Matrix{SpringParameters}(undef, N_clumps, N_clumps)
-
-    # these arrays are all constructed in dictionary order (across rows, then down columns)
-    n(i, j) = (i - 1) * n_col + j
-
-    for i = 1:n_row
-        for j = 1:n_col
-            # linearized initial conditions
-            xy0[n(i, j), :] .= network[i, j] 
-
-            # all clumps have the same parameters
-            clump_parameters_raft[n(i, j)] = clump_parameters
-
-            # identify the appropriate connections
-            if network_type == "nearest"
-                connections = filter(idx -> (1 <= idx[1] <= n_row) && (1 <= idx[2] <= n_col), [(i-1, j), (i+1, j), (i, j-1), (i, j+1)])
-            elseif network_type == "full"
-                connections = [(a, b) for a = 1:n_row for b = 1:n_col if (a, b) != (i, j)]
-            elseif network_type == "none"
-                connections = []
-            end
-            
-            connections = map(x->n(x...), connections)
-
-            # all connected springs have the same parameters, `spring_parameters`
-            # all unconnected springs have SpringParameters(k->0, 0) (effectively no spring)
-            spring_parameters_raft[n(i, j), connections] .= spring_parameters
-            spring_parameters_raft[n(i, j), setdiff(1:N_clumps, connections)] .= SpringParameters(k->0, 0)
+    for i = 1:n_row, j = 1:n_col
+        if network_type == "nearest"
+            connections[(i, j)] = filter(idx -> (1 <= idx[1] <= n_row) && (1 <= idx[2] <= n_col), [(i-1, j), (i+1, j), (i, j-1), (i, j+1)])
+        elseif network_type == "full"
+            connections[(i, j)] = [(a, b) for a = 1:n_row for b = 1:n_col if (a, b) != (i, j)]
+        elseif network_type == "none"
+            connections[(i, j)] = Vector{NTuple{2, Int64}}()
         end
     end
 
-    return RaftParameters(xy0, clump_parameters_raft, spring_parameters_raft)
+    return RaftParameters(network, clump_parameters, spring_parameters, connections)
 end

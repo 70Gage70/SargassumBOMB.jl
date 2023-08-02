@@ -1,3 +1,5 @@
+using LinearAlgebra: norm
+
 include("coordinates.jl")
 
 #################################
@@ -179,7 +181,7 @@ function RaftParameters(
     x_range::AbstractRange{<:Real}, 
     y_range::AbstractRange{<:Real},
     clump_parameters::ClumpParameters, 
-    spring_parameters::SpringParameters; 
+    spring_k::Function; 
     network_type::String = "nearest")
 
     @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
@@ -202,6 +204,9 @@ function RaftParameters(
             connections[(i, j)] = Vector{NTuple{2, Int64}}()
         end
     end
+
+    L = (step(x_range) + step(y_range))/2
+    spring_parameters = SpringParameters(spring_k, L)
 
     return RaftParameters(network, clump_parameters, spring_parameters, connections)
 end

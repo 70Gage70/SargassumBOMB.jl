@@ -69,10 +69,19 @@ function Raft!(du, u, p::RaftParameters, t)
             R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
         )
 
-        du[i, j, :] += sum(spring_force(u[i, j, :], u[m, n, :], p.springs) for (m, n) in p.connections[(i, j)])
+        du[i, j, :] += τ*sum(spring_force(u[i, j, :], u[m, n, :], p.springs) for (m, n) in p.connections[(i, j)])
     end
 end
 
+function RaftCOM(sol::AbstractArray{<:Real, 4})
+    [
+        [sum(u[:, :, 1])/length(u[:, :, 1]), sum(u[:, :, 2])/length(u[:, :, 2])] for u in sol.u
+    ]
+end
+
+function Raftij(sol::AbstractArray{<:Real, 4}, i::Integer, j::Integer)
+    [sol.u[k][i, j, 1:2] for k = 1:length(sol.u)]
+end
 
 ### clump
 # xy0 = sph2xy(-64, 14, ref_itp) 

@@ -9,12 +9,8 @@ include("../../../../CustomMakie.jl/src/statistic-methods.jl")
 
 @info "Generating model."
 
-x0, y0 = sph2xy(-64, 14, ref_itp) # loop current
-# x0, y0 = sph2xy(-60, 25, ref_itp)
-t_range = (0.0, 100.0)
-
-x_range = range(start = x0 - 5, length = 5, stop = x0 + 5)
-y_range = range(start = y0 - 5, length = 5, stop = y0 + 5)
+t_range = (0.0, 200.0)
+x_range, y_range = sph2xy(range(-65, -63, step = 0.5), range(13, 15, step = 0.5), ref_itp)
 clump_parameters = ClumpParameters(ref_itp)
 spring_parameters = SpringParameters(k -> 20, step(x_range))
 

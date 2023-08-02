@@ -10,6 +10,7 @@ function avoid_shore(
     water_itp::VectorField2DInterpolantEQR; 
     tol::Real = 0.1, 
     save_positions::NTuple{2, Bool} = (true, false))
+
     condition(u, t, integrator) = (abs(water_itp.u(u..., t)) < tol) && (abs(water_itp.v(u..., t)) < tol)
     affect!(integrator) = terminate!(integrator)
     return DiscreteCallback(condition, affect!, save_positions = save_positions)
@@ -58,8 +59,20 @@ function check_shore(
     return fig
 end
 
-function growth_decay(tmax::Real)
-    condition(u, t, integrator) = tmax - t
+"""
+    die_shore()
+
+Kill a clump when it reaches the shore. If only one clump remains, terminate the integration.
+"""
+function die_shore(
+    water_itp::VectorField2DInterpolantEQR; 
+    tol::Real = 0.1, 
+    save_positions::NTuple{2, Bool} = (true, false))
+
+    condition(u, t, integrator) = [
+        abs(water_itp.u(integrator.u[i, j, :]..., 0.0)) < 0.1 && abs(water_itp.v(integrator.u[i, j, :]..., 0.0)) < 0.1 
+        for i = 1:size(integrator.u, 1) for j = 1:size(integrator.u, 2)
+    ] |> any
 
     function affect!(integrator)
         u = integrator.u
@@ -70,4 +83,8 @@ function growth_decay(tmax::Real)
         u[end] = 1 - Θ
         nothing
     end
+
+    return DiscreteCallback(condition, affect!, save_positions = save_positions)
+
 end
+ 

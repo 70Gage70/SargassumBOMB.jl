@@ -83,6 +83,35 @@ function Raftij(sol::AbstractArray{<:Real, 4}, i::Integer, j::Integer)
     [sol.u[k][i, j, 1:2] for k = 1:length(sol.u)]
 end
 
+# think of u[i]
+function FlatRaft!(du, u, p::RaftParameters, t)
+    α, τ, R, f = p.clumps.α, p.clumps.τ, p.clumps.R, p.clumps.f
+
+    for i = 1:2:length(u)
+        x, y = u[i:i + 1]
+
+        du[i] = u_x(x, y, t, α) + τ * (
+            R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)
+        )
+        du[i + 1] = u_y(x, y, t, α) + τ * (
+            R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
+        )
+
+        du[i:i+1] += τ*sum(spring_force(u[i:i+1], u[2*j-1:2*j], p.springs) for j in p.connections[Integer((i+1)/2)])
+    end
+end
+
+function RaftCOM(sol::AbstractMatrix)
+    [
+        [sum(u[1:2:length(u)])/(length(u)/2), sum(u[2:2:length(u)])/(length(u)/2)] for u in sol.u
+    ]
+end
+
+function Rafti(sol::AbstractMatrix, i::Integer)
+    [sol.u[k][2*i-1:2*i] for k = 1:length(sol.u)]
+end
+
+
 ### clump
 # xy0 = sph2xy(-64, 14, ref_itp) 
 # tspan = (0.0, 150.0)

@@ -140,16 +140,16 @@ end
 A container for the parameters defining a raft. Each clump and spring are identical.
 
 ### Fields
-- `xy0`: A `nrow x ncol x 2` array such that `xy0[i, j, 1:2]` gives the `[x, y]` coordinates of the `(i, j)`th clump.
+- `xy0`: An array representing the initial coordinates of the clumps.
 - `clumps`: The [`ClumpParameters`](@ref) shared by each clump in the raft.
 - `springs`: The [`SpringParameters`](@ref) shared by each spring joining the clumps.
-- `connections`: A `Dict` such that `connections[(i, j])` is a vector of indices `(i', j')` where a spring is connected between clumps `(i, j)` and `(i', j')`. 
+- `connections`: A `Dict` such that `connections[idx)` is a vector of indices `idx'` where a spring is connected between clumps `idx` and `idx'`. 
 """
 struct RaftParameters{
-    T<:Array{<:Real, 3}, 
+    T<:AbstractArray, 
     C<:ClumpParameters, 
     S<:SpringParameters, 
-    N<:Dict{<:NTuple{2, Integer}, <:Vector{<:NTuple{2, Integer}}}
+    N<:AbstractDict
     }
 
     xy0::T
@@ -162,6 +162,8 @@ end
     RaftParameters(x_range, y_range, clump_parameters, spring_parameters; network_type, name)
 
 Construct [`RaftParameters`](@ref) in a rectangular arrangement.
+
+The dimensions of `xy0` are `n_row x n_col x 2`.
 
 ### Arguments
 
@@ -209,4 +211,26 @@ function RaftParameters(
     spring_parameters = SpringParameters(spring_k, L)
 
     return RaftParameters(network, clump_parameters, spring_parameters, connections)
+end
+
+"""
+    flat_raft(rp::RaftParameters)
+
+Take `rp` and return a `RaftParameters` object flattened such that `xy0` is a vector of the form `[x01, y01, x02, y02 ...]` and similarly for the connections.
+"""
+function flat_raft(rp::RaftParameters)
+    n_row = size(rp.xy0, 1)
+    n_col = size(rp.xy0, 2)
+
+    xy0 = [rp.xy0[i, j, k] for i = 1:n_row for j = 1:n_col for k = 1:2]
+
+    n(i, j) = (i - 1) * n_col + j
+
+    connections = Dict{Int64, Vector{Int64}}()
+
+    for key in keys(rp.connections)
+        connections[n(key...)] = rp.connections[key] .|> x -> n(x...)
+    end
+
+    return RaftParameters(xy0, rp.clumps, rp.springs, connections)
 end

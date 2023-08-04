@@ -19,12 +19,14 @@ prob_raft = ODEProblem(FlatRaft!, rp.xy0, tspan, rp)
 
 @info "Solving model."
 
-@time sol = solve(prob_raft, reltol = 1e-6, abstol = 1e-6)
+@time sol = solve(prob_raft, Tsit5(), reltol = 1e-6, abstol = 1e-6)
 
-# sol = solve(prob, 
-#     saveat = 0.1, 
-#     callback = avoid_shore(water_itp, tol = 0.1, save_positions = (true, false))
-# )
+@time sol = solve(prob_raft, 
+    Tsit5(),
+    saveat = 0.1, 
+    # callback = die_shore(Integer(length(rp.xy0)/2), water_itp, tol = 0.1)
+    callback = die_shore2(water_itp, tol = 0.1)
+)
 
 @info "Generating reference clump."
 

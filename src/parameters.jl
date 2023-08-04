@@ -135,7 +135,7 @@ function spring_force(xy1::Vector{<:Real}, xy2::Vector{<:Real}, parameters::Spri
 end
 
 """
-    struct RaftParameters{C, S}
+    mutable struct RaftParameters{C, S}
 
 A container for the parameters defining a raft. Each clump and spring are identical.
 
@@ -143,9 +143,9 @@ A container for the parameters defining a raft. Each clump and spring are identi
 - `xy0`: An array representing the initial coordinates of the clumps.
 - `clumps`: The [`ClumpParameters`](@ref) shared by each clump in the raft.
 - `springs`: The [`SpringParameters`](@ref) shared by each spring joining the clumps.
-- `connections`: A `Dict` such that `connections[idx)` is a vector of indices `idx'` where a spring is connected between clumps `idx` and `idx'`. 
+- `connections`: A `Dict` such that `connections[idx]` is a vector of indices `idx'` where a spring is connected between clumps `idx` and `idx'`. 
 """
-struct RaftParameters{
+mutable struct RaftParameters{
     T<:AbstractArray, 
     C<:ClumpParameters, 
     S<:SpringParameters, 
@@ -233,4 +233,19 @@ function flat_raft(rp::RaftParameters)
     end
 
     return RaftParameters(xy0, rp.clumps, rp.springs, connections)
+end
+
+"""
+    kill!(rp::RaftParameters, i)
+
+Remove the clump with index `i` and its connections from `rp`.
+"""
+function kill!(rp::RaftParameters, i::Integer)
+    delete!(rp.connections, i) # remove i from keys
+    rp.connections = Dict(a => filter(x -> x != i, b) for (a,b) in rp.connections) # remove i from values
+
+    less_i(x) = x > i ? x - 1 : x
+    rp.connections = Dict(less_i(a) => less_i.(b) for (a,b) in rp.connections) # shift every label >i down by 1
+
+    return nothing
 end

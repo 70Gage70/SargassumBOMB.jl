@@ -7,13 +7,13 @@ include(joinpath(@__DIR__, "../../../CustomMakie.jl/src/statistic-methods.jl"))
 Construct a `DiscreteCallback` which terminates integration when both the `u` and `v` components of `water_itp` are less than `tol`.
 """
 function avoid_shore(
-    water_itp::VectorField2DInterpolantEQR; 
-    tol::Real = 0.1, 
-    save_positions::NTuple{2, Bool} = (true, false))
+    water_itp::VectorField2DInterpolantEQR;
+    tol::Real=0.1,
+    save_positions::NTuple{2,Bool}=(true, false))
 
     condition(u, t, integrator) = (abs(water_itp.u(u..., t)) < tol) && (abs(water_itp.v(u..., t)) < tol)
     affect!(integrator) = terminate!(integrator)
-    return DiscreteCallback(condition, affect!, save_positions = save_positions)
+    return DiscreteCallback(condition, affect!, save_positions=save_positions)
 end
 
 
@@ -35,13 +35,13 @@ Construct a plot of the inferred shore locations from `water_itp`.
 """
 function check_shore(
     water_itp::VectorField2DInterpolantEQR;
-    t::Real = 0.0,
-    tol::Real = 0.1,
-    limits = (-100, -10, 5, 35),
-    n_points = 1000)
+    t::Real=0.0,
+    tol::Real=0.1,
+    limits=(-100, -10, 5, 35),
+    n_points=1000)
 
-    xs = range(start = limits[1], stop = limits[2], length = n_points)
-    ys = range(start = limits[3], stop = limits[4], length = n_points)
+    xs = range(start=limits[1], stop=limits[2], length=n_points)
+    ys = range(start=limits[3], stop=limits[4], length=n_points)
 
     function is_shore(x, y, t)
         cond_u = abs(water_itp.u(sph2xy(x, y, water_itp.ref)..., t)) < tol
@@ -53,38 +53,69 @@ function check_shore(
     zs = [is_shore(x, y, t) for x in xs, y in ys]
 
     fig = default_fig()
-    ax = geo_axis(fig[1, 1], title = "Shore", limits = limits)
+    ax = geo_axis(fig[1, 1], title="Shore", limits=limits)
     heatmap!(ax, xs, ys, zs)
 
     return fig
 end
 
 """
-    die_shore()
+    die_shore(n_clumps, water_itp; tol)
 
-Kill a clump when it reaches the shore. If only one clump remains, terminate the integration.
+Create a `VectorContinuousCallback` which kills clumps when they reach the shore.
+
+### Arguments
+
+- `n_clumps`: An `Integer` which gives the number of clumps in the raft.
+- `water_itp`: A `VectorField2DInterpolantEQR` which gives the interpolated currents.
+
+### Optional Arguments
+
+- `tol`: If `water_itp.u` and `water_itp.v` are both less than `tol` in absolute value, then that point is considered to be shore. Default `tol = 0.1`.
 """
 function die_shore(
-    water_itp::VectorField2DInterpolantEQR; 
-    tol::Real = 0.1, 
-    save_positions::NTuple{2, Bool} = (true, false))
+    n_clumps::Integer,
+    water_itp::VectorField2DInterpolantEQR;
+    tol::Real=0.1)
 
-    condition(u, t, integrator) = [
-        abs(water_itp.u(integrator.u[i, j, :]..., 0.0)) < 0.1 && abs(water_itp.v(integrator.u[i, j, :]..., 0.0)) < 0.1 
-        for i = 1:size(integrator.u, 1) for j = 1:size(integrator.u, 2)
-    ] |> any
-
-    function affect!(integrator)
-        u = integrator.u
-        resize!(integrator, length(u) + 1)
-        maxidx = findmax(u)[2]
-        Θ = rand()
-        u[maxidx] = Θ
-        u[end] = 1 - Θ
-        nothing
+    function condition(out, u, t, integrator)
+        for i = 1:Integer(length(u)/2)
+            out[i] = max(max(abs(water_itp.u(u[2*i-1], u[2*i], t)), abs(water_itp.v(u[2*i-1], u[2*i], t))) - tol, 0.0)
+            if out[i] == 0
+                println("condition detonate at $i")
+            end
+        end
     end
 
-    return DiscreteCallback(condition, affect!, save_positions = save_positions)
+    function affect!(integrator, idx)
+        println("l1 = ", length(integrator.u))
+        println("idx = ", idx)
+        deleteat!(integrator, 2 * idx - 1) # e.g. idx = 2, delete the 3rd component (x coord of 2nd clump)
+        deleteat!(integrator, 2 * idx - 1) # now the y coordinate is where the x coordinate was
+        println("l2 = ", length(integrator.u))
+        kill!(integrator.p, idx) # remove the clump and its connections
+    end
 
+    return VectorContinuousCallback(condition, affect!, n_clumps)
 end
- 
+
+function die_shore2(
+    water_itp::VectorField2DInterpolantEQR;
+    tol::Real=0.1)
+
+    function condition(u, t, integrator)
+        return any(
+            [max(abs(water_itp.u(u[2*i-1], u[2*i], t)), abs(water_itp.v(u[2*i-1], u[2*i], t))) < tol 
+            for i = 1:Integer(length(u)/2)])
+    end
+
+    function affect!(integrator)
+        println("l1 = ", length(integrator.u))
+        deleteat!(integrator, 1) # e.g. idx = 2, delete the 3rd component (x coord of 2nd clump)
+        deleteat!(integrator, 1) # now the y coordinate is where the x coordinate was
+        println("l2 = ", length(integrator.u))
+        kill!(integrator.p, 1) # remove the clump and its connections
+    end
+
+    return DiscreteCallback(condition, affect!)
+end

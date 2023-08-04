@@ -68,45 +68,6 @@ function check_shore(
     return fig
 end
 
-# """
-#     die_shore(n_clumps, water_itp; tol)
-
-# Create a `VectorContinuousCallback` which kills clumps when they reach the shore.
-
-# ### Arguments
-
-# - `n_clumps`: An `Integer` which gives the number of clumps in the raft.
-# - `water_itp`: A `VectorField2DInterpolantEQR` which gives the interpolated currents.
-
-# ### Optional Arguments
-
-# - `tol`: If `water_itp.u` and `water_itp.v` are both less than `tol` in absolute value, then that point is considered to be shore. Default `tol = 0.1`.
-# """
-# function die_shore(
-#     n_clumps::Integer,
-#     water_itp::VectorField2DInterpolantEQR;
-#     tol::Real=0.1)
-
-#     function condition(out, u, t, integrator)
-#         for i = 1:Integer(length(u)/2)
-#             out[i] = max(max(abs(water_itp.u(u[2*i-1], u[2*i], t)), abs(water_itp.v(u[2*i-1], u[2*i], t))) - tol, 0.0)
-#             if out[i] == 0
-#                 println("condition detonate at $i")
-#             end
-#         end
-#     end
-
-#     function affect!(integrator, idx)
-#         println("l1 = ", length(integrator.u))
-#         println("idx = ", idx)
-#         deleteat!(integrator, 2 * idx - 1) # e.g. idx = 2, delete the 3rd component (x coord of 2nd clump)
-#         deleteat!(integrator, 2 * idx - 1) # now the y coordinate is where the x coordinate was
-#         println("l2 = ", length(integrator.u))
-#         kill!(integrator.p, idx) # remove the clump and its connections
-#     end
-
-#     return VectorContinuousCallback(condition, affect!, n_clumps)
-# end
 
 """
     die_shore(water_itp; tol)
@@ -130,18 +91,19 @@ function die_shore(
     end
 
     function affect!(integrator)
-        # inds = findall([is_shore(water_itp, u[2*i-1], u[2*i], t, tol = tol)  for i = 1:Integer(length(u)/2)])
+        u = integrator.u
+        t = integrator.t
+        inds = findall([is_shore(water_itp, u[2*i-1], u[2*i], t, tol = tol)  for i = 1:Integer(length(u)/2)])
+        inds = [inds[i] - (i - 1) for i = 1:length(inds)]
+        # if we have to delete multiple clumps in one step, deleting one clump will change the indices of the others.
+        # since findall is sorted, after you delete the clump indexed by inds[1], then the clumps with indices >inds[1]
+        # have their index decreased by 1, and so on
 
-        # for i in inds
-        #     deleteat!()
-        # end
-
-
-        println("l1 = ", length(integrator.u))
-        deleteat!(integrator, 1) # e.g. idx = 2, delete the 3rd component (x coord of 2nd clump)
-        deleteat!(integrator, 1) # now the y coordinate is where the x coordinate was
-        println("l2 = ", length(integrator.u))
-        kill!(integrator.p, 1) # remove the clump and its connections
+        for i in inds
+            deleteat!(integrator, 2 * i - 1) # e.g. idx = 2, delete the 3rd component (x coord of 2nd clump)
+            deleteat!(integrator, 2 * i - 1) # now the y coordinate is where the x coordinate was
+            kill!(integrator.p, i) # remove the clump and its connections
+        end
     end
 
     return DiscreteCallback(condition, affect!)

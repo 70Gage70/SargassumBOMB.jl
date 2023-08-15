@@ -143,19 +143,28 @@ A container for the parameters defining a raft. Each clump and spring are identi
 - `xy0`: An array representing the initial coordinates of the clumps.
 - `clumps`: The [`ClumpParameters`](@ref) shared by each clump in the raft.
 - `springs`: The [`SpringParameters`](@ref) shared by each spring joining the clumps.
-- `connections`: A `Dict` such that `connections[idx]` is a vector of indices `idx'` where a spring is connected between clumps `idx` and `idx'`. 
+- `connections`: A `Dict` such that `connections[idx]` is a vector of indices `idx'` where a spring is connected between clumps `idx` and `idx'`. This should be updated in-place as clumps grow and die, i.e. `connections` only shows the current connections.
+- `growths`: A `Dict` such that `growths[t]` gives a vector of indices of clumps which were created at time `t`. Does not include clumps "grown" by initial conditions at time `t = 0`.
+- `deaths`: A `Dict` such that `deaths[t]` gives a vector of indices of clumps which were removed at time `t`.
+
+### Growths and Deaths
+
+The `growths` field and `deaths` field refer to indices of the clumps which exist at that particular time, and are labelled in order along the solution vector `u`. In other words, if `deaths[t1] = [3, 7]`, this means that `u[5:6]` and `u[13:14]` were both deleted at time `t1`. If `t2 > t1` and `deaths[t2] = [3, 7]`, it again means that `u[5:6]` and `u[13:14]` were both deleted at time `t2`, however, these would now correspond to different actual clumps since the deletion at time `t1` shifted the indices.
 """
 mutable struct RaftParameters{
     T<:AbstractArray, 
     C<:ClumpParameters, 
     S<:SpringParameters, 
-    N<:AbstractDict
+    N1<:AbstractDict,
+    N2<:AbstractDict
     }
 
     xy0::T
     clumps::C
     springs::S
-    connections::N
+    connections::N1
+    growths::N2
+    deaths::N2
 end
 
 """
@@ -210,7 +219,10 @@ function RaftParameters(
     L = (step(x_range) + step(y_range))/2
     spring_parameters = SpringParameters(spring_k, L)
 
-    return RaftParameters(network, clump_parameters, spring_parameters, connections)
+    growths = Dict{Float64, Vector{NTuple{2, Int64}}}() 
+    deaths = Dict{Float64, Vector{NTuple{2, Int64}}}() 
+
+    return RaftParameters(network, clump_parameters, spring_parameters, connections, growths, deaths)
 end
 
 """
@@ -232,22 +244,97 @@ function flat_raft(rp::RaftParameters)
         connections[n(key...)] = rp.connections[key] .|> x -> n(x...)
     end
 
-    return RaftParameters(xy0, rp.clumps, rp.springs, connections)
+    growths = Dict{Float64, Vector{Int64}}()
+    deaths = Dict{Float64, Vector{Int64}}()
+
+    return RaftParameters(xy0, rp.clumps, rp.springs, connections, growths, deaths)
 end
 
 """
-    kill!(rp::RaftParameters, i)
+    kill!(rp::RaftParameters, i, t)
 
-Remove the clump with index `i` and its connections from `rp`.
+Remove the clump with index `i` and its connections from `rp` and update `rp.deaths` at time `t.`
 
-Indices whose value is greater than i are shifted down by 1.
+Indices whose value is greater than i are then shifted down by 1.
 """
-function kill!(rp::RaftParameters, i::Integer)
+function kill!(rp::RaftParameters, i::Integer, t::Float64)
     delete!(rp.connections, i) # remove i from keys
     rp.connections = Dict(a => filter(x -> x != i, b) for (a,b) in rp.connections) # remove i from values
 
     less_i(x) = x > i ? x - 1 : x
     rp.connections = Dict(less_i(a) => less_i.(b) for (a,b) in rp.connections) # shift every label >i down by 1
 
+    if t in keys(rp.deaths)
+        push!(rp.deaths[t], i)
+    else
+        rp.deaths[t] = [i]
+    end
+
     return nothing
+end
+
+"""
+    grow!(rp::RaftParameters, i, t)
+
+Blah blah blah.
+"""
+function grow!(rp::RaftParameters, i::Integer, t::Float64)
+    # write code
+    return nothing
+end
+
+"""
+    raft_trajectories(sol, rp)
+
+Construct a `Dict`, `rt`, such that `rt[i]` is a `N x 3` matrix giving the trajectory of the `i`th clump.
+
+The convention is `rt[i][x, y, t]`.
+"""
+function raft_trajectories(sol::AbstractMatrix, rp::RaftParameters)
+    n_total_clumps = Integer(length(sol[1])/2) # keeps track of the total number of clumps that have ever existed
+
+    # loc_to_label keeps track of which clump actually has its coordinates in positions u[2*i-1, 2*i].
+    # when initialized, this is exactly clump i, but it will change after growths and deaths
+    loc_to_label = [i for i = 1:n_total_clumps]
+
+    # placing and labeling initial clumps
+    tr = Dict{Int64, Matrix{Float64}}()
+    for i = 1:Integer(length(sol[1])/2)
+        tr[i] = [sol[1][2*i-1] sol[1][2*i] sol.t[1]]
+    end
+
+    for j = 2:length(sol)
+        if sol.t[j] != sol.t[j - 1] # there was no growth or death at this time
+            for i = 1:Integer(length(sol[j])/2)
+                if loc_to_label[i] in keys(tr) # clump trajectory is already started, so add to it
+                    tr[loc_to_label[i]] = vcat(tr[loc_to_label[i]], [sol[j][2*i-1] sol[j][2*i] sol.t[j]])
+                else # clump trajectory must be started
+                    tr[loc_to_label[i]] = [sol[j][2*i-1] sol[j][2*i] sol.t[j]]
+                end
+            end 
+        else # note that a growth AND a death could happen in the same step; handle deaths first
+            if sol.t[j] in keys(rp.deaths)
+                # suppose that rp.deaths[sol.t[j]] = [k], 
+                # then loc_to_label[k'] should be set to loc_to_label[k' +  1] for each  k <= k <= end-1 (i.e. move everything to the left)
+                # and the last entry should be removed
+                for k1 in rp.deaths[sol.t[j]]
+                    for k2 = k1:length(loc_to_label)-1
+                        loc_to_label[k2] = loc_to_label[k2 + 1]
+                    end
+                    
+                    pop!(loc_to_label)
+                end
+            end
+
+            if sol.t[j] in keys(rp.growths)
+                # add an extra entry at the end of loc_to_label and increment n_total_clumps for each growth
+                for k1 in rp.growths[sol.t[j]]
+                    n_total_clumps = n_total_clumps + 1
+                    push!(loc_to_label, n_total_clumps)
+                end
+            end
+        end
+    end
+
+    return tr
 end

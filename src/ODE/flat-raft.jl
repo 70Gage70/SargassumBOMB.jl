@@ -19,11 +19,11 @@ prob_raft = ODEProblem(FlatRaft!, rp.xy0, tspan, rp)
 
 @info "Solving model."
 
-@time sol = solve(prob_raft, Tsit5(), reltol = 1e-6, abstol = 1e-6)
+@time sol_no_shore = solve(prob_raft, Tsit5(), reltol = 1e-6, abstol = 1e-6)
 
 @time sol = solve(prob_raft, 
     Tsit5(),
-    saveat = 0.1, 
+    #saveat = 0.1, 
     callback = die_shore(water_itp, tol = 0.1)
 )
 

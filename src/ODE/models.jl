@@ -83,21 +83,21 @@ function Raftij(sol::AbstractArray{<:Real, 4}, i::Integer, j::Integer)
     [sol.u[k][i, j, 1:2] for k = 1:length(sol.u)]
 end
 
-# think of u[i]
+# have u[1:2] = (x, y)_1, u[3:4] = (x, y)_2 ... u[2*i-1:2*i] = (x, y)_i
 function FlatRaft!(du, u, p::RaftParameters, t)
     α, τ, R, f = p.clumps.α, p.clumps.τ, p.clumps.R, p.clumps.f
 
-    for i = 1:2:length(u)
-        x, y = u[i:i + 1]
+    for i = 1:Integer(length(u)/2)
+        x, y = u[2*i-1:2*i]
 
-        du[i] = u_x(x, y, t, α) + τ * (
+        du[2*i-1] = u_x(x, y, t, α) + τ * (
             R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)
         )
-        du[i + 1] = u_y(x, y, t, α) + τ * (
+        du[2*i] = u_y(x, y, t, α) + τ * (
             R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
         )
 
-        du[i:i+1] += τ*sum(spring_force(u[i:i+1], u[2*j-1:2*j], p.springs) for j in p.connections[Integer((i+1)/2)])
+        du[2*i-1:2*i] += τ*sum(spring_force(u[2*i-1:2*i], u[2*j-1:2*j], p.springs) for j in p.connections[i])
     end
 end
 

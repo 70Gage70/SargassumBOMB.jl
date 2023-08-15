@@ -100,10 +100,12 @@ function die_shore(
         # have their index decreased by 1, and so on
 
         for i in inds
-            deleteat!(integrator, 2 * i - 1) # e.g. idx = 2, delete the 3rd component (x coord of 2nd clump)
-            deleteat!(integrator, 2 * i - 1) # now the y coordinate is where the x coordinate was
-            kill!(integrator.p, i) # remove the clump and its connections
+            deleteat!(integrator, 2*i - 1) # e.g. index i = 2, delete the 3rd component (x coord of 2nd clump)
+            deleteat!(integrator, 2*i - 1) # now the y coordinate is where the x coordinate was
+            kill!(integrator.p, i) # remove the clump and its connections; amounts to removing index i and subtracting 1 from all larger indices
         end
+
+        println("indices $inds hit shore at time $t")
     end
 
     return DiscreteCallback(condition, affect!)

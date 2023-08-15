@@ -239,6 +239,8 @@ end
     kill!(rp::RaftParameters, i)
 
 Remove the clump with index `i` and its connections from `rp`.
+
+Indices whose value is greater than i are shifted down by 1.
 """
 function kill!(rp::RaftParameters, i::Integer)
     delete!(rp.connections, i) # remove i from keys

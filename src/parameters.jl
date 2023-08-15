@@ -274,12 +274,20 @@ function kill!(rp::RaftParameters, i::Integer, t::Float64)
 end
 
 """
-    grow!(rp::RaftParameters, i, t)
+    grow!(rp::RaftParameters, t)
 
 Blah blah blah.
 """
-function grow!(rp::RaftParameters, i::Integer, t::Float64)
-    # write code
+function grow!(rp::RaftParameters, t::Float64)
+    n_clumps_max = maximum(keys(rp.connections))
+    rp.connections[n_clumps_max + 1] = [] # UPDATE THIS WITH CONNECTION LOGIC
+
+    if t in keys(rp.growths)
+        push!(rp.growths[t], n_clumps_max + 1)
+    else
+        rp.growths[t] = [n_clumps_max + 1]
+    end
+    
     return nothing
 end
 
@@ -309,7 +317,9 @@ function raft_trajectories(sol::AbstractMatrix, rp::RaftParameters)
                 if loc_to_label[i] in keys(tr) # clump trajectory is already started, so add to it
                     tr[loc_to_label[i]] = vcat(tr[loc_to_label[i]], [sol[j][2*i-1] sol[j][2*i] sol.t[j]])
                 else # clump trajectory must be started
-                    tr[loc_to_label[i]] = [sol[j][2*i-1] sol[j][2*i] sol.t[j]]
+                    tr[loc_to_label[i]] = [
+                                            sol[j-1][2*i-1] sol[j-1][2*i] sol.t[j-1]; # need previous time since clump was "born" then
+                                            sol[j][2*i-1] sol[j][2*i] sol.t[j]]
                 end
             end 
         else # note that a growth AND a death could happen in the same step; handle deaths first

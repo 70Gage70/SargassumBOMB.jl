@@ -110,3 +110,24 @@ function die_shore(
 
     return DiscreteCallback(condition, affect!)
 end
+
+function grow_test(t_grow::Vector{<:Real})
+    function condition(u, t, integrator)
+        return any([abs(t - tg) < 1.0 for tg in t_grow])
+    end
+
+    function affect!(integrator)
+        u = integrator.u
+        t = integrator.t
+
+        resize!(integrator, length(u) + 2)
+        u[end - 1] = u[end - 1 - 2] + rand()
+        u[end] = u[end - 2] + rand()
+
+        grow!(integrator.p, t)
+
+        println("growth")
+    end
+
+    return DiscreteCallback(condition, affect!)
+end

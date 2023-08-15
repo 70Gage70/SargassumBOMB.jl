@@ -97,7 +97,7 @@ function FlatRaft!(du, u, p::RaftParameters, t)
             R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
         )
 
-        du[2*i-1:2*i] += τ*sum(spring_force(u[2*i-1:2*i], u[2*j-1:2*j], p.springs) for j in p.connections[i])
+        du[2*i-1:2*i] += τ*sum(spring_force(u[2*i-1:2*i], u[2*j-1:2*j], p.springs) for j in p.connections[i]; init = [0.0, 0.0])
     end
 end
 

@@ -24,7 +24,8 @@ prob_raft = ODEProblem(FlatRaft!, rp.xy0, tspan, rp)
 @time sol = solve(prob_raft, 
     Tsit5(),
     #saveat = 0.1, 
-    callback = die_shore(water_itp, tol = 0.1)
+    #callback = die_shore(water_itp, tol = 0.1)
+    callback = CallbackSet(die_shore(water_itp, tol = 0.1), grow_test([5.0, 50.0]))
 )
 
 @info "Generating reference clump."

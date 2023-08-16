@@ -1,46 +1,43 @@
-include(joinpath(@__DIR__, "../../CustomMakie.jl/src/geo-methods.jl"))
-include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
-
 """
-    is_land(land_itp, x, y)
+    kill!(rp::RaftParameters, i, t)
 
-Return `true` or `false` according to whether the point `(x, y)` is on the land according to `land_itp`.
+Remove the clump with index `i` and its connections from `rp` and update `rp.deaths` at time `t.`
 
-Assumes that `land_itp` has been constructed using the default interpolation (nearest neighbor) and hence simply checks if `land_itp.u(x, y) == 1.0`.
+Indices whose value is greater than i are then shifted down by 1.
 """
-function is_land(land_itp::StaticField2DInterpolantEQR, x::Real, y::Real)
-    return land_itp.u(x, y) == 1.0
+function kill!(rp::RaftParameters, i::Integer, t::Float64)
+    delete!(rp.connections, i) # remove i from keys
+    rp.connections = Dict(a => filter(x -> x != i, b) for (a,b) in rp.connections) # remove i from values
+
+    less_i(x) = x > i ? x - 1 : x
+    rp.connections = Dict(less_i(a) => less_i.(b) for (a,b) in rp.connections) # shift every label >i down by 1
+
+    if t in keys(rp.deaths)
+        push!(rp.deaths[t], i)
+    else
+        rp.deaths[t] = [i]
+    end
+
+    return nothing
 end
 
 
 """
-    check_land(land_itp; t, tol, limits, n_points)
+    grow!(rp::RaftParameters, t)
 
-Construct a plot of the land locations from `land_itp`.
-
-### Arguments
-
-- `land_itp`: A `StaticField2DInterpolantEQR` which gives the interpolated location of the land.
-
-### Optional Arguments
-
-- `limits`: The `(lon_min, lon_max, lat_min, lat_max)` boundaries of the plot. Default `limits = (-180, 180, -90, 90)`.
-- `n_points`: The number of points to use in each dimension of the plot, more gives higher resolution. Default `n_points = 1000`.
+Blah blah blah.
 """
-function check_land(
-    land_itp::StaticField2DInterpolantEQR;
-    limits=(-180, 180, -90, 90),
-    n_points=1000)
+function grow!(rp::RaftParameters, t::Float64)
+    n_clumps_max = maximum(keys(rp.connections))
+    rp.connections[n_clumps_max + 1] = [] # UPDATE THIS WITH CONNECTION LOGIC
 
-    xs = range(start=limits[1], stop=limits[2], length=n_points)
-    ys = range(start=limits[3], stop=limits[4], length=n_points)
-    zs = [is_land(land_itp, sph2xy(x, y, land_itp.ref)...) for x in xs, y in ys]
-
-    fig = default_fig()
-    ax = geo_axis(fig[1, 1], title="Land", limits=limits)
-    heatmap!(ax, xs, ys, zs)
-
-    return fig
+    if t in keys(rp.growths)
+        push!(rp.growths[t], n_clumps_max + 1)
+    else
+        rp.growths[t] = [n_clumps_max + 1]
+    end
+    
+    return nothing
 end
 
 
@@ -56,13 +53,13 @@ Create a `DiscreteCallback` which kills clumps when they reach the shore and ter
 function die_land(land_itp::StaticField2DInterpolantEQR)
 
     function condition(u, t, integrator)
-        return any([is_land(land_itp, u[2*i-1], u[2*i])  for i = 1:Integer(length(u)/2)])
+        return any([land_itp.u(u[2*i-1], u[2*i]) == 1.0  for i = 1:Integer(length(u)/2)])
     end
 
     function affect!(integrator)
         u = integrator.u
         t = integrator.t
-        inds = findall([is_land(land_itp, u[2*i-1], u[2*i])  for i = 1:Integer(length(u)/2)])
+        inds = findall([land_itp.u(u[2*i-1], u[2*i]) == 1.0  for i = 1:Integer(length(u)/2)])
         inds = [inds[i] - (i - 1) for i = 1:length(inds)]
         # if we have to delete multiple clumps in one step, deleting one clump will change the indices of the others.
         # since findall is sorted, after you delete the clump indexed by inds[1], then the clumps with indices >inds[1]

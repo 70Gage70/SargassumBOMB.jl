@@ -217,47 +217,6 @@ end
 
 
 """
-    kill!(rp::RaftParameters, i, t)
-
-Remove the clump with index `i` and its connections from `rp` and update `rp.deaths` at time `t.`
-
-Indices whose value is greater than i are then shifted down by 1.
-"""
-function kill!(rp::RaftParameters, i::Integer, t::Float64)
-    delete!(rp.connections, i) # remove i from keys
-    rp.connections = Dict(a => filter(x -> x != i, b) for (a,b) in rp.connections) # remove i from values
-
-    less_i(x) = x > i ? x - 1 : x
-    rp.connections = Dict(less_i(a) => less_i.(b) for (a,b) in rp.connections) # shift every label >i down by 1
-
-    if t in keys(rp.deaths)
-        push!(rp.deaths[t], i)
-    else
-        rp.deaths[t] = [i]
-    end
-
-    return nothing
-end
-
-"""
-    grow!(rp::RaftParameters, t)
-
-Blah blah blah.
-"""
-function grow!(rp::RaftParameters, t::Float64)
-    n_clumps_max = maximum(keys(rp.connections))
-    rp.connections[n_clumps_max + 1] = [] # UPDATE THIS WITH CONNECTION LOGIC
-
-    if t in keys(rp.growths)
-        push!(rp.growths[t], n_clumps_max + 1)
-    else
-        rp.growths[t] = [n_clumps_max + 1]
-    end
-    
-    return nothing
-end
-
-"""
     raft_trajectories(sol, rp)
 
 Construct a `Dict`, `rt`, such that `rt[i]` is a `N x 3` matrix giving the trajectory of the `i`th clump.

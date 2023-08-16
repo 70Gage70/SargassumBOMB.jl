@@ -2,67 +2,42 @@ include(joinpath(@__DIR__, "../../CustomMakie.jl/src/geo-methods.jl"))
 include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 
 """
-    is_shore(water_itp, x, y, t; tol)
+    is_land(land_itp, x, y)
 
-Return `true` or `false` according to whether the point `(x, y, t)` is on the shore according to `water_itp`.
+Return `true` or `false` according to whether the point `(x, y)` is on the land according to `land_itp`.
 
-A point is considered to be on the shore if both `water_itp.u` and `water_itp.v` are less than `tol` at that point.
+Assumes that `land_itp` has been constructed using the default interpolation (nearest neighbor) and hence simply checks if `land_itp.u(x, y) == 1.0`.
 """
-function is_shore(
-    water_itp::VectorField2DInterpolantEQR,
-    x::Real,
-    y::Real,
-    t::Real;
-    tol::Real = 0.1)
-
-    return (abs(water_itp.u(x, y, t)) < tol) && (abs(water_itp.v(x, y, t)) < tol)
-end
-
-"""
-    avoid_shore(water_itp; tol)
-
-Construct a `DiscreteCallback` which terminates integration when both the `u` and `v` components of `water_itp` are less than `tol`.
-"""
-function avoid_shore(
-    water_itp::VectorField2DInterpolantEQR;
-    tol::Real=0.1,
-    save_positions::NTuple{2,Bool}=(true, false))
-
-    condition(u, t, integrator) = is_shore(water_itp, u..., t, tol = tol)
-    affect!(integrator) = terminate!(integrator)
-    return DiscreteCallback(condition, affect!, save_positions=save_positions)
+function is_land(land_itp::StaticField2DInterpolantEQR, x::Real, y::Real)
+    return land_itp.u(x, y) == 1.0
 end
 
 
 """
-    check_shore(water_itp; t, tol, limits, n_points)
+    check_land(land_itp; t, tol, limits, n_points)
 
-Construct a plot of the inferred shore locations from `water_itp`.
+Construct a plot of the land locations from `land_itp`.
 
 ### Arguments
 
-- `water_itp`: A `VectorField2DInterpolantEQR` which gives the interpolated currents.
+- `land_itp`: A `StaticField2DInterpolantEQR` which gives the interpolated location of the land.
 
 ### Optional Arguments
 
-- `t`: The time at which the plot is made. Default `t = 0.0`.
-- `tol`: If `water_itp.u` and `water_itp.v` are both less than `tol` in absolute value, then that point is considered to be shore. Default `tol = 0.1`.
-- `limits`: The `(lon_min, lon_max, lat_min, lat_max)` boundaries of the plot. 
-- `n_points`: The number of points to use in the plot, more gives higher resolution. Default `n_points = 1000`.
+- `limits`: The `(lon_min, lon_max, lat_min, lat_max)` boundaries of the plot. Default `limits = (-180, 180, -90, 90)`.
+- `n_points`: The number of points to use in each dimension of the plot, more gives higher resolution. Default `n_points = 1000`.
 """
-function check_shore(
-    water_itp::VectorField2DInterpolantEQR;
-    t::Real=0.0,
-    tol::Real=0.1,
-    limits=(-100, -10, 5, 35),
+function check_land(
+    land_itp::StaticField2DInterpolantEQR;
+    limits=(-180, 180, -90, 90),
     n_points=1000)
 
     xs = range(start=limits[1], stop=limits[2], length=n_points)
     ys = range(start=limits[3], stop=limits[4], length=n_points)
-    zs = [is_shore(water_itp, sph2xy(x, y, water_itp.ref)..., t, tol = tol) for x in xs, y in ys]
+    zs = [is_land(land_itp, sph2xy(x, y, land_itp.ref)...) for x in xs, y in ys]
 
     fig = default_fig()
-    ax = geo_axis(fig[1, 1], title="Shore", limits=limits)
+    ax = geo_axis(fig[1, 1], title="Land", limits=limits)
     heatmap!(ax, xs, ys, zs)
 
     return fig
@@ -70,30 +45,24 @@ end
 
 
 """
-    die_shore(water_itp; tol)
+    die_shore(land_itp)
 
 Create a `DiscreteCallback` which kills clumps when they reach the shore and terminates the integration if no clumps remain.
 
 ### Arguments
 
-- `water_itp`: A `VectorField2DInterpolantEQR` which gives the interpolated currents.
-
-### Optional Arguments
-
-- `tol`: If `water_itp.u` and `water_itp.v` are both less than `tol` in absolute value, then that point is considered to be shore. Default `tol = 0.1`.
+- `land_itp`: A `StaticField2DInterpolantEQR` which gives the interpolated land locations.
 """
-function die_shore(
-    water_itp::VectorField2DInterpolantEQR;
-    tol::Real=0.1)
+function die_shore(land_itp::StaticField2DInterpolantEQR)
 
     function condition(u, t, integrator)
-        return any([is_shore(water_itp, u[2*i-1], u[2*i], t, tol = tol)  for i = 1:Integer(length(u)/2)])
+        return any([is_land(land_itp, u[2*i-1], u[2*i])  for i = 1:Integer(length(u)/2)])
     end
 
     function affect!(integrator)
         u = integrator.u
         t = integrator.t
-        inds = findall([is_shore(water_itp, u[2*i-1], u[2*i], t, tol = tol)  for i = 1:Integer(length(u)/2)])
+        inds = findall([is_land(land_itp, u[2*i-1], u[2*i])  for i = 1:Integer(length(u)/2)])
         inds = [inds[i] - (i - 1) for i = 1:length(inds)]
         # if we have to delete multiple clumps in one step, deleting one clump will change the indices of the others.
         # since findall is sorted, after you delete the clump indexed by inds[1], then the clumps with indices >inds[1]
@@ -114,6 +83,7 @@ function die_shore(
 
     return DiscreteCallback(condition, affect!)
 end
+
 
 function grow_test(t_grow::Vector{<:Real})
     function condition(u, t, integrator)

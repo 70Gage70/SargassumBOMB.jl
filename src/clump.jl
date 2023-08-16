@@ -16,9 +16,8 @@ clump_prob = ODEProblem(Clump!, xy0, tspan, cp)
 @info "Solving model."
 
 @time sol = solve(clump_prob, 
-    saveat = 5.0, 
-    # callback = avoid_shore(water_itp, tol = 0.1, save_positions = (true, false))
-    callback = die_shore(water_itp, tol = 0.1)
+    saveat = 5.0,
+    callback = die_shore(land_itp)
 )
 
 @info "Plotting results."

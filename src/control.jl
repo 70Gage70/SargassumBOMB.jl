@@ -1,5 +1,5 @@
-include(joinpath(@__DIR__, "../../../CustomMakie.jl/src/geo-methods.jl"))
-include(joinpath(@__DIR__, "../../../CustomMakie.jl/src/statistic-methods.jl"))
+include(joinpath(@__DIR__, "../../CustomMakie.jl/src/geo-methods.jl"))
+include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 
 """
     is_shore(water_itp, x, y, t; tol)
@@ -72,7 +72,7 @@ end
 """
     die_shore(water_itp; tol)
 
-Create a `DiscreteCallback` which kills clumps when they reach the shore.
+Create a `DiscreteCallback` which kills clumps when they reach the shore and terminates the integration if no clumps remain.
 
 ### Arguments
 
@@ -99,10 +99,14 @@ function die_shore(
         # since findall is sorted, after you delete the clump indexed by inds[1], then the clumps with indices >inds[1]
         # have their index decreased by 1, and so on
 
-        for i in inds
-            deleteat!(integrator, 2*i - 1) # e.g. index i = 2, delete the 3rd component (x coord of 2nd clump)
-            deleteat!(integrator, 2*i - 1) # now the y coordinate is where the x coordinate was
-            kill!(integrator.p, i, t) # remove the clump and its connections; amounts to removing index i and subtracting 1 from all larger indices
+        if length(inds) == Integer(length(u)/2) # all clumps will be removed, so terminate
+            terminate!(integrator)
+        else
+            for i in inds
+                deleteat!(integrator, 2*i - 1) # e.g. index i = 2, delete the 3rd component (x coord of 2nd clump)
+                deleteat!(integrator, 2*i - 1) # now the y coordinate is where the x coordinate was
+                kill!(integrator.p, i, t) # remove the clump and relabel its connections
+            end
         end
 
         println("indices $inds hit shore at time $t")

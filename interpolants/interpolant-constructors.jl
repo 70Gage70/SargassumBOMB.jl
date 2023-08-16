@@ -338,7 +338,7 @@ Construct an `VectorField2DInterpolantEQR` from a [`VectorField2DGridSPH`](@ref)
 function VectorField2DInterpolantEQR(
     vf_grid::VectorField2DGridSPH,
     ref::EquirectangularReference; 
-    interpolant_type = BSpline(Cubic(Line(OnGrid())))
+    interpolant_type = DEFAULT_INTERPOLATION
     )
 
     lon, lat, time, time0, u, v = (vf_grid.lon, vf_grid.lat, vf_grid.time, vf_grid.time0, vf_grid.u, vf_grid.v)
@@ -373,7 +373,7 @@ A container for a two-dimensional scalar field interpolated over spherical longi
 - `lat`: The range of latitudes (North/South) over which the grid is defined.
 - `time0`: The initial `DateTime` at which the scalar field is defined.
 - `time`: The range of times since `time0` over which the grid is defined.
-- `u`: An interpolant for the x component of the scalar field. Call as `u(lon, lat, t)`.
+- `u`: An interpolant for the scalar field. Call as `u(lon, lat, t)`.
 """
 struct ScalarField2DInterpolantSPH{T<:Real, I<:Interpolations.InterpolationType} <: AbstractScalarFieldInterpolant
     lon::AbstractRange{T}
@@ -408,7 +408,7 @@ A container for a two-dimensional scalar field interpolated over equirectangular
 - `y`: The range of y values over which the grid is defined.
 - `time0`: The initial `DateTime` at which the scalar field is defined.
 - `time`: The range of times since `time0` over which the grid is defined.
-- `u`: An interpolant for the x component of the scalar field. Call as `u(x, y, t)`.
+- `u`: An interpolant for the scalar field. Call as `u(x, y, t)`.
 """
 struct ScalarField2DInterpolantEQR{T<:Real, I<:Interpolations.InterpolationType} <: AbstractScalarFieldInterpolant
     ref::EquirectangularReference{T}
@@ -431,7 +431,7 @@ Construct an `ScalarField2DInterpolantEQR` from a [`ScalarField2DGridSPH`](@ref)
 function ScalarField2DInterpolantEQR(
     sf_grid::ScalarField2DGridSPH,
     ref::EquirectangularReference; 
-    interpolant_type = BSpline(Cubic(Line(OnGrid())))
+    interpolant_type = DEFAULT_INTERPOLATION
     )
 
     lon, lat, time, time0, u = (sf_grid.lon, sf_grid.lat, sf_grid.time, sf_grid.time0, sf_grid.u)
@@ -441,4 +441,58 @@ function ScalarField2DInterpolantEQR(
     u_itp = interpolate_field(x, y, time, u, interpolant_type = interpolant_type)
 
     return ScalarField2DInterpolantEQR(ref, x, y, time0, time, u_itp)
+end
+
+###########################
+########################### STATIC FIELDS
+###########################
+
+"""
+    AbstractStaticFieldInterpolant
+
+The abstract type for interpolated static fields.
+"""
+abstract type AbstractStaticFieldInterpolant end
+
+"""
+    struct StaticField2DInterpolantEQR{T, I}
+
+A container for a two-dimensional static field interpolated over equirectangular x, y coordinates.
+
+### Fields
+
+- `ref`: The `EquirectangularReference` with whcih the projection is defined.
+- `x`: The range of x values over which the grid is defined.
+- `y`: The range of y values over which the grid is defined.
+- `u`: An interpolant for the Static field. Call as `u(x, y)`.
+"""
+struct StaticField2DInterpolantEQR{T<:Real, I<:Interpolations.InterpolationType} <: AbstractStaticFieldInterpolant
+    ref::EquirectangularReference{T}
+    x::AbstractRange{T}
+    y::AbstractRange{T}
+    u::AbstractInterpolation{T, 2, I}
+end
+
+"""
+    StaticField2DInterpolantEQR(vf_grid, ref; interpolant_type)
+
+Construct an `StaticField2DInterpolantEQR`.
+
+### Optional Arguments
+
+- `interpolant_type`: The type of interpolation to use from the `Interpolations` module. Default nearest-neighbor.
+"""
+function StaticField2DInterpolantEQR(
+    lon::AbstractRange,
+    lat::AbstractRange,
+    data::AbstractArray,
+    ref::EquirectangularReference; 
+    interpolant_type = BSpline(Constant())
+    )
+
+    x, y = sph2xy(lon, lat, ref)
+
+    u_itp = extrapolate(scale(interpolate(data, interpolant_type), x, y), 0)
+
+    return StaticField2DInterpolantEQR(ref, x, y, u_itp)
 end

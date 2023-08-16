@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "models.jl"))
 include(joinpath(@__DIR__, "control.jl"))
-include(joinpath(@__DIR__, "../../../CustomMakie.jl/src/geo-methods.jl"))
-include(joinpath(@__DIR__, "../../../CustomMakie.jl/src/statistic-methods.jl"))
+include(joinpath(@__DIR__, "../../CustomMakie.jl/src/geo-methods.jl"))
+include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 
 ######################################################################
 
@@ -17,7 +17,8 @@ clump_prob = ODEProblem(Clump!, xy0, tspan, cp)
 
 @time sol = solve(clump_prob, 
     saveat = 5.0, 
-    callback = avoid_shore(water_itp, tol = 0.1, save_positions = (true, false))
+    # callback = avoid_shore(water_itp, tol = 0.1, save_positions = (true, false))
+    callback = die_shore(water_itp, tol = 0.1)
 )
 
 @info "Plotting results."

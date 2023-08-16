@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "models.jl"))
 include(joinpath(@__DIR__, "control.jl"))
-include(joinpath(@__DIR__, "../../../CustomMakie.jl/src/geo-methods.jl"))
-include(joinpath(@__DIR__, "../../../CustomMakie.jl/src/statistic-methods.jl"))
+include(joinpath(@__DIR__, "../../CustomMakie.jl/src/geo-methods.jl"))
+include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 
 ######################################################################
 

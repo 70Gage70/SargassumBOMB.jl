@@ -5,11 +5,9 @@ using ProgressMeter
 include(joinpath(@__DIR__, "..", "parameters.jl"))
 include(joinpath(@__DIR__, "..", "..", "interpolants", "interpolant-derivatives.jl"))
 
-# itp_path = joinpath(@__DIR__, "..", "..", "interpolants", "ias")
-# isdefined(@__MODULE__, :water_itp) || (const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp"))
-# isdefined(@__MODULE__, :wind_itp) || (const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp"))
-# isdefined(@__MODULE__, :ref_itp) || (const ref_itp = water_itp.ref)
+########################################################################
 
+# loading interpolants
 itp_path = joinpath(@__DIR__, "..", "..", "interpolants", "glorys")
 isdefined(@__MODULE__, :water_itp) || (const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp"))
 isdefined(@__MODULE__, :wind_itp) || (const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp"))
@@ -18,7 +16,6 @@ isdefined(@__MODULE__, :no3_itp) || (const no3_itp = load(joinpath(itp_path, "no
 isdefined(@__MODULE__, :ref_itp) || (const ref_itp = water_itp.ref)
 
 # All the functions depending on wind and water vector fields.
-# Note that `water_itp` and `wind_itp` must be loaded before using these.
 v_x(x, y, t) = water_itp.u(x, y, t)
 v_y(x, y, t) =  water_itp.v(x, y, t)
 Dv_xDt(x, y, t) = MaterialDerivativeX(water_itp, x, y, t)
@@ -29,18 +26,9 @@ Du_xDt(x, y, t, α) = (1 - α) * MaterialDerivativeX(water_itp, x, y, t) + α * 
 Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * MaterialDerivativeY(wind_itp, x, y, t) 
 ω(x, y, t) = Vorticity(water_itp, x, y, t)
 
-# v(x, y, t) = [water_itp.u(x, y, t), water_itp.v(x, y, t)]
-# Dv_Dt(x, y, t) = [MaterialDerivativeX(water_itp, x, y, t), MaterialDerivativeY(water_itp, x, y, t)]
-# u(x, y, t) = [
-#     (1 - α) * water_itp.u(x, y, t) + α * wind_itp.u(x, y, t), 
-#     (1 - α) * water_itp.v(x, y, t) + α * wind_itp.v(x, y, t)]
-# Du_Dt(x, y, t) = [
-#     (1 - α) * MaterialDerivativeX(water_itp, x, y, t) + α * MaterialDerivativeX(wind_itp, x, y, t), 
-#     (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * MaterialDerivativeY(wind_itp, x, y, t)]
-# ω(x, y, t) = Vorticity(water_itp, x, y, t)
-
-# Computing the spring force
-Fs(xy1, xy2, parameters) = spring_force(xy1, xy2, parameters)
+########################################################################
+########################################################################
+########################################################################
 
 function Clump!(du, u, p::ClumpParameters, t)
     x, y = u
@@ -55,36 +43,8 @@ function Clump!(du, u, p::ClumpParameters, t)
 end
 
 
-# think of u[i, j, xy], i.e. u[3, 4, 1:2] as the [x y] coordinates of the clump in row 3, column 4
-function Raft!(du, u, p::RaftParameters, t)
-    α, τ, R, f = p.clumps.α, p.clumps.τ, p.clumps.R, p.clumps.f
-
-    for i = 1:size(u, 1), j = 1:size(u, 2)
-        x, y = u[i, j, :]
-
-        du[i, j, 1] = u_x(x, y, t, α) + τ * (
-            R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)
-        )
-        du[i, j, 2] = u_y(x, y, t, α) + τ * (
-            R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
-        )
-
-        du[i, j, :] += τ*sum(spring_force(u[i, j, :], u[m, n, :], p.springs) for (m, n) in p.connections[(i, j)])
-    end
-end
-
-function RaftCOM(sol::AbstractArray{<:Real, 4})
-    [
-        [sum(u[:, :, 1])/length(u[:, :, 1]), sum(u[:, :, 2])/length(u[:, :, 2])] for u in sol.u
-    ]
-end
-
-function Raftij(sol::AbstractArray{<:Real, 4}, i::Integer, j::Integer)
-    [sol.u[k][i, j, 1:2] for k = 1:length(sol.u)]
-end
-
 # have u[1:2] = (x, y)_1, u[3:4] = (x, y)_2 ... u[2*i-1:2*i] = (x, y)_i
-function FlatRaft!(du, u, p::RaftParameters, t)
+function Raft!(du, u, p::RaftParameters, t)
     α, τ, R, f = p.clumps.α, p.clumps.τ, p.clumps.R, p.clumps.f
 
     for i = 1:Integer(length(u)/2)
@@ -99,16 +59,6 @@ function FlatRaft!(du, u, p::RaftParameters, t)
 
         du[2*i-1:2*i] += τ*sum(spring_force(u[2*i-1:2*i], u[2*j-1:2*j], p.springs) for j in p.connections[i]; init = [0.0, 0.0])
     end
-end
-
-function RaftCOM(sol::AbstractMatrix)
-    [
-        [sum(u[1:2:length(u)])/(length(u)/2), sum(u[2:2:length(u)])/(length(u)/2)] for u in sol.u
-    ]
-end
-
-function Rafti(sol::AbstractMatrix, i::Integer)
-    [sol.u[k][2*i-1:2*i] for k = 1:length(sol.u)]
 end
 
 

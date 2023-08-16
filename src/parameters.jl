@@ -172,7 +172,7 @@ end
 
 Construct [`RaftParameters`](@ref) in a rectangular arrangement.
 
-The dimensions of `xy0` are `n_row x n_col x 2`.
+The initial conditions `xy0` are collected in a vector of length `n_row x n_col x 2`. And are arranged as `[x1, y1, x2, y2 ...]`.
 
 ### Arguments
 
@@ -196,7 +196,7 @@ function RaftParameters(
     network_type::String = "nearest")
 
     @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
-    @assert step(x_range) > 0 "x range should be increasing."
+    @assert step(x_range) > 0 "x range should be inreasing."
     @assert step(y_range) > 0 "y range should be increasing."
 
     # a rectangular mesh
@@ -219,36 +219,24 @@ function RaftParameters(
     L = (step(x_range) + step(y_range))/2
     spring_parameters = SpringParameters(spring_k, L)
 
-    growths = Dict{Float64, Vector{NTuple{2, Int64}}}() 
-    deaths = Dict{Float64, Vector{NTuple{2, Int64}}}() 
+    # now flatten all quantities
 
-    return RaftParameters(network, clump_parameters, spring_parameters, connections, growths, deaths)
-end
-
-"""
-    flat_raft(rp::RaftParameters)
-
-Take `rp` and return a `RaftParameters` object flattened such that `xy0` is a vector of the form `[x01, y01, x02, y02 ...]` and similarly for the connections.
-"""
-function flat_raft(rp::RaftParameters)
-    n_row = size(rp.xy0, 1)
-    n_col = size(rp.xy0, 2)
-
-    xy0 = [rp.xy0[i, j, k] for i = 1:n_row for j = 1:n_col for k = 1:2]
+    xy0 = [network[i, j, k] for i = 1:n_row for j = 1:n_col for k = 1:2]
 
     n(i, j) = (i - 1) * n_col + j
 
-    connections = Dict{Int64, Vector{Int64}}()
+    connections_flat = Dict{Int64, Vector{Int64}}()
 
-    for key in keys(rp.connections)
-        connections[n(key...)] = rp.connections[key] .|> x -> n(x...)
+    for key in keys(connections)
+        connections_flat[n(key...)] = connections[key] .|> x -> n(x...)
     end
 
     growths = Dict{Float64, Vector{Int64}}()
-    deaths = Dict{Float64, Vector{Int64}}()
+    deaths = Dict{Float64, Vector{Int64}}()    
 
-    return RaftParameters(xy0, rp.clumps, rp.springs, connections, growths, deaths)
+    return RaftParameters(xy0, clump_parameters, spring_parameters, connections_flat, growths, deaths)
 end
+
 
 """
     kill!(rp::RaftParameters, i, t)

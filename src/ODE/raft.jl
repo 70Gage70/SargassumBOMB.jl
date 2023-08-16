@@ -19,12 +19,15 @@ prob_raft = ODEProblem(Raft!, rp.xy0, tspan, rp)
 
 @info "Solving model."
 
-@time sol = solve(prob_raft, reltol = 1e-6, abstol = 1e-6)
+@time sol_no_shore = solve(prob_raft, Tsit5(), reltol = 1e-6, abstol = 1e-6)
 
-# sol = solve(prob, 
-#     saveat = 0.1, 
-#     callback = avoid_shore(water_itp, tol = 0.1, save_positions = (true, false))
-# )
+@time sol = solve(prob_raft, 
+    Tsit5(),
+    #callback = die_shore(water_itp, tol = 0.1)
+    callback = CallbackSet(die_shore(water_itp, tol = 0.1), grow_test([5.0, 50.0]))
+)
+
+rtr = raft_trajectories(sol, rp)
 
 @info "Generating reference clump."
 
@@ -35,46 +38,46 @@ sol_clump = solve(clump_prob)
 clump_traj = xy2sph(sol_clump.u, ref_itp)
 clump_times = sol_clump.t
 
-@info "Plotting results."
+# @info "Plotting results."
 
-limits = (-100, -50, 5, 35)
+# limits = (-100, -50, 5, 35)
 
-### Trajectory COM
+# ### Trajectory COM
 
-fig_COM = default_fig()
-ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
+# fig_COM = default_fig()
+# ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
 
-traj = xy2sph(RaftCOM(sol), ref_itp)
-times = sol.t
-trajectory!(ax, traj, times) # raft
+# traj = xy2sph(RaftCOM(sol), ref_itp)
+# times = sol.t
+# trajectory!(ax, traj, times) # raft
 
-trajectory!(ax, clump_traj, clump_times, 
-    opts = (linestyle = :dot, color = clump_times, linewidth = 2)
-) # clump
+# trajectory!(ax, clump_traj, clump_times, 
+#     opts = (linestyle = :dot, color = clump_times, linewidth = 2)
+# ) # clump
 
-land!(ax)
+# land!(ax)
 
-tticks = collect(range(start = minimum(times), stop = maximum(times), length = 5))
-data_legend!(fig_COM[1,2], L"\mathrm{Days}", ticks = tticks)
+# tticks = collect(range(start = minimum(times), stop = maximum(times), length = 5))
+# data_legend!(fig_COM[1,2], L"\mathrm{Days}", ticks = tticks)
 
-fig_COM
+# fig_COM
 
-### Trajectory NET
+# ### Trajectory NET
 
-fig_NET = default_fig()
-ax = geo_axis(fig_NET[1, 1], limits = limits, title = L"\mathrm{Raft NET}")
+# fig_NET = default_fig()
+# ax = geo_axis(fig_NET[1, 1], limits = limits, title = L"\mathrm{Raft NET}")
 
-for i = 1:size(sol.u[1], 1), j = 1:size(sol.u[1], 2)
-    times = sol.t
-    traj = xy2sph(Raftij(sol, i, j), ref_itp)
-    trajectory!(ax, traj, times)
-end
+# for i = 1:Integer(length(rp.xy0)/2)
+#     times = sol.t
+#     traj = xy2sph(Rafti(sol, i), ref_itp)
+#     trajectory!(ax, traj, times)
+# end
 
 
 
-land!(ax)
+# land!(ax)
 
-tticks = collect(range(start = minimum(times), stop = maximum(times), length = 5))
-data_legend!(fig_NET[1,2], L"\mathrm{Days}", ticks = tticks)
+# tticks = collect(range(start = minimum(times), stop = maximum(times), length = 5))
+# data_legend!(fig_NET[1,2], L"\mathrm{Days}", ticks = tticks)
 
-fig_NET
+# fig_NET

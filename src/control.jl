@@ -45,7 +45,7 @@ end
 
 
 """
-    die_shore(land_itp)
+    die_land(land_itp)
 
 Create a `DiscreteCallback` which kills clumps when they reach the shore and terminates the integration if no clumps remain.
 
@@ -53,7 +53,7 @@ Create a `DiscreteCallback` which kills clumps when they reach the shore and ter
 
 - `land_itp`: A `StaticField2DInterpolantEQR` which gives the interpolated land locations.
 """
-function die_shore(land_itp::StaticField2DInterpolantEQR)
+function die_land(land_itp::StaticField2DInterpolantEQR)
 
     function condition(u, t, integrator)
         return any([is_land(land_itp, u[2*i-1], u[2*i])  for i = 1:Integer(length(u)/2)])

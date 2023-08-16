@@ -17,7 +17,7 @@ clump_prob = ODEProblem(Clump!, xy0, tspan, cp)
 
 @time sol = solve(clump_prob, 
     saveat = 5.0,
-    callback = die_shore(land_itp)
+    callback = die_land(land_itp)
 )
 
 @info "Plotting results."

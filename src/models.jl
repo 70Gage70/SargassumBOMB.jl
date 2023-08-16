@@ -15,6 +15,10 @@ isdefined(@__MODULE__, :temp_itp) || (const temp_itp = load(joinpath(itp_path, "
 isdefined(@__MODULE__, :no3_itp) || (const no3_itp = load(joinpath(itp_path, "no3_itp.jld2"), "no3_itp"))
 isdefined(@__MODULE__, :ref_itp) || (const ref_itp = water_itp.ref)
 
+# loading land
+itp_path = joinpath(@__DIR__, "..", "interpolants", "land")
+isdefined(@__MODULE__, :land_itp) || (const land_itp = load(joinpath(itp_path, "land_itp.jld2"), "land_itp"))
+
 # All the functions depending on wind and water vector fields.
 v_x(x, y, t) = water_itp.u(x, y, t)
 v_y(x, y, t) =  water_itp.v(x, y, t)

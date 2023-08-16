@@ -150,12 +150,12 @@ end
 
 Construct [`RaftParameters`](@ref) in a rectangular arrangement.
 
-The initial conditions `xy0` are collected in a vector of length `n_row x n_col x 2`. And are arranged as `[x1, y1, x2, y2 ...]`.
+The initial conditions `xy0` are collected in a vector of length `n_row * n_col * 2` arranged as `[x1, y1, x2, y2, ...]`.
 
 ### Arguments
 
-- `x_range` [km]: A range which gives the x coordinates of the clumps in the raft. Should be increasing.
-- `y_range` [km]: A range which gives the y coordinates of the clumps in the raft. Should be increasing.
+- `x_range`: A range which gives the x coordinates of the clumps in the raft. Should be increasing and in equirectangular coordinates, not longitudes.
+- `y_range`: A range which gives the y coordinates of the clumps in the raft. Should be increasing and in equirectangular coordinates, not latitudes.
 - `clump_parameters`: The [`ClumpParameters`](@ref) shared by each clump.
 - `spring_parameters`: The [`spring_parameters`](@ref) shared by each spring.
 
@@ -215,16 +215,72 @@ function RaftParameters(
     return RaftParameters(xy0, clump_parameters, spring_parameters, connections_flat, growths, deaths)
 end
 
+"""
+    struct Trajectory{T}
+
+A container for the data of a single clump's trajectory. 
+
+### Fields
+
+- `xy`: A `Matrix` of size `N x 2` such that `xy[i,:]` gives the `[x, y]` coordinates at the clump at time `t[i]`.
+- `t`: A `Vector` of length `N` giving the time values of the trajectory.
+
+### Constructors
+
+Apply as `Trajectory(xy, t)` where `xy` can be a matrix or vector of vectors.
+"""
+struct Trajectory{T<:Real}
+    xy::Matrix{T}
+    t::Vector{T}
+
+    function Trajectory(xy::Matrix{T}, t::Vector{T}) where {T<:Real}
+        @assert length(t) == size(xy, 1) "`t` and `xy` must have the same length."
+        @assert size(xy, 2) == 2 "`xy` must have two columns."
+    
+        return new{T}(xy, t)
+    end
+
+    function Trajectory(xy::Vector{<:Vector{T}}, t::Vector{T}) where {T<:Real}
+        @assert length(t) == length(xy) "`t` and `xy` must have the same length."
+    
+        return new{T}(stack(xy, dims = 1), t)
+    end    
+end
+
+function Base.length(tr::Trajectory)
+    return length(tr.t)
+end
 
 """
-    raft_trajectories(sol, rp)
+    struct RaftTrajectory{N, J}
 
-Construct a `Dict`, `rt`, such that `rt[i]` is a `N x 3` matrix giving the trajectory of the `i`th clump.
-
-The convention is `rt[i][x, y, t]`.
+A container for the data of a every clump's trajectory in a raft, as well as its center of mass.
+    
+### Fields 
+- `trajectories`: A `Dict` mapping clump indices to their corresponding [`Trajectory`](@ref).
+- `n_clumps`: The total number of unique clumps that ever existed in the raft. Equivalent to `length(keys(trajectories))`.
+- `com`: A [`Trajectory`](@ref) corresponding to the center of mass of the raft. 
 """
-function raft_trajectories(sol::AbstractMatrix, rp::RaftParameters)
-    n_total_clumps = Integer(length(sol[1])/2) # keeps track of the total number of clumps that have ever existed
+struct RaftTrajectory{U<:Integer, J<:Trajectory}
+    trajectories::Dict{U,J}
+    n_clumps::U
+    com::J
+end
+
+"""
+    RaftTrajectory(sol, rp)
+
+Construct a [`RaftTrajectory`](@ref) from a differential equation solution `sol` and [`RaftParameters`](@ref) `rp`.
+
+### Arguments
+
+- `sol`: The output of `solve(Raft!, args...)`.
+- `rp`: The [`RaftParameters`](@ref) used in solving the [`Raft!`](@ref) model.
+"""
+function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters)
+    # n_total_clumps keeps track of the total number of clumps that have ever existed
+    # increases with growths and doesn't change with deaths
+    n_total_clumps = Integer(length(sol[1])/2) 
 
     # loc_to_label keeps track of which clump actually has its coordinates in positions u[2*i-1, 2*i].
     # when initialized, this is exactly clump i, but it will change after growths and deaths
@@ -271,5 +327,33 @@ function raft_trajectories(sol::AbstractMatrix, rp::RaftParameters)
         end
     end
 
-    return tr
+    # collecting everything into a trajectory
+    trajectories = Dict{Int64, Trajectory{Float64}}()
+    for i in keys(tr)
+        trajectories[i] = Trajectory(tr[i][:,1:2], tr[i][:,3])
+    end
+
+    n_clumps = length(keys(trajectories))
+
+    n_times, arg = findmax([length(trajectories[i]) for i = 1:n_clumps])
+    times = trajectories[arg].t
+    
+    # arrange trajectories into one big array such that they are matched up by time slice
+    # this makes computing the COM much easier
+    com_array = zeros(n_clumps, n_times, 2)
+
+    for i = 1:n_clumps
+        # first(trajectories[i].t) is the first time this clump exists
+        # `ind` is therefore the index where this trajectory should be slotted into `com_array`
+        ind = searchsortedfirst(times, first(trajectories[i].t)) 
+        com_array[i,ind:ind+length(trajectories[i])-1,:] .= trajectories[i].xy
+    end
+
+    
+
+
+        
+
+
+    return trajectories
 end

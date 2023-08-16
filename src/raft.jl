@@ -27,7 +27,7 @@ prob_raft = ODEProblem(Raft!, rp.xy0, tspan, rp)
     callback = CallbackSet(die_land(land_itp), grow_test([5.0, 50.0]))
 )
 
-rtr = raft_trajectories(sol, rp)
+rtr = RaftTrajectory(sol, rp)
 
 @info "Generating reference clump."
 

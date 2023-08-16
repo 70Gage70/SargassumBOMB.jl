@@ -19,7 +19,7 @@ prob_raft = ODEProblem(Raft!, rp.xy0, tspan, rp)
 
 @info "Solving model."
 
-@time sol_no_shore = solve(prob_raft, Tsit5(), reltol = 1e-6, abstol = 1e-6)
+# @time sol_no_shore = solve(prob_raft, Tsit5(), reltol = 1e-6, abstol = 1e-6)
 
 @time sol = solve(prob_raft, 
     Tsit5(),

@@ -103,28 +103,6 @@ function Base.show(io::IO, x::SpringParameters)
 end
 
 """
-    spring_force_x(x1, x2, y1, y2, parameters)
-
-Calculate the x component of the force on a point particle with coordinates `(x1, y1)` which is attached by a spring defined by `parameters` to another point particle with coordinates `(x2, y2)`.
-"""
-function spring_force_x(x1::Real, x2::Real, y1::Real, y2::Real, parameters::SpringParameters)
-    k, L = (parameters.k, parameters.L)
-    d = sqrt((x1 - x2)^2 + (y1 - y2)^2)
-    return k(d)*(x1 - x2)*(L/d - 1)
-end
-
-"""
-    spring_force_y(x1, x2, y1, y2, parameters)
-
-Calculate the y component of the force on a point particle with coordinates `(x1, y1)` which is attached by a spring defined by `parameters` to another point particle with coordinates `(x2, y2)`.
-"""
-function spring_force_y(x1::Real, x2::Real, y1::Real, y2::Real, parameters::SpringParameters)
-    k, L = (parameters.k, parameters.L)
-    d = sqrt((x1 - x2)^2 + (y1 - y2)^2)
-    return k(d)*(y1 - y2)*(L/d - 1)
-end
-
-"""
     spring_force(xy1, xy2, parameters)
 
 Calculate the x and y components of the force on a point particle with coordinates `xy1` which is attached by a spring defined by `parameters` to another point particle with coordinates `xy2`.

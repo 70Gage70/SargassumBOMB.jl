@@ -226,28 +226,47 @@ A container for the data of a single clump's trajectory.
 
 ### Constructors
 
-Apply as `Trajectory(xy, t)` where `xy` can be a matrix or vector of vectors.
+Apply as `Trajectory(xy, t)` where `xy` can be a matrix or vector of vectors, `t` is a vector with the same length as `xy`.
+
+Apply as `Trajectory(xy, t, ref)` where `ref` is an [`EquirectangularReference`](@ref) to construct the trajectory such that `xy` is converted from equirectangular to lon/lat coordinates.
 """
 struct Trajectory{T<:Real}
     xy::Matrix{T}
     t::Vector{T}
 
-    function Trajectory(xy::Matrix{T}, t::Vector{T}) where {T<:Real}
-        @assert length(t) == size(xy, 1) "`t` and `xy` must have the same length."
-        @assert size(xy, 2) == 2 "`xy` must have two columns."
-    
-        inds = unique(i -> t[i], eachindex(t))
+    function Trajectory(xy::Union{Matrix{T}, Vector{<:Vector{T}}}, t::Vector{T}) where {T<:Real}
+        if xy isa Matrix
+            @assert length(t) == size(xy, 1) "`t` and `xy` must have the same length."
+            @assert size(xy, 2) == 2 "`xy` must have two columns."
+        
+            inds = unique(i -> t[i], eachindex(t))
 
-        return new{T}(xy[inds,:], t[inds])
-    end
+            return new{T}(xy[inds,:], t[inds])
+        else
+            @assert length(t) == length(xy) "`t` and `xy` must have the same length."
 
-    function Trajectory(xy::Vector{<:Vector{T}}, t::Vector{T}) where {T<:Real}
-        @assert length(t) == length(xy) "`t` and `xy` must have the same length."
+            inds = unique(i -> t[i], eachindex(t))
+        
+            return new{T}(stack(xy, dims = 1)[inds,:], t[inds])
+        end
+    end   
 
-        inds = unique(i -> t[i], eachindex(t))
-    
-        return new{T}(stack(xy, dims = 1)[inds,:], t[inds])
-    end    
+    function Trajectory(xy::Union{Matrix{T}, Vector{<:Vector{T}}}, t::Vector{T}, ref::EquirectangularReference) where {T<:Real}
+        if xy isa Matrix
+            @assert length(t) == size(xy, 1) "`t` and `xy` must have the same length."
+            @assert size(xy, 2) == 2 "`xy` must have two columns."
+        
+            inds = unique(i -> t[i], eachindex(t))
+
+            return new{T}(xy2sph(xy[inds,:], ref), t[inds])
+        else
+            @assert length(t) == length(xy) "`t` and `xy` must have the same length."
+
+            inds = unique(i -> t[i], eachindex(t))
+        
+            return new{T}(xy2sph(stack(xy, dims = 1)[inds,:], ref), t[inds])
+        end
+    end 
 end
 
 function Base.length(tr::Trajectory)
@@ -291,8 +310,9 @@ Construct a [`RaftTrajectory`](@ref) from a differential equation solution `sol`
 
 - `sol`: The output of `solve(Raft!, args...)`.
 - `rp`: The [`RaftParameters`](@ref) used in solving the [`Raft!`](@ref) model.
+- `ref`: An [`EquirectangularReference`](@ref).
 """
-function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters)
+function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters, ref::EquirectangularReference)
     # n_total_clumps keeps track of the total number of clumps that have ever existed
     # increases with growths and doesn't change with deaths
     n_total_clumps = Integer(length(sol[1])/2) 
@@ -352,7 +372,7 @@ function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters)
     # collecting everything into a trajectory
     trajectories = Dict{Int64, Trajectory{Float64}}()
     for i in keys(tr)
-        trajectories[i] = Trajectory(tr[i][:,1:2], tr[i][:,3])
+        trajectories[i] = Trajectory(tr[i][:,1:2], tr[i][:,3], ref)
     end
     
     # all unique times

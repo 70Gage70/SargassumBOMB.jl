@@ -21,13 +21,13 @@ prob_raft = ODEProblem(Raft!, rp.xy0, tspan, rp)
 
 # @time sol_no_shore = solve(prob_raft, Tsit5(), reltol = 1e-6, abstol = 1e-6)
 
-@time sol = solve(prob_raft, 
+@time sol_raft = solve(prob_raft, 
     Tsit5(),
     #callback = die_land(water_itp, tol = 0.1)
     callback = CallbackSet(die_land(land_itp), grow_test([5.0, 50.0]))
 )
 
-rtr = RaftTrajectory(sol, rp)
+rtr = RaftTrajectory(sol_raft, rp, ref_itp)
 
 @info "Generating reference clump."
 
@@ -35,32 +35,38 @@ xy0 = sph2xy(x0, y0, ref_itp)
 clump_prob = ODEProblem(Clump!, xy0, tspan, cp)
 
 sol_clump = solve(clump_prob)
-clump_traj = xy2sph(sol_clump.u, ref_itp)
-clump_times = sol_clump.t
 
-# @info "Plotting results."
+ctr = Trajectory(sol_clump.u, sol_clump.t, ref_itp)
 
-# limits = (-100, -50, 5, 35)
+@info "Plotting results."
 
-# ### Trajectory COM
+limits = (-100, -50, 5, 35)
 
-# fig_COM = default_fig()
-# ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
+### Trajectory COM
 
-# traj = xy2sph(RaftCOM(sol), ref_itp)
-# times = sol.t
-# trajectory!(ax, traj, times) # raft
+fig_COM = default_fig()
+ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
 
-# trajectory!(ax, clump_traj, clump_times, 
-#     opts = (linestyle = :dot, color = clump_times, linewidth = 2)
-# ) # clump
+# raft
+trajectory!(ax, rtr)
 
-# land!(ax)
+# COM
+trajectory!(ax, rtr.com, 
+    opts = (linestyle = :dot, color = rtr.com.t, linewidth = 5)
+) 
 
-# tticks = collect(range(start = minimum(times), stop = maximum(times), length = 5))
-# data_legend!(fig_COM[1,2], L"\mathrm{Days}", ticks = tticks)
 
-# fig_COM
+# clump
+trajectory!(ax, ctr, 
+    opts = (color = ctr.t, colormap = :heat, linewidth = 2)
+) 
+
+land!(ax)
+
+tticks = collect(range(start = minimum(rtr.t), stop = maximum(rtr.t), length = 5))
+data_legend!(fig_COM[1,2], L"\mathrm{Days}", ticks = tticks)
+
+fig_COM
 
 # ### Trajectory NET
 

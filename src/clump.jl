@@ -19,22 +19,21 @@ clump_prob = ODEProblem(Clump!, xy0, tspan, cp)
     callback = die_land(land_itp)
 )
 
-tr = Trajectory(sol.u, sol.t)
-
+tr = Trajectory(sol.u, sol.t, ref_itp)
 
 @info "Plotting results."
 
 ### Trajectory
 
-fig_traj2 = default_fig()
-ax = geo_axis(fig_traj2[1, 1], limits = (-100, -50, 5, 35), title = L"\mathrm{Clump}")
+limits = (-100, -50, 5, 35)
 
-traj = xy2sph(sol.u, ref_itp)
-times = sol.t
-trajectory!(ax, traj, times)
+fig_clump_traj = default_fig()
+ax = geo_axis(fig_clump_traj[1, 1], limits = limits, title = L"\mathrm{Clump}")
+
+trajectory!(ax, tr)
 land!(ax)
 
-tticks = collect(range(start = minimum(times), stop = maximum(times), length = 5))
-data_legend!(fig_traj2[1,2], L"\mathrm{Days}", ticks = tticks)
+tticks = collect(range(start = minimum(tr.t), stop = maximum(tr.t), length = 5))
+data_legend!(fig_clump_traj[1,2], L"\mathrm{Days}", ticks = tticks)
 
-fig_traj2
+fig_clump_traj

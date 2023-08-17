@@ -113,12 +113,12 @@ function spring_force(xy1::Vector{<:Real}, xy2::Vector{<:Real}, parameters::Spri
 end
 
 """
-    mutable struct RaftParameters{C, S}
+    mutable struct RaftParameters{T, U, F}
 
 A container for the parameters defining a raft. Each clump and spring are identical.
 
 ### Fields
-- `xy0`: An array representing the initial coordinates of the clumps.
+- `xy0`: A vector representing the initial coordinates of the clumps.
 - `clumps`: The [`ClumpParameters`](@ref) shared by each clump in the raft.
 - `springs`: The [`SpringParameters`](@ref) shared by each spring joining the clumps.
 - `connections`: A `Dict` such that `connections[idx]` is a vector of indices `idx'` where a spring is connected between clumps `idx` and `idx'`. This should be updated in-place as clumps grow and die, i.e. `connections` only shows the current connections.
@@ -129,20 +129,13 @@ A container for the parameters defining a raft. Each clump and spring are identi
 
 The `growths` field and `deaths` field refer to indices of the clumps which exist at that particular time, and are labelled in order along the solution vector `u`. In other words, if `deaths[t1] = [3, 7]`, this means that `u[5:6]` and `u[13:14]` were both deleted at time `t1`. If `t2 > t1` and `deaths[t2] = [3, 7]`, it again means that `u[5:6]` and `u[13:14]` were both deleted at time `t2`, however, these would now correspond to different actual clumps since the deletion at time `t1` shifted the indices.
 """
-mutable struct RaftParameters{
-    T<:AbstractArray, 
-    C<:ClumpParameters, 
-    S<:SpringParameters, 
-    N1<:AbstractDict,
-    N2<:AbstractDict
-    }
-
-    xy0::T
-    clumps::C
-    springs::S
-    connections::N1
-    growths::N2
-    deaths::N2
+mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function}
+    xy0::Vector{T}
+    clumps::ClumpParameters{T}
+    springs::SpringParameters{F, T}
+    connections::Dict{U, Vector{U}}
+    growths::Dict{T, Vector{U}}
+    deaths::Dict{T, Vector{U}}
 end
 
 """

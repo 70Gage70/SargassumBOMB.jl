@@ -208,6 +208,12 @@ function RaftParameters(
     return RaftParameters(xy0, clump_parameters, spring_parameters, connections_flat, growths, deaths)
 end
 
+function Base.show(io::IO, x::RaftParameters)
+    print(io, "RaftParameters[")
+    show(io, Integer(length(x.xy0)/2))
+    print(io, " Clumps]")
+end
+
 """
     struct Trajectory{T}
 
@@ -242,6 +248,16 @@ end
 
 function Base.length(tr::Trajectory)
     return length(tr.t)
+end
+
+function Base.show(io::IO, x::Trajectory)
+    print(io, "Trajectory[(")
+    show(io, first(x.t))
+    print(io, ", ")
+    show(io, last(x.t))
+    print(io, "), ")
+    show(io, length(x.t))
+    print(io, " pts]")
 end
 
 """
@@ -353,4 +369,12 @@ function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters)
     com = [sum(com_array[ci,ti,:] for ci = 1:n_total_clumps)/n_clumps[ti] for ti = 1:length(times)]
 
     return RaftTrajectory(trajectories, times, n_clumps, Trajectory(com, times))
+end
+
+function Base.show(io::IO, x::RaftTrajectory)
+    print(io, "RaftTrajectory[")
+    show(io, length(keys(x.trajectories)))
+    print(io, " trajectories, ")
+    show(io, length(x.t))
+    print(io, " times]")
 end

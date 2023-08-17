@@ -4,18 +4,34 @@ using Distributions
 ############################################################
 
 """
-    kill!(rp::RaftParameters, i, t)
+    kill!(integrator, i)
 
-Remove the clump with index `i` and its connections from `rp` and update `rp.deaths` at time `t.`
+Remove the clump with index `i` from `integrator.u`. Remap the connections from the [`RaftParameters`](@ref), `rp = integrator.p` and update `rp.deaths` at time `integrator.t.`
 
 Indices whose value is greater than i are then shifted down by 1.
 """
-function kill!(rp::RaftParameters, i::Integer, t::Real)
+function kill!(integrator::SciMLBase.DEIntegrator, i::Integer)
+    # if this is the last clump, terminate the integration
+    if length(integrator.u) == 2
+        terminate!(integrator)
+        return nothing
+    end
+
+    # first remove the appropriate u elements from `integrator`
+    deleteat!(integrator, 2*i - 1) # e.g. index i = 2, delete the 3rd component (x coord of 2nd clump)
+    deleteat!(integrator, 2*i - 1) # now the y coordinate is where the x coordinate was
+
+    # now remap the connections in RaftParameters
+    rp = integrator.p
+    
     delete!(rp.connections, i) # remove i from keys
     rp.connections = Dict(a => filter(x -> x != i, b) for (a,b) in rp.connections) # remove i from values
 
     less_i(x) = x > i ? x - 1 : x
     rp.connections = Dict(less_i(a) => less_i.(b) for (a,b) in rp.connections) # shift every label >i down by 1
+
+    # finally, update rp.deaths at the current time
+    t = integrator.t
 
     if t in keys(rp.deaths)
         push!(rp.deaths[t], i)
@@ -26,27 +42,56 @@ function kill!(rp::RaftParameters, i::Integer, t::Real)
     return nothing
 end
 
+"""
+    kill!(integrator, inds)
+
+Call [`kill!(integrator, i)`](@ref) on each element of `inds`.    
+
+This removes several clumps "simultaneously" while taking into account the fact that removing a clump shifts the clump to which each element of `inds` references.
+"""
+function kill!(integrator::SciMLBase.DEIntegrator, inds::Vector{<:Integer})
+    # if we have to delete multiple clumps in one step, deleting one clump will change the indices of the others.
+    # that is, after you delete the clump indexed by inds[1], then the clumps with indices >inds[1]
+    # have their index decreased by 1, and so on
+    sort!(inds)    
+    inds = [inds[i] - (i - 1) for i = 1:length(inds)]
+
+    for i in inds
+        kill!(integrator, i)
+    end
+
+    return nothing
+end
 
 """
-    grow!(rp::RaftParameters, u, t, grow_type)
+    grow!(integrator)
 
-Add a clump to `rp` with an index equal to the maximum clump index in `rp` and update `rp.growths` at time `t`, possibly using all the clumps' locations `u`.
+Add a clump to the [`RaftParameters`](@ref), `rp = integrator.p` with an index equal to the maximum clump index and update `rp.growths` at time `intergrator.t`.
 
 ### Growth logic
 
-The argument `grow_type`
-
+To grow a new clump, a currently existing clump is chosen uniformly at random, then the new clump is placed a distance `rp.springs.L` away from that clump in a random direction and attached with one spring.
 """
-function grow!(rp::RaftParameters, u::Vector{<:Real}, t::Real)
-    n_clumps_max = length(keys(rp.connections))
-
-    x, y = u[1:2:end], u[2:2:end]
-    com_x, com_y = mean(x), mean(y)
-    std_x, std_y = std(x), std(y)
+function grow!(integrator::SciMLBase.DEIntegrator)
+    rp = integrator.p
+    u = integrator.u
     
+    # first determine the location of the new clump
+    mother = rand(keys(rp.connections))
+    x, y = u[2*mother-1:2*mother]
+    r, θ = rp.springs.L, rand(Uniform(0, 2*π))
+    x, y = x + r*cos(θ), y + r*sin(θ)
 
-    rp.connections[n_clumps_max + 1] = rand(keys(rp.connections), 3) # UPDATE THIS WITH CONNECTION LOGIC
+    # resize the integrator and add the new components
+    resize!(integrator, length(u) + 2)
+    u[end-1:end] .= x, y
 
+    # update the connections, this new clump's label should be the highest current label + 1
+    n_clumps_max = length(keys(rp.connections))
+    rp.connections[n_clumps_max + 1] = [mother]
+
+    # update rp.growths at the current time
+    t = integrator.t
     if t in keys(rp.growths)
         push!(rp.growths[t], n_clumps_max + 1)
     else
@@ -73,25 +118,11 @@ function die_land(land_itp::StaticField2DInterpolantEQR)
     end
 
     function affect!(integrator)
-        u = integrator.u
-        t = integrator.t
-        inds = findall([land_itp.u(u[2*i-1], u[2*i]) == 1.0  for i = 1:Integer(length(u)/2)])
-        inds = [inds[i] - (i - 1) for i = 1:length(inds)]
-        # if we have to delete multiple clumps in one step, deleting one clump will change the indices of the others.
-        # since findall is sorted, after you delete the clump indexed by inds[1], then the clumps with indices >inds[1]
-        # have their index decreased by 1, and so on
+        xy = integrator.u
+        inds = findall([land_itp.u(xy[2*i-1], xy[2*i]) == 1.0  for i = 1:Integer(length(xy)/2)])
+        kill!(integrator, inds)
 
-        if length(inds) == Integer(length(u)/2) # all clumps will be removed, so terminate
-            terminate!(integrator)
-        else
-            for i in inds
-                deleteat!(integrator, 2*i - 1) # e.g. index i = 2, delete the 3rd component (x coord of 2nd clump)
-                deleteat!(integrator, 2*i - 1) # now the y coordinate is where the x coordinate was
-                kill!(integrator.p, i, t) # remove the clump and relabel its connections
-            end
-        end
-
-        println("indices $inds hit shore at time $t")
+        println("indices $inds hit shore at time $(integrator.t)")
     end
 
     return DiscreteCallback(condition, affect!)
@@ -104,14 +135,7 @@ function grow_test(t_grow::Vector{<:Real})
     end
 
     function affect!(integrator)
-        u = integrator.u
-        t = integrator.t
-
-        resize!(integrator, length(u) + 2)
-        u[end - 1] = u[end - 1 - 2] + rand()
-        u[end] = u[end - 2] + rand()
-
-        grow!(integrator.p, t)
+        grow!(integrator)
 
         println("growth")
     end

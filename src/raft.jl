@@ -55,7 +55,6 @@ trajectory!(ax, rtr.com,
     opts = (linestyle = :dot, color = rtr.com.t, linewidth = 5)
 ) 
 
-
 # clump
 trajectory!(ax, ctr, 
     opts = (color = ctr.t, colormap = :heat, linewidth = 2)

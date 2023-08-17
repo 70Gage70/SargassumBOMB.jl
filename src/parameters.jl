@@ -258,13 +258,15 @@ A container for the data of a every clump's trajectory in a raft, as well as its
     
 ### Fields 
 - `trajectories`: A `Dict` mapping clump indices to their corresponding [`Trajectory`](@ref).
-- `n_clumps`: The total number of unique clumps that ever existed in the raft. Equivalent to `length(keys(trajectories))`.
+- `t`: A vector of all time possible slices across the clump trajectories.
+- `n_clumps`: A vector such that `n_clumps[i]` is the number of clumps that are alive at time `t[i]`.
 - `com`: A [`Trajectory`](@ref) corresponding to the center of mass of the raft. 
 """
-struct RaftTrajectory{U<:Integer, J<:Trajectory}
-    trajectories::Dict{U,J}
-    n_clumps::U
-    com::J
+struct RaftTrajectory{U<:Integer, T<:Real}
+    trajectories::Dict{U,Trajectory{T}}
+    t::Vector{T}
+    n_clumps::Vector{U}
+    com::Trajectory{T}
 end
 
 """
@@ -281,6 +283,10 @@ function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters)
     # n_total_clumps keeps track of the total number of clumps that have ever existed
     # increases with growths and doesn't change with deaths
     n_total_clumps = Integer(length(sol[1])/2) 
+
+    # n_clumps keeps track of the number of clumps at each time slice
+    # n_clumps[1] = the initial number of clumps = n_total_clumps
+    n_clumps = [n_total_clumps]
 
     # loc_to_label keeps track of which clump actually has its coordinates in positions u[2*i-1, 2*i].
     # when initialized, this is exactly clump i, but it will change after growths and deaths
@@ -303,6 +309,9 @@ function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters)
                                             sol[j][2*i-1] sol[j][2*i] sol.t[j]]
                 end
             end 
+
+            push!(n_clumps, Integer(length(sol[j])/2))
+
         else # note that a growth AND a death could happen in the same step; handle deaths first
             if sol.t[j] in keys(rp.deaths)
                 # suppose that rp.deaths[sol.t[j]] = [k], 
@@ -332,28 +341,23 @@ function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters)
     for i in keys(tr)
         trajectories[i] = Trajectory(tr[i][:,1:2], tr[i][:,3])
     end
-
-    n_clumps = length(keys(trajectories))
-
-    n_times, arg = findmax([length(trajectories[i]) for i = 1:n_clumps])
-    times = trajectories[arg].t
     
+    # all unique times
+    times = [sol.t[i] for i = 1:length(sol.t)-1 if sol.t[i] != sol.t[i+1]]
+    push!(times, sol.t[end])
+
     # arrange trajectories into one big array such that they are matched up by time slice
     # this makes computing the COM much easier
-    com_array = zeros(n_clumps, n_times, 2)
+    com_array = zeros(n_total_clumps, length(times), 2)
 
-    for i = 1:n_clumps
+    for i = 1:n_total_clumps
         # first(trajectories[i].t) is the first time this clump exists
         # `ind` is therefore the index where this trajectory should be slotted into `com_array`
         ind = searchsortedfirst(times, first(trajectories[i].t)) 
         com_array[i,ind:ind+length(trajectories[i])-1,:] .= trajectories[i].xy
     end
 
-    
+    com = [sum(com_array[ci,ti,:] for ci = 1:n_total_clumps)/n_clumps[ti] for ti = 1:length(times)]
 
-
-        
-
-
-    return trajectories
+    return RaftTrajectory(trajectories, times, n_clumps, Trajectory(com, times))
 end

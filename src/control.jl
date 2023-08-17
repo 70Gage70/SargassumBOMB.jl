@@ -28,8 +28,8 @@ end
 Blah blah blah.
 """
 function grow!(rp::RaftParameters, t::Float64)
-    n_clumps_max = maximum(keys(rp.connections))
-    rp.connections[n_clumps_max + 1] = [] # UPDATE THIS WITH CONNECTION LOGIC
+    n_clumps_max = length(keys(rp.connections))
+    rp.connections[n_clumps_max + 1] = rand(keys(rp.connections), 3) # UPDATE THIS WITH CONNECTION LOGIC
 
     if t in keys(rp.growths)
         push!(rp.growths[t], n_clumps_max + 1)

@@ -16,9 +16,11 @@ clump_prob = ODEProblem(Clump!, xy0, tspan, cp)
 @info "Solving model."
 
 @time sol = solve(clump_prob, 
-    saveat = 5.0,
     callback = die_land(land_itp)
 )
+
+tr = Trajectory(sol.u, sol.t)
+
 
 @info "Plotting results."
 

@@ -7,8 +7,8 @@ include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 
 @info "Generating model."
 
-x0, y0 = -64, 14
-# x0, y0 = -55, 10
+# x0, y0 = -64, 14
+x0, y0 = -55, 10
 
 x_range, y_range = sph2xy(range(x0 - 1, x0 + 1, step = 0.5), range(y0 - 1, y0 + 1, step = 0.5), ref_itp)
 tspan = (0.0, 200.0)

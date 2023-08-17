@@ -236,13 +236,17 @@ struct Trajectory{T<:Real}
         @assert length(t) == size(xy, 1) "`t` and `xy` must have the same length."
         @assert size(xy, 2) == 2 "`xy` must have two columns."
     
-        return new{T}(xy, t)
+        inds = unique(i -> t[i], eachindex(t))
+
+        return new{T}(xy[inds,:], t[inds])
     end
 
     function Trajectory(xy::Vector{<:Vector{T}}, t::Vector{T}) where {T<:Real}
         @assert length(t) == length(xy) "`t` and `xy` must have the same length."
+
+        inds = unique(i -> t[i], eachindex(t))
     
-        return new{T}(stack(xy, dims = 1), t)
+        return new{T}(stack(xy, dims = 1)[inds,:], t[inds])
     end    
 end
 
@@ -352,8 +356,7 @@ function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters)
     end
     
     # all unique times
-    times = [sol.t[i] for i = 1:length(sol.t)-1 if sol.t[i] != sol.t[i+1]]
-    push!(times, sol.t[end])
+    times = unique(sol.t)
 
     # arrange trajectories into one big array such that they are matched up by time slice
     # this makes computing the COM much easier

@@ -1,3 +1,8 @@
+using StatsBase
+using Distributions
+
+############################################################
+
 """
     kill!(rp::RaftParameters, i, t)
 
@@ -5,7 +10,7 @@ Remove the clump with index `i` and its connections from `rp` and update `rp.dea
 
 Indices whose value is greater than i are then shifted down by 1.
 """
-function kill!(rp::RaftParameters, i::Integer, t::Float64)
+function kill!(rp::RaftParameters, i::Integer, t::Real)
     delete!(rp.connections, i) # remove i from keys
     rp.connections = Dict(a => filter(x -> x != i, b) for (a,b) in rp.connections) # remove i from values
 
@@ -23,12 +28,23 @@ end
 
 
 """
-    grow!(rp::RaftParameters, t)
+    grow!(rp::RaftParameters, u, t, grow_type)
 
-Blah blah blah.
+Add a clump to `rp` with an index equal to the maximum clump index in `rp` and update `rp.growths` at time `t`, possibly using all the clumps' locations `u`.
+
+### Growth logic
+
+The argument `grow_type`
+
 """
-function grow!(rp::RaftParameters, t::Float64)
+function grow!(rp::RaftParameters, u::Vector{<:Real}, t::Real)
     n_clumps_max = length(keys(rp.connections))
+
+    x, y = u[1:2:end], u[2:2:end]
+    com_x, com_y = mean(x), mean(y)
+    std_x, std_y = std(x), std(y)
+    
+
     rp.connections[n_clumps_max + 1] = rand(keys(rp.connections), 3) # UPDATE THIS WITH CONNECTION LOGIC
 
     if t in keys(rp.growths)

@@ -8,7 +8,7 @@ include(joinpath(@__DIR__, "..", "interpolants", "interpolant-derivatives.jl"))
 ########################################################################
 
 # loading interpolants
-itp_path = joinpath(@__DIR__, "..", "interpolants", "glorys")
+itp_path = joinpath(@__DIR__, "..", "interpolants", "ocean-atmos")
 isdefined(@__MODULE__, :water_itp) || (const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp"))
 isdefined(@__MODULE__, :wind_itp) || (const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp"))
 isdefined(@__MODULE__, :temp_itp) || (const temp_itp = load(joinpath(itp_path, "temp_itp.jld2"), "temp_itp"))

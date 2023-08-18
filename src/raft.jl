@@ -66,23 +66,3 @@ tticks = collect(range(start = minimum(rtr.t), stop = maximum(rtr.t), length = 5
 data_legend!(fig_COM[1,2], L"\mathrm{Days}", ticks = tticks)
 
 fig_COM
-
-# ### Trajectory NET
-
-# fig_NET = default_fig()
-# ax = geo_axis(fig_NET[1, 1], limits = limits, title = L"\mathrm{Raft NET}")
-
-# for i = 1:Integer(length(rp.xy0)/2)
-#     times = sol.t
-#     traj = xy2sph(Rafti(sol, i), ref_itp)
-#     trajectory!(ax, traj, times)
-# end
-
-
-
-# land!(ax)
-
-# tticks = collect(range(start = minimum(times), stop = maximum(times), length = 5))
-# data_legend!(fig_NET[1,2], L"\mathrm{Days}", ticks = tticks)
-
-# fig_NET

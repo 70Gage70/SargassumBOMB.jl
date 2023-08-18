@@ -63,6 +63,7 @@ function kill!(integrator::SciMLBase.DEIntegrator, inds::Vector{<:Integer})
     return nothing
 end
 
+
 """
     grow!(integrator)
 
@@ -122,12 +123,71 @@ function die_land(land_itp::StaticField2DInterpolantEQR)
         inds = findall([land_itp.u(xy[2*i-1], xy[2*i]) == 1.0  for i = 1:Integer(length(xy)/2)])
         kill!(integrator, inds)
 
-        println("indices $inds hit shore at time $(integrator.t)")
+        @info "Clump $inds hit shore at time $(integrator.t)"
     end
 
     return DiscreteCallback(condition, affect!)
 end
 
+"""
+    growth_death_temperature
+
+IN DEVELOPMENT (SLOW).
+
+Checks if the average temperature in the last day was above or below T_opt and whether there has been a T-growth/death in the past day.
+"""
+function growth_death_temperature(temp_itp::ScalarField2DInterpolantEQR; t_lag::Real, T_opt::Real, T_thresh::Real)
+    function condition(u, t, integrator)
+        rp = integrator.p
+
+        if t <= t_lag
+            return false
+        end
+
+        xy_now = integrator.sol(t)
+        xy_past = integrator.sol(t - t_lag)
+
+        com_now = [mean(xy_now[1:2:end]), mean(xy_now[2:2:end])]
+        com_past = [mean(xy_past[1:2:end]), mean(xy_past[2:2:end])]
+
+        temp = (temp_itp.u(com_now..., t) + temp_itp.u(com_past..., t-t_lag))/2
+
+        recent_growth = t - maximum(keys(rp.growths), init = 0.0) > t_lag
+        recent_death = t - maximum(keys(rp.deaths), init = 0.0) > t_lag
+        critical_temp = abs(temp - T_opt) > T_thresh
+
+        return recent_growth && recent_death && critical_temp
+    end
+    
+    function affect!(integrator)
+        rp = integrator.p
+        t = integrator.t
+
+        xy_now = integrator.sol(t)
+        xy_past = integrator.sol(t - t_lag)
+
+        com_now = [mean(xy_now[1:2:end]), mean(xy_now[2:2:end])]
+        com_past = [mean(xy_past[1:2:end]), mean(xy_past[2:2:end])]
+
+        temp = (temp_itp.u(com_now..., t) + temp_itp.u(com_past..., t-t_lag))/2
+
+        if temp < T_opt
+            kill_ind = rand(keys(rp.connections))
+            kill!(integrator, kill_ind)
+
+            @info "Clump $kill_ind T-death at $t"
+
+        elseif temp > T_opt
+            grow!(integrator)
+
+            @info "T-growth at $t"
+        end
+
+        return nothing
+    end
+
+    return DiscreteCallback(condition, affect!)
+end
 
 function grow_test(t_grow::Vector{<:Real})
     function condition(u, t, integrator)

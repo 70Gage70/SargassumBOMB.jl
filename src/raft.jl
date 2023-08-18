@@ -24,7 +24,7 @@ prob_raft = ODEProblem(Raft!, rp.xy0, tspan, rp)
 @time sol_raft = solve(prob_raft, 
     Tsit5(),
     #callback = die_land(water_itp, tol = 0.1)
-    callback = CallbackSet(die_land(land_itp), grow_test([5.0, 50.0]))
+    callback = CallbackSet(die_land(land_itp), growth_death_temperature(temp_itp, t_lag = 5.0, T_opt = 26.0, T_thresh = 0.5))
 )
 
 rtr = RaftTrajectory(sol_raft, rp, ref_itp)

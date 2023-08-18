@@ -13,8 +13,12 @@ x0, y0 = -55, 10
 x_range, y_range = sph2xy(range(x0 - 1, x0 + 1, step = 0.5), range(y0 - 1, y0 + 1, step = 0.5), ref_itp)
 tspan = (0.0, 200.0)
 cp = ClumpParameters(ref_itp)
-spring_k = x -> 20
-rp = RaftParameters(x_range, y_range, cp, spring_k)
+
+# spring_k = x -> 20
+# rp = RaftParameters(x_range, y_range, cp, spring_k)
+spring_k = x -> 20 * (5/100) * x * exp(1 - (5/100)*x) # A(5/k10) * x e^(1 - (5/k10)x)
+rp = RaftParameters(x_range, y_range, cp, spring_k, network_type = "full")
+
 prob_raft = ODEProblem(Raft!, rp.xy0, tspan, rp)
 
 @info "Solving model."

@@ -31,11 +31,11 @@ A container for a two-dimensional vector field defined at each point on a linear
 - `u`: The x component of the vector field, conventionally u[lon, lat, time].
 - `v`: The y component of the vector field, conventionally v[lon, lat, time].
 """
-mutable struct VectorField2DGridSPH{T<:Real} <: AbstractVectorFieldGrid
-    lon::AbstractRange{T}
-    lat::AbstractRange{T}
+mutable struct VectorField2DGridSPH{A<:AbstractRange, T<:Real} <: AbstractVectorFieldGrid
+    lon::A
+    lat::A
     time0::DateTime
-    time::AbstractRange{T}
+    time::A
     u::Array{T,3}
     v::Array{T,3}
 end
@@ -174,11 +174,11 @@ A container for a two-dimensional scalar field defined at each point on a linear
 - `time`: The range of times since `time0` over which the grid is defined.
 - `u`: The value of the scalar field, conventionally u[lon, lat, time].
 """
-mutable struct ScalarField2DGridSPH{T<:Real} <: AbstractScalarFieldGrid
-    lon::AbstractRange{T}
-    lat::AbstractRange{T}
+mutable struct ScalarField2DGridSPH{A<:AbstractRange, T<:Real} <: AbstractScalarFieldGrid
+    lon::A
+    lat::A
     time0::DateTime
-    time::AbstractRange{T}
+    time::A
     u::Array{T,3}
 end
 
@@ -278,13 +278,13 @@ A container for a two-dimensional vector field interpolated over spherical longi
 - `u`: An interpolant for the x component of the vector field. Call as `u(lon, lat, t)`.
 - `v`: An interpolant for the y component of the vector field. Call as `v(lon, lat, t)`.
 """
-struct VectorField2DInterpolantSPH{T<:Real, I<:Interpolations.InterpolationType} <: AbstractVectorFieldInterpolant
-    lon::AbstractRange{T}
-    lat::AbstractRange{T}
+struct VectorField2DInterpolantSPH{R<:AbstractRange, I<:AbstractInterpolation} <: AbstractVectorFieldInterpolant
+    lon::R
+    lat::R
     time0::DateTime
-    time::AbstractRange{T}
-    u::AbstractInterpolation{T, 3, I}
-    v::AbstractInterpolation{T, 3, I}
+    time::R
+    u::I
+    v::I
 end
 
 """
@@ -316,14 +316,14 @@ A container for a two-dimensional vector field interpolated over equirectangular
 - `u`: An interpolant for the x component of the vector field. Call as `u(x, y, t)`.
 - `v`: An interpolant for the y component of the vector field. Call as `v(x, y, t)`.
 """
-struct VectorField2DInterpolantEQR{T<:Real, I<:Interpolations.InterpolationType} <: AbstractVectorFieldInterpolant
+struct VectorField2DInterpolantEQR{T<:Real, R<:AbstractRange, I<:AbstractInterpolation} <: AbstractVectorFieldInterpolant
     ref::EquirectangularReference{T}
-    x::AbstractRange{T}
-    y::AbstractRange{T}
+    x::R
+    y::R
     time0::DateTime
-    time::AbstractRange{T}
-    u::AbstractInterpolation{T, 3, I}
-    v::AbstractInterpolation{T, 3, I}
+    time::R
+    u::I
+    v::I
 end
 
 """
@@ -375,12 +375,12 @@ A container for a two-dimensional scalar field interpolated over spherical longi
 - `time`: The range of times since `time0` over which the grid is defined.
 - `u`: An interpolant for the scalar field. Call as `u(lon, lat, t)`.
 """
-struct ScalarField2DInterpolantSPH{T<:Real, I<:Interpolations.InterpolationType} <: AbstractScalarFieldInterpolant
-    lon::AbstractRange{T}
-    lat::AbstractRange{T}
+struct ScalarField2DInterpolantSPH{R<:AbstractRange, I<:AbstractInterpolation} <: AbstractScalarFieldInterpolant
+    lon::R
+    lat::R
     time0::DateTime
-    time::AbstractRange{T}
-    u::AbstractInterpolation{T, 3, I}
+    time::R
+    u::I
 end
 
 """
@@ -410,13 +410,13 @@ A container for a two-dimensional scalar field interpolated over equirectangular
 - `time`: The range of times since `time0` over which the grid is defined.
 - `u`: An interpolant for the scalar field. Call as `u(x, y, t)`.
 """
-struct ScalarField2DInterpolantEQR{T<:Real, I<:Interpolations.InterpolationType} <: AbstractScalarFieldInterpolant
+struct ScalarField2DInterpolantEQR{T<:Real, R<:AbstractRange, I<:AbstractInterpolation} <: AbstractScalarFieldInterpolant
     ref::EquirectangularReference{T}
-    x::AbstractRange{T}
-    y::AbstractRange{T}
+    x::R
+    y::R
     time0::DateTime
-    time::AbstractRange{T}
-    u::AbstractInterpolation{T, 3, I}
+    time::R
+    u::I
 end
 
 """
@@ -466,11 +466,11 @@ A container for a two-dimensional static field interpolated over equirectangular
 - `y`: The range of y values over which the grid is defined.
 - `u`: An interpolant for the Static field. Call as `u(x, y)`.
 """
-struct StaticField2DInterpolantEQR{T<:Real, I<:Interpolations.InterpolationType} <: AbstractStaticFieldInterpolant
+struct StaticField2DInterpolantEQR{T<:Real, R<:AbstractRange, I<:AbstractInterpolation} <: AbstractStaticFieldInterpolant
     ref::EquirectangularReference{T}
-    x::AbstractRange{T}
-    y::AbstractRange{T}
-    u::AbstractInterpolation{T, 2, I}
+    x::R
+    y::R
+    u::I
 end
 
 """

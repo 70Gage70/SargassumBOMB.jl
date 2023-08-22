@@ -1,8 +1,8 @@
-using DifferentialEquations, ModelingToolkit
+using OrdinaryDiffEq
 using JLD2
-using ProgressMeter
 
 include(joinpath(@__DIR__, "parameters.jl"))
+include(joinpath(@__DIR__, "..", "interpolants", "interpolant-constructors.jl"))
 include(joinpath(@__DIR__, "..", "interpolants", "interpolant-derivatives.jl"))
 
 ########################################################################
@@ -11,13 +11,6 @@ include(joinpath(@__DIR__, "..", "interpolants", "interpolant-derivatives.jl"))
 itp_path = joinpath(@__DIR__, "..", "interpolants", "ocean-atmos")
 isdefined(@__MODULE__, :water_itp) || (const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp"))
 isdefined(@__MODULE__, :wind_itp) || (const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp"))
-isdefined(@__MODULE__, :temp_itp) || (const temp_itp = load(joinpath(itp_path, "temp_itp.jld2"), "temp_itp"))
-isdefined(@__MODULE__, :no3_itp) || (const no3_itp = load(joinpath(itp_path, "no3_itp.jld2"), "no3_itp"))
-isdefined(@__MODULE__, :ref_itp) || (const ref_itp = water_itp.ref)
-
-# loading land
-itp_path = joinpath(@__DIR__, "..", "interpolants", "land")
-isdefined(@__MODULE__, :land_itp) || (const land_itp = load(joinpath(itp_path, "land_itp.jld2"), "land_itp"))
 
 # All the functions depending on wind and water vector fields.
 v_x(x, y, t) = water_itp.u(x, y, t)

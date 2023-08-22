@@ -202,3 +202,13 @@ function grow_test(t_grow::Vector{<:Real})
 
     return DiscreteCallback(condition, affect!)
 end
+
+# condition 
+function (model::BrooksModelParameters)(u, t, integrator)
+    return abs(t - 4.0) < 1.0
+end
+
+# affect!
+function (model::BrooksModelParameters)(integrator)
+    println("affecting!")
+end

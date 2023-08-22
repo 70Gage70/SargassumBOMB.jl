@@ -1,4 +1,7 @@
-include(joinpath(@__DIR__, "models.jl"))
+include(joinpath(@__DIR__, "geography.jl"))
+include(joinpath(@__DIR__, "physics.jl"))
+include(joinpath(@__DIR__, "biology.jl"))
+include(joinpath(@__DIR__, "trajectories.jl"))
 include(joinpath(@__DIR__, "control.jl"))
 include(joinpath(@__DIR__, "../../CustomMakie.jl/src/geo-methods.jl"))
 include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
@@ -25,10 +28,13 @@ prob_raft = ODEProblem(Raft!, rp.xy0, tspan, rp)
 
 # @time sol_no_shore = solve(prob_raft, Tsit5(), reltol = 1e-6, abstol = 1e-6)
 
+bmp = BrooksModelParameters()
+
 @time sol_raft = solve(prob_raft, 
     Tsit5(),
-    #callback = die_land(water_itp, tol = 0.1)
-    callback = CallbackSet(die_land(land_itp), growth_death_temperature(temp_itp, t_lag = 5.0, T_opt = 26.0, T_thresh = 0.5))
+    # callback = die_land(water_itp, tol = 0.1)
+    # callback = CallbackSet(die_land(land_itp), growth_death_temperature(temp_itp, t_lag = 5.0, T_opt = 26.0, T_thresh = 0.5))
+    callback = DiscreteCallback(bmp, bmp)
 )
 
 rtr = RaftTrajectory(sol_raft, rp, ref_itp)
@@ -38,7 +44,7 @@ rtr = RaftTrajectory(sol_raft, rp, ref_itp)
 xy0 = sph2xy(x0, y0, ref_itp) 
 clump_prob = ODEProblem(Clump!, xy0, tspan, cp)
 
-sol_clump = solve(clump_prob)
+sol_clump = solve(clump_prob, Tsit5())
 
 ctr = Trajectory(sol_clump.u, sol_clump.t, ref_itp)
 

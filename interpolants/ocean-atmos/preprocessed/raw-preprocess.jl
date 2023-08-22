@@ -163,5 +163,5 @@ rm("no3-2018.mat", force = true)
 
 matwrite("wind-2018.mat", Dict("lon" => lon_wind, "lat" => lat_wind, "t" => time_wind, "u" => u_wind, "v" => v_wind))
 matwrite("water-2018.mat", Dict("lon" => lon_water, "lat" => lat_water, "t" => time_water, "u" => u_water, "v" => v_water))
-matwrite("temp-2018.mat", Dict("lon" => lon_temp, "lat" => lat_temp, "t" => time_temp, "u" => temp))
-matwrite("no3-2018.mat", Dict("lon" => lon_nutr, "lat" => lat_nutr, "t" => time_nutr, "u" => no3))
+matwrite("temp-2018.mat", Dict("lon" => lon_temp, "lat" => lat_temp, "t" => time_temp, "temp" => temp))
+matwrite("no3-2018.mat", Dict("lon" => lon_nutr, "lat" => lat_nutr, "t" => time_nutr, "no3" => no3))

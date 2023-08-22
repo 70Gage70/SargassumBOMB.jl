@@ -84,13 +84,17 @@ function GriddedField(
         @assert field_name in data_keys "`field_name` $(field_name) not in $(infile)"
     end   
 
-    vars = read(data, var_names...) .|> vec |> collect # want vectors (not N x 1 matrices) so map each var to `vec`
-    fields = read(data, field_names...) |> collect
+    vars = read(data, var_names...) .|> vec # want vectors (not N x 1 matrices) so map each var to `vec`
+    fields = read(data, field_names...)
     close(data)
+
+    # reading multiple keys at once returns a tuple, so need to collect in that case
+    vars = vars isa Tuple ? collect(vars) : [vars]
+    fields = fields isa Tuple ? collect(fields) : [fields]
 
     # ensure dimensions are consistent
     for i = 1:length(field_names)
-        @assert length(var_names) == ndims(fields[i]) "Field $(field_names[i]) has size $(ndims(fields[i])) but have $(length(var_names)) variables."
+        @assert length(var_names) == ndims(fields[i]) "Field $(field_names[i]) has size $(ndims(fields[i])) but has $(length(var_names)) variables."
     end    
 
     # clean variable grids to ranges
@@ -166,23 +170,35 @@ function sph2xy(
     x, y = sph2xy(lon, lat, gridded_field.ref)
 
     new_var_names = Vector{Symbol}()
-    new_var_units = typeof(gridded_field.vars_units)()
     new_vars = typeof(gridded_field.vars)()
 
     for var_name in gridded_field.var_names
         if var_name == lon_name
             push!(new_var_names, x_name)
-            new_var_units[x_name] = xy_units
             new_vars[x_name] = x
         elseif var_name == lat_name
             push!(new_var_names, y_name)
-            new_var_units[y_name] = xy_units
             new_vars[y_name] = y
         else
             push!(new_var_names, var_name)
             new_vars[var_name] = gridded_field.vars[var_name]
-            new_var_units[var_name] = gridded_field.vars_units[var_name]
         end
+    end
+
+    if gridded_field.vars_units !== nothing
+        new_var_units = typeof(gridded_field.vars_units)()
+
+        for var_name in gridded_field.var_names
+            if var_name == lon_name
+                new_var_units[x_name] = xy_units
+            elseif var_name == lat_name
+                new_var_units[y_name] = xy_units
+            else
+                new_var_units[var_name] = gridded_field.vars_units[var_name]
+            end
+        end
+    else
+        new_var_units = nothing
     end
 
     return GriddedField(new_var_names, new_vars, gridded_field.fields, new_var_units, gridded_field.fields_units, gridded_field.time_start, gridded_field.ref)

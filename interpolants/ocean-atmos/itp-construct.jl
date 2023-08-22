@@ -1,6 +1,6 @@
 using JLD2
 
-include(joinpath(@__DIR__, "..", "interpolant-constructors.jl"))
+include(joinpath(@__DIR__, "..", "interpolant-core.jl"))
 
 #############################################################################
 
@@ -45,8 +45,15 @@ const ref_itp = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
 outfile = joinpath(@__DIR__, "wind_itp.jld2")
 rm(outfile, force = true)
 
-itp = VectorField2DGridSPH(wind_file)
-itp = VectorField2DInterpolantEQR(itp, ref_itp)
+itp = GriddedField(wind_file, ["lon", "lat", "t"], ["u", "v"], 
+    time_index = 3, 
+    time2datetime = rata2datetime_minute, 
+    NaN_replacement = 0.0, 
+    var_units = ["deg E/W", "deg N/S", "days"], 
+    field_units = ["km/s", "km/s"], 
+    ref = ref_itp)
+itp = itp |> sph2xy |> interpolate
+
 jldsave(outfile, wind_itp = itp)
 
 @info "Wind interpolant written to $(outfile)."
@@ -58,11 +65,19 @@ jldsave(outfile, wind_itp = itp)
 outfile = joinpath(@__DIR__, "water_itp.jld2")
 rm(outfile, force = true)
 
-itp = VectorField2DGridSPH(water_file)
-itp = VectorField2DInterpolantEQR(itp, ref_itp)
+itp = GriddedField(water_file, ["lon", "lat", "t"], ["u", "v"], 
+    time_index = 3, 
+    time2datetime = rata2datetime_minute, 
+    NaN_replacement = 0.0, 
+    var_units = ["deg E/W", "deg N/S", "days"], 
+    field_units = ["km/s", "km/s"], 
+    ref = ref_itp)
+itp = itp |> sph2xy |> interpolate
+
 jldsave(outfile, water_itp = itp)
 
 @info "Water interpolant written to $(outfile)."
+
 
 ##############################################################################
 
@@ -71,9 +86,14 @@ jldsave(outfile, water_itp = itp)
 outfile = joinpath(@__DIR__, "temp_itp.jld2")
 rm(outfile, force = true)
 
-itp = ScalarField2DGridSPH(temp_file)
-itp = ScalarField2DInterpolantEQR(itp, ref_itp)
-jldsave(outfile, temp_itp = itp)
+itp = GriddedField(temp_file, ["lon", "lat", "t"], ["temp"], 
+    time_index = 3, 
+    time2datetime = rata2datetime_minute, 
+    NaN_replacement = 0.0, 
+    var_units = ["deg E/W", "deg N/S", "days"], 
+    field_units = ["° C"], 
+    ref = ref_itp)
+itp = itp |> sph2xy |> interpolate
 
 @info "Temperature interpolant written to $(outfile)."
 
@@ -84,9 +104,14 @@ jldsave(outfile, temp_itp = itp)
 outfile = joinpath(@__DIR__, "no3_itp.jld2")
 rm(outfile, force = true)
 
-itp = ScalarField2DGridSPH(no3_file)
-itp = ScalarField2DInterpolantEQR(itp, ref_itp)
-jldsave(outfile, no3_itp = itp)
+itp = GriddedField(no3_file, ["lon", "lat", "t"], ["no3"], 
+    time_index = 3, 
+    time2datetime = rata2datetime_minute, 
+    NaN_replacement = 0.0, 
+    var_units = ["deg E/W", "deg N/S", "days"], 
+    field_units = ["mmol/m^3"], 
+    ref = ref_itp)
+itp = itp |> sph2xy |> interpolate
 
 @info "NO3 interpolant written to $(outfile)."
 

@@ -254,7 +254,7 @@ function interpolate_field(
     u::AbstractArray; 
     interpolant_type = DEFAULT_INTERPOLATION)
 
-    return extrapolate(scale(interpolate(u, interpolant_type), x, y, t), 0.0)
+    return extrapolate(scale(Interpolations.interpolate(u, interpolant_type), x, y, t), 0.0)
 end
 
 """

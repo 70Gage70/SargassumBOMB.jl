@@ -84,8 +84,8 @@ function GriddedField(
         @assert field_name in data_keys "`field_name` $(field_name) not in $(infile)"
     end   
 
-    vars = read(data, var_names...) .|> vec # want vectors (not N x 1 matrices) so map each var to `vec`
-    fields = read(data, field_names...)
+    vars = read(data, var_names...) .|> vec |> collect # want vectors (not N x 1 matrices) so map each var to `vec`
+    fields = read(data, field_names...) |> collect
     close(data)
 
     # ensure dimensions are consistent
@@ -100,7 +100,7 @@ function GriddedField(
     for i = 1:length(vars)
         if step(vars[i]) < 0
             reverse!.(fields, dims = i)
-            reverse!(vars[i])
+            vars[i] = reverse(vars[i])
         end
     end
 
@@ -137,6 +137,55 @@ function GriddedField(
     fields_units_dict = Dict(Symbol.(field_names) .=> field_units)
  
     return GriddedField(var_names_symb, vars_dict, fields_dict, vars_units_dict, fields_units_dict, time_start, ref)
+end
+
+"""
+    sph2xy(gridded_field; lon_name = :lon, lat_name = :lat, x_name = :x, y_name = :y, xy_units = "km")
+
+Transform the `lon`, `lat` variables in `gridded_field` to `x`, `y` variables with reference `gridded_field.ref` and
+return a new `GriddedField`.
+
+The units of `x` and `y` are the same as `ref.R`.
+
+The `lon` and `lat` variables in `gridded_field` should have names `lat_name` (default `:lat`) and `lon_name` (default `:lon`).
+
+The units of `x` and `y` are updated to `xy_units` (default "km").
+
+The returned `GriddedField` has its variable names updated to `x_name` (default `:x`) and `y_name` (default `:y`).
+"""
+function sph2xy(
+    gridded_field::GriddedField;
+    lon_name::Symbol = :lon, 
+    lat_name::Symbol = :lat, 
+    x_name::Symbol = :x, 
+    y_name::Symbol = :y,
+    xy_units::String = "km")
+
+    lon = gridded_field.vars[lon_name]
+    lat = gridded_field.vars[lat_name]
+    x, y = sph2xy(lon, lat, gridded_field.ref)
+
+    new_var_names = Vector{Symbol}()
+    new_var_units = typeof(gridded_field.vars_units)()
+    new_vars = typeof(gridded_field.vars)()
+
+    for var_name in gridded_field.var_names
+        if var_name == lon_name
+            push!(new_var_names, x_name)
+            new_var_units[x_name] = xy_units
+            new_vars[x_name] = x
+        elseif var_name == lat_name
+            push!(new_var_names, y_name)
+            new_var_units[y_name] = xy_units
+            new_vars[y_name] = y
+        else
+            push!(new_var_names, var_name)
+            new_vars[var_name] = gridded_field.vars[var_name]
+            new_var_units[var_name] = gridded_field.vars_units[var_name]
+        end
+    end
+
+    return GriddedField(new_var_names, new_vars, gridded_field.fields, new_var_units, gridded_field.fields_units, gridded_field.time_start, gridded_field.ref)
 end
 
 """
@@ -188,16 +237,22 @@ function interpolate(
     end
 
     vars = [gridded_field.vars[name] for name in gridded_field.var_names]
-    field_names = collect(keys(gridded_field.field_names))
-    interps = [extrapolate(scale(interpolate(gridded_field.fields[name], interpolant_type), vars...), extrapolate_value) for name in field_names]
+    field_names = collect(keys(gridded_field.fields))
+    interps = [
+        extrapolate(
+            scale(
+                Interpolations.interpolate(gridded_field.fields[name], spline), 
+            vars...), 
+        extrapolate_value) 
+        for name in field_names]
     fields_dict = Dict(field_names .=> interps)
 
     return InterpolatedField(
         gridded_field.var_names, 
         gridded_field.vars, 
         fields_dict, 
-        gridded_field.vars_unit, 
-        gridded_field.fields_unit, 
+        gridded_field.vars_units, 
+        gridded_field.fields_units, 
         gridded_field.time_start, 
         gridded_field.ref)
 end
@@ -215,12 +270,12 @@ function Base.show(io::IO, x::Union{GriddedField, InterpolatedField})
         println(io, " Variables: ", x.var_names)
     end
 
-    println(io, " Dimensions: ", size(x.fields[var_names[1]]))
+    println(io, " Dimensions: ", [length(x.vars[name]) for name in x.var_names])
 
     if x.fields_units !== nothing
-        println(io, " Fields: ", [(name, x.fields_units[name]) for name in keys(fields)])
+        println(io, " Fields: ", [(name, x.fields_units[name]) for name in keys(x.fields)])
     else
-        println(io, " Fields: ", collect(keys(fields)))
+        println(io, " Fields: ", collect(keys(x.fields)))
     end
 
     if x.time_start !== nothing
@@ -230,7 +285,7 @@ function Base.show(io::IO, x::Union{GriddedField, InterpolatedField})
     end
 
     if x.ref !== nothing
-        println(io, " Ref: ", x.ref)
+        println(io, " Ref: ", "lon0 = ", x.ref.lon0, ", lat0 = ", x.ref.lat0)
     end  
 
 end

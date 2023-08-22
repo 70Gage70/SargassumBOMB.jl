@@ -142,23 +142,95 @@ end
 """
     struct InterpolatedField{T, A, R}
 
-A container for gridded, possibly time-dependent, field data. 
+Indentical to [`GriddedField`](@ref) except `fields` is a map from field names to interpolating functions 
+rather than arrays.
 
-### Fields
-- `var_names`: A `Vector` of `Symbol`s such that `var_names[i]` is the `i`th dimension of `fields`.
-- `vars`: A `Dict` mapping variable names to ranges they take.
-- `fields`: A `Dict` mapping field names to their arrays.
-- `vars_units`: A `Dict` mapping variable names to their units. (Optional)
-- `fields_units`: A `Dict` mapping field names to their units.
-- `time_start`: For time-dependent fields, this is the `DateTime` of the first entry of the time variable.
-- `ref`: An [`EquirectangularReference`](@ref) providing the translation between spherical and equirectangular coordinates of the `vars`.
+### Constructors 
+
+Refer to `interpolate(gridded_field::GriddedField)`.
 """
-struct InterpolatedField{R<:AbstractRange, A<:AbstractArray, Q<:Union{EquirectangularReference{<:Real}, Nothing}}
+struct InterpolatedField{R<:AbstractRange, I<:AbstractInterpolation, Q<:Union{EquirectangularReference{<:Real}, Nothing}}
     var_names::Vector{Symbol}
     vars::Dict{Symbol, R}
-    fields::Dict{Symbol, A}
+    fields::Dict{Symbol, I}
     vars_units::Union{Dict{Symbol, String}, Nothing}
     fields_units::Union{Dict{Symbol, String}, Nothing}
     time_start::Union{DateTime, Nothing}
     ref::Q
+end
+
+"""
+    interpolate(gridded_field; interpolant_type, extrapolate_value)
+
+Create an `InterpolatedField` from `gridded_field::GriddedField` using interpolation `interpolant_type` and with 
+a constant extrapolat `extrapolate_value`.
+
+### Optional Arguments
+
+- `interpolant_type`: Two convenience flags are provided, `"cubic"` and `"nearest` which refer to cubic BSpline and nearest-neighbor interpolation, respectively. Alternatively, any `Interpolations.InterpolationType` can be provided. Default `"cubic"`.
+- `extrapolate_value`: A constant extrapolation is performed with this value. Default `"0.0"`.
+"""
+function interpolate(
+    gridded_field::GriddedField; 
+    interpolant_type::Union{String, Interpolations.InterpolationType} = "cubic",
+    extrapolate_value::Real = 0.0)
+
+    if interpolant_type isa String
+        @assert interpolant_type in ["cubic", "nearest"] "kwarg `interpolant_type` should be either $("cubic"), $("nearest") or an `Interpolations.InterpolationType`."
+
+        if interpolant_type == "cubic"
+            spline = BSpline(Cubic(Interpolations.Line(OnGrid())))
+        elseif interpolant_type == "nearest"
+            spline = BSpline(Constant)
+        end
+    else
+        spline = interpolant_type
+    end
+
+    vars = [gridded_field.vars[name] for name in gridded_field.var_names]
+    field_names = collect(keys(gridded_field.field_names))
+    interps = [extrapolate(scale(interpolate(gridded_field.fields[name], interpolant_type), vars...), extrapolate_value) for name in field_names]
+    fields_dict = Dict(field_names .=> interps)
+
+    return InterpolatedField(
+        gridded_field.var_names, 
+        gridded_field.vars, 
+        fields_dict, 
+        gridded_field.vars_unit, 
+        gridded_field.fields_unit, 
+        gridded_field.time_start, 
+        gridded_field.ref)
+end
+
+function Base.show(io::IO, x::Union{GriddedField, InterpolatedField})
+    if x isa GriddedField
+        println(io, "GriddedField")
+    else
+        println(io, "InterpolatedField")
+    end
+
+    if x.vars_units !== nothing
+        println(io, " Variables: ", [(name, x.vars_units[name]) for name in x.var_names])
+    else
+        println(io, " Variables: ", x.var_names)
+    end
+
+    println(io, " Dimensions: ", size(x.fields[var_names[1]]))
+
+    if x.fields_units !== nothing
+        println(io, " Fields: ", [(name, x.fields_units[name]) for name in keys(fields)])
+    else
+        println(io, " Fields: ", collect(keys(fields)))
+    end
+
+    if x.time_start !== nothing
+        println(io, " Time Start: ", x.time_start)
+    else
+        println(io, " Time Start: ", "Time-independent")
+    end
+
+    if x.ref !== nothing
+        println(io, " Ref: ", x.ref)
+    end  
+
 end

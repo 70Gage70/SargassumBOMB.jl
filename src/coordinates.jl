@@ -70,6 +70,50 @@ function sph2xy(lon_range::AbstractRange, lat_range::AbstractRange, ref::Equirec
 end
 
 """
+    sph2xy(gridded_field, ref; lon_name = :lon, lat_name = :lat, x_name = :x, y_name = :y)
+
+Transform the `lon`, `lat` variables in `gridded_field` to `x`, `y` variables with reference `ref::EquirectangularReference` and
+return a new `GriddedField`.
+
+The units of `x` and `y` are the same as `ref.R`.
+
+The `lon` and `lat` variables in `gridded_field` should have names `lat_name` (default `:lat`) and `lon_name` (default `:lon`).
+
+The returned `GriddedField` has its `ref` field updated to the input argument `ref` and its variable names updated to `x_name` (default `:x`)
+and `y_name` (default `:y`).
+"""
+function sph2xy(
+    gridded_field::GriddedField, 
+    ref::EquirectangularReference;
+    lon_name::Symbol = :lon, 
+    lat_name::Symbol = :lat, 
+    x_name::Symbol = :x, 
+    y_name::Symbol = :y)
+
+    lon = gridded_field.vars[lon_name]
+    lat = gridded_field.vars[lat_name]
+    x, y = sph2xy(lon, lat, ref)
+
+    new_var_names = Vector{Symbol}()
+    new_vars = typeof(lon)()
+
+    for var_name in gridded_field.var_names
+        if var_name == lon_name
+            new_vars[x_name] = x
+            push!(new_var_names, x_name)
+        elseif var_name == lat_name
+            new_vars[y_name] = y
+            push!(new_var_names, y_name)
+        else
+            new_vars[var_name] = gridded_field.vars[var_name]
+            push!(new_var_names, var_name)
+        end
+    end
+
+    return GriddedField(new_var_names, new_vars, gridded_field.fields, gridded_field.vars_units, gridded_field.fields_units, gridded_field.time_start, ref)
+end
+
+"""
     xy2sph(x, y, ref)
 
 Compute spherical coordinates `[lon, lat]` [deg] from rectilinear coordinates `(x, y)` from with references `ref::EquirectangularReference`.

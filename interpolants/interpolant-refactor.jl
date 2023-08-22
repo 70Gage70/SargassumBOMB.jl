@@ -9,7 +9,7 @@ include(joinpath(@__DIR__, "..", "src", "coordinates.jl"))
 """
     struct GriddedField{T, A, R}
 
-A container for gridded, possible time-dependent, field data. 
+A container for gridded, possibly time-dependent, field data. 
 
 ### Fields
 - `var_names`: A `Vector` of `Symbol`s such that `var_names[i]` is the `i`th dimension of `fields`.
@@ -139,3 +139,26 @@ function GriddedField(
     return GriddedField(var_names_symb, vars_dict, fields_dict, vars_units_dict, fields_units_dict, time_start, ref)
 end
 
+"""
+    struct InterpolatedField{T, A, R}
+
+A container for gridded, possibly time-dependent, field data. 
+
+### Fields
+- `var_names`: A `Vector` of `Symbol`s such that `var_names[i]` is the `i`th dimension of `fields`.
+- `vars`: A `Dict` mapping variable names to ranges they take.
+- `fields`: A `Dict` mapping field names to their arrays.
+- `vars_units`: A `Dict` mapping variable names to their units. (Optional)
+- `fields_units`: A `Dict` mapping field names to their units.
+- `time_start`: For time-dependent fields, this is the `DateTime` of the first entry of the time variable.
+- `ref`: An [`EquirectangularReference`](@ref) providing the translation between spherical and equirectangular coordinates of the `vars`.
+"""
+struct InterpolatedField{R<:AbstractRange, A<:AbstractArray, Q<:Union{EquirectangularReference{<:Real}, Nothing}}
+    var_names::Vector{Symbol}
+    vars::Dict{Symbol, R}
+    fields::Dict{Symbol, A}
+    vars_units::Union{Dict{Symbol, String}, Nothing}
+    fields_units::Union{Dict{Symbol, String}, Nothing}
+    time_start::Union{DateTime, Nothing}
+    ref::Q
+end

@@ -94,24 +94,65 @@ function kill!(integrator::SciMLBase.DEIntegrator, inds::Vector{<:Integer})
 end
 
 
+# """
+#     grow!(integrator)
+
+# Add a clump to the [`RaftParameters`](@ref), `rp = integrator.p` with an index equal to the maximum clump index and update `rp.growths` at time `intergrator.t`.
+
+# ### Growth logic
+
+# To grow a new clump, a currently existing clump is chosen uniformly at random, then the new clump is placed a distance `rp.springs.L` away from that clump in a random direction and attached with one spring.
+# """
+# function grow!(integrator::SciMLBase.DEIntegrator)
+#     rp = integrator.p
+#     u = integrator.u
+    
+#     # first determine the location of the new clump
+#     mother = rand(keys(rp.connections))
+#     x, y = u[2*mother-1:2*mother]
+#     r, θ = rp.springs.L, rand(Uniform(0, 2*π))
+#     x, y = x + r*cos(θ), y + r*sin(θ)
+
+#     # resize the integrator and add the new components
+#     resize!(integrator, length(u) + 2)
+#     u[end-1:end] .= x, y
+
+#     # update the connections, this new clump's label should be the highest current label + 1
+#     n_clumps_max = length(keys(rp.connections))
+#     rp.connections[n_clumps_max + 1] = [mother]
+
+#     # update rp.growths at the current time
+#     t = integrator.t
+#     if t in keys(rp.growths)
+#         push!(rp.growths[t], n_clumps_max + 1)
+#     else
+#         rp.growths[t] = [n_clumps_max + 1]
+#     end
+    
+#     return nothing
+# end
+
 """
-    grow!(integrator)
+    grow!(integrator, x, y, connections)
 
 Add a clump to the [`RaftParameters`](@ref), `rp = integrator.p` with an index equal to the maximum clump index and update `rp.growths` at time `intergrator.t`.
 
-### Growth logic
+### Connections 
 
-To grow a new clump, a currently existing clump is chosen uniformly at random, then the new clump is placed a distance `rp.springs.L` away from that clump in a random direction and attached with one spring.
+`connections` can be a pre-defined flag, an integer, or a vector of integers.
+
+The possible flags are:
+- `"full"`: The new clump is connected to each other clump.
+- `"none"`: The new clump it not connected to any other clump.
+
+If `connections` is an `Integer` with value `n`, the new clump will be connected to the nearest `n` clumps. If `n` is ≥ the total number of clumps, 
+this is equivalent to `"full"`.
+
+If `connections` is a `Vector{<:Integer}`, the new clump will be connected to clumps with those indices.
 """
-function grow!(integrator::SciMLBase.DEIntegrator)
+function grow!(integrator::SciMLBase.DEIntegrator, x::Real, y::Real, connections::Union{String, Integer, Vector{<:Integer}})
     rp = integrator.p
     u = integrator.u
-    
-    # first determine the location of the new clump
-    mother = rand(keys(rp.connections))
-    x, y = u[2*mother-1:2*mother]
-    r, θ = rp.springs.L, rand(Uniform(0, 2*π))
-    x, y = x + r*cos(θ), y + r*sin(θ)
 
     # resize the integrator and add the new components
     resize!(integrator, length(u) + 2)
@@ -119,7 +160,21 @@ function grow!(integrator::SciMLBase.DEIntegrator)
 
     # update the connections, this new clump's label should be the highest current label + 1
     n_clumps_max = length(keys(rp.connections))
-    rp.connections[n_clumps_max + 1] = [mother]
+
+    if connections isa String 
+        @assert connections in ["full", "none"] "If `connections` is a string, it must be either $("full") or $("none")."
+        if connections == "full"
+            rp.connections[n_clumps_max + 1] = collect(1:n_clumps_max)
+        elseif connections == "none"
+            rp.connections[n_clumps_max + 1] = valtype(rp.connections)()
+        end
+    elseif connections isa Integer
+        dists = [norm([x, y] - clump_i(u, i)) for i = 1:n_clumps_max-1]
+        closest = partialsortperm(dists, 1:min(connections, n_clumps_max), rev = true) |> collect
+        rp.connections[n_clumps_max + 1] = closest
+    elseif connections isa Vector
+        rp.connections[n_clumps_max + 1] = closest
+    end
 
     # update rp.growths at the current time
     t = integrator.t
@@ -131,6 +186,7 @@ function grow!(integrator::SciMLBase.DEIntegrator)
     
     return nothing
 end
+
 
 """
     growth_death_temperature

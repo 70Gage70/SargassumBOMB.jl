@@ -32,10 +32,10 @@ bmp = BrooksModelParameters()
 
 @time sol_raft = solve(prob_raft, 
     Tsit5(),
-    # callback = die_land(water_itp, tol = 0.1)
+    callback = die_land(land_itp)
     # callback = CallbackSet(die_land(land_itp), growth_death_temperature(temp_itp, t_lag = 5.0, T_opt = 26.0, T_thresh = 0.5))
-    callback = DiscreteCallback(bmp, bmp)
-)
+    # callback = DiscreteCallback(bmp, bmp)
+);
 
 rtr = RaftTrajectory(sol_raft, rp, ref_itp)
 

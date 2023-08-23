@@ -95,6 +95,8 @@ itp = GriddedField(temp_file, ["lon", "lat", "t"], ["temp"],
     ref = ref_itp)
 itp = itp |> sph2xy |> interpolate
 
+jldsave(outfile, temp_itp = itp)
+
 @info "Temperature interpolant written to $(outfile)."
 
 ##############################################################################
@@ -112,6 +114,8 @@ itp = GriddedField(no3_file, ["lon", "lat", "t"], ["no3"],
     field_units = ["mmol/m^3"], 
     ref = ref_itp)
 itp = itp |> sph2xy |> interpolate
+
+jldsave(outfile, no3_itp = itp)
 
 @info "NO3 interpolant written to $(outfile)."
 

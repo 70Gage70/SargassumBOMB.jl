@@ -110,17 +110,17 @@ Create a `DiscreteCallback` which kills clumps when they reach the shore and ter
 
 ### Arguments
 
-- `land_itp`: A `StaticField2DInterpolantEQR` which gives the interpolated land locations.
+- `land_itp`: A `InterpolatedField` which gives the interpolated land locations.
 """
-function die_land(land_itp::StaticField2DInterpolantEQR)
+function die_land(land_itp::InterpolatedField)
 
     function condition(u, t, integrator)
-        return any([land_itp.u(u[2*i-1], u[2*i]) == 1.0  for i = 1:Integer(length(u)/2)])
+        return any([land_itp.fields[:land](u[2*i-1], u[2*i]) == 1.0  for i = 1:Integer(length(u)/2)])
     end
 
     function affect!(integrator)
         xy = integrator.u
-        inds = findall([land_itp.u(xy[2*i-1], xy[2*i]) == 1.0  for i = 1:Integer(length(xy)/2)])
+        inds = findall([land_itp.fields[:land](xy[2*i-1], xy[2*i]) == 1.0  for i = 1:Integer(length(xy)/2)])
         kill!(integrator, inds)
 
         @info "Clump $inds hit shore at time $(integrator.t)"
@@ -136,7 +136,7 @@ IN DEVELOPMENT (SLOW).
 
 Checks if the average temperature in the last day was above or below T_opt and whether there has been a T-growth/death in the past day.
 """
-function growth_death_temperature(temp_itp::ScalarField2DInterpolantEQR; t_lag::Real, T_opt::Real, T_thresh::Real)
+function growth_death_temperature(temp_itp::InterpolatedField; t_lag::Real, T_opt::Real, T_thresh::Real)
     function condition(u, t, integrator)
         rp = integrator.p
 
@@ -169,7 +169,7 @@ function growth_death_temperature(temp_itp::ScalarField2DInterpolantEQR; t_lag::
         com_now = [mean(xy_now[1:2:end]), mean(xy_now[2:2:end])]
         com_past = [mean(xy_past[1:2:end]), mean(xy_past[2:2:end])]
 
-        temp = (temp_itp.u(com_now..., t) + temp_itp.u(com_past..., t-t_lag))/2
+        temp = (temp_itp.fields[:temp](com_now..., t) + temp_itp.fields[:temp](com_past..., t-t_lag))/2
 
         if temp < T_opt
             kill_ind = rand(keys(rp.connections))

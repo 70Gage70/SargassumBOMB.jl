@@ -2,7 +2,7 @@ using OrdinaryDiffEq
 using JLD2
 
 include(joinpath(@__DIR__, "parameters.jl"))
-include(joinpath(@__DIR__, "..", "interpolants", "interpolant-constructors.jl"))
+include(joinpath(@__DIR__, "..", "interpolants", "interpolant-core.jl"))
 include(joinpath(@__DIR__, "..", "interpolants", "interpolant-derivatives.jl"))
 
 ########################################################################
@@ -13,12 +13,12 @@ isdefined(@__MODULE__, :water_itp) || (const water_itp = load(joinpath(itp_path,
 isdefined(@__MODULE__, :wind_itp) || (const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp"))
 
 # All the functions depending on wind and water vector fields.
-v_x(x, y, t) = water_itp.u(x, y, t)
-v_y(x, y, t) =  water_itp.v(x, y, t)
+v_x(x, y, t) = water_itp.fields[:u](x, y, t)
+v_y(x, y, t) =  water_itp.fields[:v](x, y, t)
 Dv_xDt(x, y, t) = MaterialDerivativeX(water_itp, x, y, t)
 Dv_yDt(x, y, t) = MaterialDerivativeY(water_itp, x, y, t)
-u_x(x, y, t, α) = (1 - α) * water_itp.u(x, y, t) + α * wind_itp.u(x, y, t)
-u_y(x, y, t, α) = (1 - α) * water_itp.v(x, y, t) + α * wind_itp.v(x, y, t)
+u_x(x, y, t, α) = (1 - α) * water_itp.fields[:u](x, y, t) + α * wind_itp.fields[:u](x, y, t)
+u_y(x, y, t, α) = (1 - α) * water_itp.fields[:v](x, y, t) + α * wind_itp.fields[:v](x, y, t)
 Du_xDt(x, y, t, α) = (1 - α) * MaterialDerivativeX(water_itp, x, y, t) + α * MaterialDerivativeX(wind_itp, x, y, t) 
 Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * MaterialDerivativeY(wind_itp, x, y, t) 
 ω(x, y, t) = Vorticity(water_itp, x, y, t)

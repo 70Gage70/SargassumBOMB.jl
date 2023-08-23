@@ -1,6 +1,6 @@
 using LinearAlgebra: ⋅
 
-include("interpolant-constructors.jl")
+include("interpolant-core.jl")
 
 ########################################################
 
@@ -9,8 +9,8 @@ include("interpolant-constructors.jl")
 
 Compute the material derivative of the x component of the vector field `vector_field` at coordinates `(x, y, t)`.
 """
-function MaterialDerivativeX(vector_field::VectorField2DInterpolantEQR, x::Real, y::Real, t::Real)
-    return gradient(vector_field.u, x, y, t) ⋅ [vector_field.u(x, y, t), vector_field.v(x, y, t), 1.0]
+function MaterialDerivativeX(vector_field::InterpolatedField, x::Real, y::Real, t::Real)
+    return gradient(vector_field.fields[:u], x, y, t) ⋅ [vector_field.fields[:u](x, y, t), vector_field.fields[:v](x, y, t), 1.0]
 end
 
 """
@@ -18,8 +18,8 @@ end
 
 Compute the material derivative of the y component of the vector field `vector_field` at coordinates `(x, y, t)`.
 """
-function MaterialDerivativeY(vector_field::VectorField2DInterpolantEQR, x::Real, y::Real, t::Real)
-    return gradient(vector_field.v, x, y, t) ⋅ [vector_field.u(x, y, t), vector_field.v(x, y, t), 1.0]
+function MaterialDerivativeY(vector_field::InterpolatedField, x::Real, y::Real, t::Real)
+    return gradient(vector_field.fields[:v], x, y, t) ⋅ [vector_field.fields[:u](x, y, t), vector_field.fields[:v](x, y, t), 1.0]
 end
 
 """
@@ -27,6 +27,6 @@ end
 
 Compute the vorticity of the vector field `vector_field` at coordinates `(x, y, t)`.
 """
-function Vorticity(vector_field::VectorField2DInterpolantEQR, x::Real, y::Real, t::Real)
-    return gradient(vector_field.v, x, y, t)[1] - gradient(vector_field.u, x, y, t)[2]
+function Vorticity(vector_field::InterpolatedField, x::Real, y::Real, t::Real)
+    return gradient(vector_field.fields[:v], x, y, t)[1] - gradient(vector_field.fields[:u], x, y, t)[2]
 end

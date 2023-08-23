@@ -2,7 +2,7 @@ using OrdinaryDiffEq
 using JLD2
 
 include(joinpath(@__DIR__, "parameters.jl"))
-include(joinpath(@__DIR__, "..", "interpolants", "interpolant-constructors.jl"))
+include(joinpath(@__DIR__, "..", "interpolants", "interpolant-core.jl"))
 
 ########################################################################
 

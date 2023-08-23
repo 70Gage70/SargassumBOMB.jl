@@ -7,30 +7,27 @@ using Distributions
     n_clumps(u)
 
 Return the number of clumps in the solution vector `u`. This is `Integer(length(u)/2)`.
-
-Can also be applied to an `integrator`, in which case it returns `n_clumps(integrator.u)`
 """
 function n_clumps(u::Vector{<:Real})
     return Integer(length(u)/2)
-end
-
-function n_clumps(integrator::SciMLBase.DEIntegrator)
-    return Integer(length(integrator.u)/2)
 end
 
 """
     n_clumps(u)
 
 Return the `[x, y]` coordinates of the `i`th clump in the solution vector `u`. This is `u[2*i - 1:2*i]`.
-
-Can also be applied to an `integrator`, in which case it returns `n_clumps(integrator.u)`
 """
 function clump_i(u::Vector{<:Real}, i::Integer)
     return u[2*i - 1:2*i]
 end
 
-function clump_i(integrator::SciMLBase.DEIntegrator, i::Integer)
-    return integrator.u[2*i - 1:2*i]
+"""
+    com(u)
+
+Return the center of mass `[x, y]` coordinates of the solution vector `u`.
+"""
+function com(u::Vector{<:Real})
+    return [mean(u[1:2:end]), mean(u[2:2:end])]
 end
 
 """
@@ -137,6 +134,17 @@ end
 
 Add a clump to the [`RaftParameters`](@ref), `rp = integrator.p` with an index equal to the maximum clump index and update `rp.growths` at time `intergrator.t`.
 
+### Locations 
+
+`locations` can be a pre-defined flag or a `[x, y]` vector.
+
+The possible flags are:
+- `"parent"`: A parent clump is chosen among clumps that already exist, and the new clump is placed a distance `integrator.rp.springs.L` away and at a 
+random angle from it.
+- `"com"`: The same as `"parent"`, except the centre location is at the center of mass of the raft.
+
+If `locations` is a `Vector{<:Real}`, the new clump will be placed at those `[x, y]` coordinates. 
+
 ### Connections 
 
 `connections` can be a pre-defined flag, an integer, or a vector of integers.
@@ -150,13 +158,30 @@ this is equivalent to `"full"`.
 
 If `connections` is a `Vector{<:Integer}`, the new clump will be connected to clumps with those indices.
 """
-function grow!(integrator::SciMLBase.DEIntegrator, x::Real, y::Real, connections::Union{String, Integer, Vector{<:Integer}})
+function grow!(
+    integrator::SciMLBase.DEIntegrator, 
+    locations::Union{String, Vector{<:Real}}, 
+    connections::Union{String, Integer, Vector{<:Integer}})
     rp = integrator.p
     u = integrator.u
 
     # resize the integrator and add the new components
     resize!(integrator, length(u) + 2)
-    u[end-1:end] .= x, y
+
+    if locations isa String 
+        @assert locations in ["parent", "com"] "If `connections` is a string, it must be either $("parent") or $("com")."
+        if locations == "parent"
+            parent = rand(keys(rp.connections))
+            r, θ = rp.springs.L, rand(Uniform(0, 2*π))
+            u[end-1:end] = clump_i(u, parent) + [r*cos(θ), r*sin(θ)]
+        elseif locations == "com"
+            r, θ = rp.springs.L, rand(Uniform(0, 2*π))
+            u[end-1:end] = com(u) + [r*cos(θ), r*sin(θ)]
+        end
+    elseif locations isa Vector 
+        @assert length(locations) == 2 "The locations vector must be [x, y] coordinates."
+        u[end-1:end] .= locations
+    end
 
     # update the connections, this new clump's label should be the highest current label + 1
     n_clumps_max = length(keys(rp.connections))

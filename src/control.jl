@@ -4,6 +4,36 @@ using Distributions
 ############################################################
 
 """
+    n_clumps(u)
+
+Return the number of clumps in the solution vector `u`. This is `Integer(length(u)/2)`.
+
+Can also be applied to an `integrator`, in which case it returns `n_clumps(integrator.u)`
+"""
+function n_clumps(u::Vector{<:Real})
+    return Integer(length(u)/2)
+end
+
+function n_clumps(integrator::SciMLBase.DEIntegrator)
+    return Integer(length(integrator.u)/2)
+end
+
+"""
+    n_clumps(u)
+
+Return the `[x, y]` coordinates of the `i`th clump in the solution vector `u`. This is `u[2*i - 1:2*i]`.
+
+Can also be applied to an `integrator`, in which case it returns `n_clumps(integrator.u)`
+"""
+function clump_i(u::Vector{<:Real}, i::Integer)
+    return u[2*i - 1:2*i]
+end
+
+function clump_i(integrator::SciMLBase.DEIntegrator, i::Integer)
+    return integrator.u[2*i - 1:2*i]
+end
+
+"""
     kill!(integrator, i)
 
 Remove the clump with index `i` from `integrator.u`. Remap the connections from the [`RaftParameters`](@ref), `rp = integrator.p` and update `rp.deaths` at time `integrator.t.`
@@ -102,33 +132,6 @@ function grow!(integrator::SciMLBase.DEIntegrator)
     return nothing
 end
 
-
-"""
-    die_land(land_itp)
-
-Create a `DiscreteCallback` which kills clumps when they reach the shore and terminates the integration if no clumps remain.
-
-### Arguments
-
-- `land_itp`: A `InterpolatedField` which gives the interpolated land locations.
-"""
-function die_land(land_itp::InterpolatedField)
-
-    function condition(u, t, integrator)
-        return any([land_itp.fields[:land](u[2*i-1], u[2*i]) == 1.0  for i = 1:Integer(length(u)/2)])
-    end
-
-    function affect!(integrator)
-        xy = integrator.u
-        inds = findall([land_itp.fields[:land](xy[2*i-1], xy[2*i]) == 1.0  for i = 1:Integer(length(xy)/2)])
-        kill!(integrator, inds)
-
-        @info "Clump $inds hit shore at time $(integrator.t)"
-    end
-
-    return DiscreteCallback(condition, affect!)
-end
-
 """
     growth_death_temperature
 
@@ -204,19 +207,5 @@ function grow_test(t_grow::Vector{<:Real})
 end
 
 
-function n_clumps(u::Vector{<:Vector{<:Real}})
-    return Integer(length(u)/2)
-end
 
-function n_clumps(integrator::SciMLBase.DEIntegrator)
-    return Integer(length(integrator.u)/2)
-end
-
-function clump_i(u::Vector{<:Vector{<:Real}}, i::Integer)
-    return u[2*i - 1:2*i]
-end
-
-function clump_i(integrator::SciMLBase.DEIntegrator, i::Integer)
-    return integrator.u[2*i - 1:2*i]
-end
 

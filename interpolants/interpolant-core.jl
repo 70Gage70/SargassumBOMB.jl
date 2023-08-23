@@ -7,7 +7,7 @@ include(joinpath(@__DIR__, "..", "src", "coordinates.jl"))
 ############################################################################################
 
 """
-    struct GriddedField{T, A, R}
+    struct GriddedField{R, A, Q}
 
 A container for gridded, possibly time-dependent, field data. 
 
@@ -205,7 +205,7 @@ function sph2xy(
 end
 
 """
-    struct InterpolatedField{T, A, R}
+    struct InterpolatedField{R, I, Q}
 
 Indentical to [`GriddedField`](@ref) except `fields` is a map from field names to interpolating functions 
 rather than arrays.

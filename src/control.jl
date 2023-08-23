@@ -203,12 +203,20 @@ function grow_test(t_grow::Vector{<:Real})
     return DiscreteCallback(condition, affect!)
 end
 
-# condition 
-function (model::BrooksModelParameters)(u, t, integrator)
-    return abs(t - 4.0) < 1.0
+
+function n_clumps(u::Vector{<:Vector{<:Real}})
+    return Integer(length(u)/2)
 end
 
-# affect!
-function (model::BrooksModelParameters)(integrator)
-    println("affecting!")
+function n_clumps(integrator::SciMLBase.DEIntegrator)
+    return Integer(length(integrator.u)/2)
 end
+
+function clump_i(u::Vector{<:Vector{<:Real}}, i::Integer)
+    return u[2*i - 1:2*i]
+end
+
+function clump_i(integrator::SciMLBase.DEIntegrator, i::Integer)
+    return integrator.u[2*i - 1:2*i]
+end
+

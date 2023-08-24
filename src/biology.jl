@@ -14,7 +14,12 @@ isdefined(@__MODULE__, :no3_itp) || (const no3_itp = load(joinpath(itp_path, "no
 """
     struct BrooksModelParameters
 
-A container for the parameters of the model of [Brooks et al. (2018)](https://www.int-res.com/abstracts/meps/v599/p1-18/).
+A container for the interpolants and parameters of the model of [Brooks et al. (2018)](https://www.int-res.com/abstracts/meps/v599/p1-18/).
+
+### Interpolants 
+
+- `temp` [°C]: An [`InterpolatedField`](@ref) for the water temperature.
+- `no3` [mmol N/m^3]: An [`InterpolatedField`](@ref) for the NO3 content of the water.
 
 ### Parameters 
 
@@ -28,10 +33,12 @@ A container for the parameters of the model of [Brooks et al. (2018)](https://ww
 
 ### Constructors 
 
-The function `BrooksModelParameters(; constants...)` is provided, where each constant is a kwarg 
+The function `BrooksModelParameters(temp, no3; constants...)` is provided, where each constant is a kwarg 
 with the default values given above.
 """
-struct BrooksModelParameters{T<:Real}
+struct BrooksModelParameters{I<:InterpolatedField, T<:Real}
+    temp::I
+    no3::I
     μ_max::T
     m::T
     I_k::T
@@ -40,7 +47,10 @@ struct BrooksModelParameters{T<:Real}
     T_ref::T
     z_max::T
 
-    function BrooksModelParameters(;
+
+    function BrooksModelParameters(
+        temp::InterpolatedField,
+        no3::InterpolatedField;
         μ_max::Real = 0.1, 
         m::Real = 0.05,
         I_k::Real = 70.0,
@@ -51,16 +61,45 @@ struct BrooksModelParameters{T<:Real}
 
         μ_max, m, I_k, a_ref, k_N, T_ref, z_max = promote(μ_max, m, I_k, a_ref, k_N, T_ref, z_max)
     
-        return new{typeof(μ_max)}(μ_max, m, I_k, a_ref, k_N, T_ref, z_max)
+        return new{typeof(temp), typeof(μ_max)}(temp, no3, μ_max, m, I_k, a_ref, k_N, T_ref, z_max)
     end
 end
 
+"""
+    brooks_dSdt(x, y, t; p::BrooksModelParameters)
+"""
+function brooks_dSdt(x::Real, y::Real, t::Real; params::BrooksModelParameters)
+    temp_factor = params.temp.fields[:temp](x, y, t) > params.T_ref ? 1.0 : 0.0
+    return params.μ_max*1.0*exp(-t/params.a_ref)*temp_factor*(1.0/(params.k_N/params.no3.fields[:no3](x, y, t) + 1.0)) - params.m
+end
+
+"""
+    mutable struct BrooksModel{B, U}
+"""
+mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer}
+    params::B
+    deaths::Vector{U}
+    growths::Vector{U}
+
+    function BrooksModel(params::BrooksModelParameters)
+        return new{typeof(params), Int64}(params, Int64[], Int64[])
+    end
+end
+    
 # condition 
-function (model::BrooksModelParameters)(u, t, integrator)
-    return abs(t - 4.0) < 1.0
+function (model::BrooksModel)(u, t, integrator)
+    dSdt = [brooks_dSdt(clump_i(u, i)..., t, params = model.params) for i = 1:n_clumps(u)]
+
+    println("t = ", t, ": +", length(dSdt[dSdt .> 0.0]), " | -", length(dSdt[dSdt .< 0.0]))
+    return false
 end
 
 # affect!
-function (model::BrooksModelParameters)(integrator)
+function (model::BrooksModel)(integrator)
     println("affecting!")
+end
+
+# callback 
+function callback(brooks::BrooksModel)
+    return DiscreteCallback(brooks, brooks)
 end

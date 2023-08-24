@@ -27,10 +27,12 @@ prob_raft = ODEProblem(Raft!, rp.xy0, tspan, rp)
 @info "Solving model."
 
 land = Land(land_itp)
+bm = BrooksModel(BrooksModelParameters(temp_itp, no3_itp))
 
 @time sol_raft = solve(prob_raft, 
     Tsit5(),
-    callback = callback(land)
+    # callback = callback(land)
+    callback = CallbackSet(callback(land), callback(bm))
 );
 
 # @time sol_raft = solve(prob_raft, 
@@ -47,7 +49,7 @@ rtr = RaftTrajectory(sol_raft, rp, ref_itp)
 xy0 = sph2xy(x0, y0, ref_itp) 
 clump_prob = ODEProblem(Clump!, xy0, tspan, cp)
 
-sol_clump = solve(clump_prob, Tsit5())
+sol_clump = solve(clump_prob)
 
 ctr = Trajectory(sol_clump.u, sol_clump.t, ref_itp)
 

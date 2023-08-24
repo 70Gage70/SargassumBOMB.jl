@@ -26,7 +26,6 @@ ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 NetCDF = "30363a11-5582-574a-97bb-aa9a979735b9"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
-SimpleDiffEq = "05bca326-078c-5bf0-a5bf-ce7c7982d7fd"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 

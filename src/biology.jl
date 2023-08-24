@@ -69,8 +69,11 @@ end
     brooks_dSdt(x, y, t; p::BrooksModelParameters)
 """
 function brooks_dSdt(x::Real, y::Real, t::Real; params::BrooksModelParameters)
+    light_factor = 1.0 # 1 - exp(I/I_k)
+    age_factor = 1.0 # exp(-t/params.a_ref)
     temp_factor = params.temp.fields[:temp](x, y, t) > params.T_ref ? 1.0 : 0.0
-    return params.μ_max*1.0*exp(-t/params.a_ref)*temp_factor*(1.0/(params.k_N/params.no3.fields[:no3](x, y, t) + 1.0)) - params.m
+    N_factor = 1.0/(params.k_N/params.no3.fields[:no3](x, y, t) + 1.0)
+    return params.μ_max*light_factor*age_factor*temp_factor*N_factor - params.m
 end
 
 """
@@ -90,7 +93,8 @@ end
 function (model::BrooksModel)(u, t, integrator)
     dSdt = [brooks_dSdt(clump_i(u, i)..., t, params = model.params) for i = 1:n_clumps(u)]
 
-    println("t = ", t, ": +", length(dSdt[dSdt .> 0.0]), " | -", length(dSdt[dSdt .< 0.0]))
+    # println("t = ", t, ": +", length(dSdt[dSdt .> 0.0]), " | -", length(dSdt[dSdt .< 0.0]))
+    println("t = ", t, ", dSdt = ", dSdt[1])
     return false
 end
 

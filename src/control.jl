@@ -91,44 +91,6 @@ function kill!(integrator::SciMLBase.DEIntegrator, inds::Vector{<:Integer})
 end
 
 
-# """
-#     grow!(integrator)
-
-# Add a clump to the [`RaftParameters`](@ref), `rp = integrator.p` with an index equal to the maximum clump index and update `rp.growths` at time `intergrator.t`.
-
-# ### Growth logic
-
-# To grow a new clump, a currently existing clump is chosen uniformly at random, then the new clump is placed a distance `rp.springs.L` away from that clump in a random direction and attached with one spring.
-# """
-# function grow!(integrator::SciMLBase.DEIntegrator)
-#     rp = integrator.p
-#     u = integrator.u
-    
-#     # first determine the location of the new clump
-#     mother = rand(keys(rp.connections))
-#     x, y = u[2*mother-1:2*mother]
-#     r, θ = rp.springs.L, rand(Uniform(0, 2*π))
-#     x, y = x + r*cos(θ), y + r*sin(θ)
-
-#     # resize the integrator and add the new components
-#     resize!(integrator, length(u) + 2)
-#     u[end-1:end] .= x, y
-
-#     # update the connections, this new clump's label should be the highest current label + 1
-#     n_clumps_max = length(keys(rp.connections))
-#     rp.connections[n_clumps_max + 1] = [mother]
-
-#     # update rp.growths at the current time
-#     t = integrator.t
-#     if t in keys(rp.growths)
-#         push!(rp.growths[t], n_clumps_max + 1)
-#     else
-#         rp.growths[t] = [n_clumps_max + 1]
-#     end
-    
-#     return nothing
-# end
-
 """
     grow!(integrator, x, y, connections)
 
@@ -162,6 +124,7 @@ function grow!(
     integrator::SciMLBase.DEIntegrator, 
     locations::Union{String, Vector{<:Real}}, 
     connections::Union{String, Integer, Vector{<:Integer}})
+    
     rp = integrator.p
     u = integrator.u
 

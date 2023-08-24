@@ -18,7 +18,7 @@ NetCDF_units = Dict(
 )
 const UNITS_OUT_SPEED = u"km/d"
 const UNITS_OUT_TEMP = u"°C"
-const UNITS_OUT_NUTR = u"Mmol/km^3"
+const UNITS_OUT_NUTR = u"mmol/m^3"
 
 # use ncinfo(file) to see attributes/metadata
 # use ncgetatt(file, variable, attribute) to read an attribute of a variable

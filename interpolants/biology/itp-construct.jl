@@ -4,45 +4,45 @@ include(joinpath(@__DIR__, "..", "itp-core.jl"))
 
 #############################################################################
 
-wind_file = joinpath(@__DIR__, "..", "..", "data", "preprocessed", "wind-2018.mat")
-water_file = joinpath(@__DIR__, "..", "..", "data", "preprocessed", "water-2018.mat")
+temp_file = joinpath(@__DIR__, "..", "..", "data", "preprocessed", "temp-2018.mat")
+no3_file = joinpath(@__DIR__, "..", "..", "data", "preprocessed", "no3-2018.mat")
 
 ##############################################################################
 
-@info "Constructing wind interpolant."
+@info "Constructing temperature interpolant."
 
-outfile = joinpath(@__DIR__, "wind_itp.jld2")
+outfile = joinpath(@__DIR__, "temp_itp.jld2")
 rm(outfile, force = true)
 
-itp = GriddedField(wind_file, ["lon", "lat", "t"], ["u", "v"], 
+itp = GriddedField(temp_file, ["lon", "lat", "t"], ["temp"], 
     time_index = 3, 
     time2datetime = rata2datetime_minute, 
     NaN_replacement = 0.0, 
     var_units = ["deg E/W", "deg N/S", "days"], 
-    field_units = ["km/s", "km/s"], 
+    field_units = ["° C"], 
     ref = ref_itp)
 itp = itp |> sph2xy |> interpolate
 
-jldsave(outfile, wind_itp = itp)
+jldsave(outfile, temp_itp = itp)
 
-@info "Wind interpolant written to $(outfile)."
+@info "Temperature interpolant written to $(outfile)."
 
 ##############################################################################
 
-@info "Constructing water interpolant."
+@info "Constructing NO3 interpolant."
 
-outfile = joinpath(@__DIR__, "water_itp.jld2")
+outfile = joinpath(@__DIR__, "no3_itp.jld2")
 rm(outfile, force = true)
 
-itp = GriddedField(water_file, ["lon", "lat", "t"], ["u", "v"], 
+itp = GriddedField(no3_file, ["lon", "lat", "t"], ["no3"], 
     time_index = 3, 
     time2datetime = rata2datetime_minute, 
     NaN_replacement = 0.0, 
     var_units = ["deg E/W", "deg N/S", "days"], 
-    field_units = ["km/s", "km/s"], 
+    field_units = ["mmol/m^3"], 
     ref = ref_itp)
 itp = itp |> sph2xy |> interpolate
 
-jldsave(outfile, water_itp = itp)
+jldsave(outfile, no3_itp = itp)
 
-@info "Water interpolant written to $(outfile)."
+@info "NO3 interpolant written to $(outfile)."

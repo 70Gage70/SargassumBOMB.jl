@@ -5,7 +5,7 @@ using Unitful # ms = "m/s", val = 2.0 * uparse(ms)
 
 ####################################################################
 
-raw_path = joinpath(@__DIR__, "..", "raw-data")
+raw_path = joinpath(@__DIR__, "..", "raw")
 wind_raw = joinpath(raw_path, "wind.nc")
 water_temp_raw = joinpath(raw_path, "currents-temperature.nc")
 nutr_raw = joinpath(raw_path, "nutrients.nc")

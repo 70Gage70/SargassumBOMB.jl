@@ -3,7 +3,7 @@ using ModelingToolkit
 using JLD2
 
 include(joinpath(@__DIR__, "..", "parameters.jl"))
-include(joinpath(@__DIR__, "..", "..", "interpolants", "interpolant-derivatives.jl"))
+include(joinpath(@__DIR__, "..", "..", "interpolants", "itp-derivatives.jl"))
 
 # itp_path = joinpath(@__DIR__, "..", "..", "interpolants", "ias")
 # isdefined(@__MODULE__, :water_itp) || (const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp"))

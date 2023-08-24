@@ -1,7 +1,7 @@
 using MAT
 using Interpolations
 
-include("interpolant-helpers.jl")
+include("itp-helpers.jl")
 include(joinpath(@__DIR__, "..", "src", "coordinates.jl"))
 
 ############################################################################################

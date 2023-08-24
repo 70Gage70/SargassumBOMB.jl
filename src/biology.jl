@@ -2,12 +2,12 @@ using OrdinaryDiffEq
 using JLD2
 
 include(joinpath(@__DIR__, "parameters.jl"))
-include(joinpath(@__DIR__, "..", "interpolants", "interpolant-core.jl"))
+include(joinpath(@__DIR__, "..", "interpolants", "itp-core.jl"))
 
 ########################################################################
 
 # loading interpolants
-itp_path = joinpath(@__DIR__, "..", "interpolants", "ocean-atmos")
+itp_path = joinpath(@__DIR__, "..", "interpolants", "biology")
 isdefined(@__MODULE__, :temp_itp) || (const temp_itp = load(joinpath(itp_path, "temp_itp.jld2"), "temp_itp"))
 isdefined(@__MODULE__, :no3_itp) || (const no3_itp = load(joinpath(itp_path, "no3_itp.jld2"), "no3_itp"))
 
@@ -53,13 +53,6 @@ struct BrooksModelParameters{T<:Real}
     
         return new{typeof(μ_max)}(μ_max, m, I_k, a_ref, k_N, T_ref, z_max)
     end
-end
-
-struct BrooksModel{I<:InterpolatedField, F<:Function}
-    f_I::F
-    f_T::F
-    f_N::F
-    dSdt::F
 end
 
 # condition 

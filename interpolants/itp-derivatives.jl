@@ -1,6 +1,6 @@
 using LinearAlgebra: ⋅
 
-include("interpolant-core.jl")
+include("itp-core.jl")
 
 ########################################################
 

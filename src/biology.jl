@@ -77,12 +77,12 @@ function brooks_dSdt(x::Real, y::Real, t::Real; params::BrooksModelParameters)
 end
 
 """
-    mutable struct BrooksModel{B, U}
+    mutable struct BrooksModel{B, T}
 """
 mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer}
     params::B
-    deaths::Vector{U}
     growths::Vector{U}
+    deaths::Vector{U}
 
     function BrooksModel(params::BrooksModelParameters)
         return new{typeof(params), Int64}(params, Int64[], Int64[])
@@ -92,15 +92,38 @@ end
 # condition 
 function (model::BrooksModel)(u, t, integrator)
     dSdt = [brooks_dSdt(clump_i(u, i)..., t, params = model.params) for i = 1:n_clumps(u)]
+    dS = mean(dSdt)*n_clumps(u)*integrator.dt
 
-    # println("t = ", t, ": +", length(dSdt[dSdt .> 0.0]), " | -", length(dSdt[dSdt .< 0.0]))
-    println("t = ", t, ", dSdt = ", dSdt[1])
-    return false
+    if abs(dS) < 1.0 && rand() <= abs(dS)
+        dS = sign(dS)*1.0
+    else
+        return false
+    end
+
+    delta_n = abs(round(Int64, dS))
+
+    if dS < 0
+        # take the delta_n clumps with the largest negative dSdt (enforcing dS <= n_clumps)
+        model.deaths = partialsortperm(dSdt, 1:min(delta_n, n_clumps(u))) |> collect
+        model.growths = typeof(model.growths)[]
+    else
+        model.deaths = typeof(model.deaths)[]
+        model.growths = partialsortperm(dSdt, 1:delta_n, rev = true) |> collect
+    end
+
+    return true
 end
 
 # affect!
 function (model::BrooksModel)(integrator)
-    println("affecting!")
+    println("growing at $(integrator.t) with $(model.growths)")
+    println("killing at $(integrator.t) with $(model.deaths)")
+
+    for i in model.growths
+        grow!(integrator, locations = i, connections = "full")
+    end
+
+    kill!(integrator, model.deaths)
 end
 
 # callback 

@@ -77,6 +77,10 @@ Call [`kill!(integrator, i)`](@ref) on each element of `inds`.
 This removes several clumps "simultaneously" while taking into account the fact that removing a clump shifts the clump to which each element of `inds` references.
 """
 function kill!(integrator::SciMLBase.DEIntegrator, inds::Vector{<:Integer})
+    if length(inds) == 0
+        return nothing
+    end
+
     # if we have to delete multiple clumps in one step, deleting one clump will change the indices of the others.
     # that is, after you delete the clump indexed by inds[1], then the clumps with indices >inds[1]
     # have their index decreased by 1, and so on
@@ -98,12 +102,14 @@ Add a clump to the [`RaftParameters`](@ref), `rp = integrator.p` with an index e
 
 ### Locations 
 
-`locations` can be a pre-defined flag or a `[x, y]` vector.
+`locations` can be a pre-defined flag, and integer, or a `[x, y]` vector.
 
 The possible flags are:
-- `"parent"`: A parent clump is chosen among clumps that already exist, and the new clump is placed a distance `integrator.rp.springs.L` away and at a 
+- `"parent"`: A parent clump is chosen randomly among clumps that already exist, and the new clump is placed a distance `integrator.rp.springs.L` away and at a 
 random angle from it.
 - `"com"`: The same as `"parent"`, except the centre location is at the center of mass of the raft.
+
+If `locations` is an `Integer` with value `i`, then the new clump will be grown with `i`th clump as its parent.
 
 If `locations` is a `Vector{<:Real}`, the new clump will be placed at those `[x, y]` coordinates. 
 
@@ -122,7 +128,7 @@ If `connections` is a `Vector{<:Integer}`, the new clump will be connected to cl
 """
 function grow!(
     integrator::SciMLBase.DEIntegrator, 
-    locations::Union{String, Vector{<:Real}}, 
+    locations::Union{String, Integer, Vector{<:Real}}, 
     connections::Union{String, Integer, Vector{<:Integer}})
     
     rp = integrator.p
@@ -141,6 +147,10 @@ function grow!(
             r, θ = rp.springs.L, rand(Uniform(0, 2*π))
             u[end-1:end] = com(u) + [r*cos(θ), r*sin(θ)]
         end
+    elseif locations isa Integer
+        parent = locations
+        r, θ = rp.springs.L, rand(Uniform(0, 2*π))
+        u[end-1:end] = clump_i(u, parent) + [r*cos(θ), r*sin(θ)]
     elseif locations isa Vector 
         @assert length(locations) == 2 "The locations vector must be [x, y] coordinates."
         u[end-1:end] .= locations

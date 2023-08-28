@@ -15,6 +15,10 @@ isdefined(@__MODULE__, :no3_itp) || (const no3_itp = load(joinpath(itp_path, "no
     mutable struct ImmortalModel{U, F}
 
 An `AbstractGrowthDeathModel` such that no growth or death occurs.
+
+### Constructors 
+
+Use `ImmortalModel().`
 """
 mutable struct ImmortalModel{U<:Integer, F<:Function} <: AbstractGrowthDeathModel
     growths::Vector{U}
@@ -22,7 +26,7 @@ mutable struct ImmortalModel{U<:Integer, F<:Function} <: AbstractGrowthDeathMode
     dSdt::F
 
     function ImmortalModel()
-        return new{Int64, Function}(Int64[], Int64[], dSdt -> 0.0)
+        return new{Int64, Function}(Int64[], Int64[], (u, t) -> 0.0)
     end
 end
 
@@ -97,9 +101,9 @@ struct BrooksModelParameters{I<:InterpolatedField, T<:Real}
 end
 
 """
-    brooks_dSdt(x, y, t; p::BrooksModelParameters)
+    dSdt1(x, y, t; params::BrooksModelParameters)
 """
-function brooks_dSdt(x::Real, y::Real, t::Real; params::BrooksModelParameters)
+function dSdt1(x::Real, y::Real, t::Real; params::BrooksModelParameters)
     light_factor = 1.0 # 1 - exp(I/I_k)
     age_factor = 1.0 # exp(-t/params.a_ref)
     temp_factor = params.temp.fields[:temp](x, y, t) > params.T_ref ? 1.0 : 0.0
@@ -108,15 +112,23 @@ function brooks_dSdt(x::Real, y::Real, t::Real; params::BrooksModelParameters)
 end
 
 """
+    brooks_dSdt(u, t; params::BrooksModelParameters)
+"""
+function brooks_dSdt(u::Vector{<:Real}, t::Real; params::BrooksModelParameters)
+    return mean(dSdt1(clump_i(u, i)..., t, params) for i = 1:n_clumps(u))*u[1]
+end
+
+"""
     mutable struct BrooksModel{B, T}
 """
-mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer}
+mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, F<:Function}
     params::B
     growths::Vector{U}
     deaths::Vector{U}
+    dSdt::F
 
-    function BrooksModel(params::BrooksModelParameters)
-        return new{typeof(params), Int64}(params, Int64[], Int64[])
+    function BrooksModel(;params::BrooksModelParameters = BrooksModelParameters(temp_itp, no3_itp))
+        return new{typeof(params), Int64, Function}(params, Int64[], Int64[], (u, t) -> brooks_dSdt(u, t, params = params))
     end
 end
     

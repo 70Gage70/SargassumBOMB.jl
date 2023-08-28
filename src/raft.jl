@@ -31,7 +31,7 @@ prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
 
 @info "Solving model."
 
-land = Land(land_itp)
+land = Land()
 # bm = BrooksModel(BrooksModelParameters(temp_itp, no3_itp))
 
 @time sol_raft = solve(prob_raft, 

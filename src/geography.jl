@@ -20,7 +20,7 @@ A container for data handling death of clumps upon reaching the shore.
 
 ### Constructors 
 
-Use `Land(land_itp::InterpolatedField)` to create a new `Land` object.
+Use `Land(;land_itp::InterpolatedField = land_itp)` to create a new `Land` object.
 
 ### Callbacks 
 
@@ -31,7 +31,7 @@ mutable struct Land{I<:InterpolatedField, U<:Integer}
     land_itp::I
     deaths::Vector{U}
 
-    function Land(land_itp::InterpolatedField)
+    function Land(;land_itp::InterpolatedField = land_itp)
         return new{typeof(land_itp), Int64}(land_itp, Int64[])
     end
 end

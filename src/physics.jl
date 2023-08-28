@@ -71,7 +71,7 @@ controls the growth and death of clumps by biophysical effects. Then, `u[2*i:2*i
 the `[x, y]` coordinates of the clump in position `i`.
 """
 function Raft!(du, u, p::RaftParameters, t)
-    du[1] = p.gd_model.dSdt(u)
+    du[1] = p.gd_model.dSdt(u, t)
 
     α, τ, R, f = p.clumps.α, p.clumps.τ, p.clumps.R, p.clumps.f
 

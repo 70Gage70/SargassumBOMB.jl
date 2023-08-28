@@ -44,10 +44,12 @@ end
 
 # affect!
 function (land::Land)(integrator)
+    deaths = [integrator.p.loc2label[integrator.t][i] for i in land.deaths]
+    println("Killing $(deaths) at time $(integrator.t)")
     kill!(integrator, land.deaths)
 end
 
 # callback 
 function callback(land::Land)
-    return DiscreteCallback(land, land)
+    return DiscreteCallback(land, land, save_positions = (false, true))
 end

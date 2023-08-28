@@ -20,12 +20,12 @@ tspan = (0.0, 200.0)
 cp = ClumpParameters(ref_itp)
 
 # spring_k = x -> 20
-# rp = RaftParameters(x_range, y_range, cp, spring_k)
+# rp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan))
 k10 = 2*step(x_range)
 spring_k = x -> 20 * (5/k10) * x * exp(1 - (5/k10)*x) # A(5/k10) * x e^(1 - (5/k10)x)
-rp = RaftParameters(x_range, y_range, cp, spring_k, network_type = "full")
+rp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), network_type = "full")
 
-prob_raft = ODEProblem(Raft!, rp.xy0, tspan, rp)
+prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
 
 @info "Solving model."
 
@@ -34,8 +34,8 @@ bm = BrooksModel(BrooksModelParameters(temp_itp, no3_itp))
 
 @time sol_raft = solve(prob_raft, 
     Tsit5(),
-    callback = callback(land)
-    # callback = CallbackSet(callback(land), callback(bm))
+    # callback = CallbackSet(cb_loc2label(), callback(land))
+    callback = CallbackSet(cb_loc2label(),callback(land), grow_test([20.0, 40.0, 60.0, 120.0]))
 );
 
 # @time sol_raft = solve(prob_raft, 

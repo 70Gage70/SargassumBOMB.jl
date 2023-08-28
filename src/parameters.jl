@@ -74,7 +74,7 @@ end
 A container for the parameters defining a spring.
    
 ### Fields
-- `k` [kg/d^2]: A scalar function of one variable which represents the stiffness of the spring. Recover a spring constant by providing, e.g. k(d) =  5.
+- `k` [kg/d^2]: A scalar function of one variable which represents the stiffness of the spring. Recover a spring constant by providing, e.g. `k -> 5`.
 - `L` [km]: The natural length of the spring.
 """
 struct SpringParameters{F<:Function, T<:Real}
@@ -117,40 +117,44 @@ end
 
 A container for the parameters defining a raft. Each clump and spring are identical.
 
+### Structure 
+
+`RaftParameters` acts as the parameter container for [`Raft!`](@ref). The solution vector `u` is a vector of length `2n_clumps + 1` 
+such that `u[1]` is an "amount" parameter which controls the growth and death of clumps by biophysical effects. Then, 
+`u[2*i:2*i+1]` for `i = 1:n_clumps` gives the `[x, y]` coordinates of the clump in position `i`.
+
 ### Fields
-- `xy0`: A vector representing the initial coordinates of the clumps.
+- `ics`: A `Vector` such that `ics[1] = n_clumps` and `ics[2:2*n_clumps+1]` represents the `[x, y]` coordinates of each clump.
 - `clumps`: The [`ClumpParameters`](@ref) shared by each clump in the raft.
 - `springs`: The [`SpringParameters`](@ref) shared by each spring joining the clumps.
-- `connections`: A `Dict` such that `connections[idx]` is a vector of indices `idx'` where a spring is connected between clumps `idx` and `idx'`. This should be updated in-place as clumps grow and die, i.e. `connections` only shows the current connections.
-- `growths`: A `Dict` such that `growths[t]` gives a vector of indices of clumps which were created at time `t`. Does not include clumps "grown" by initial conditions at time `t = 0`.
-- `deaths`: A `Dict` such that `deaths[t]` gives a vector of indices of clumps which were removed at time `t`.
-
-### Growths and Deaths
-
-The `growths` field and `deaths` field refer to indices of the clumps which exist at that particular time, and are labelled in order along the solution vector `u`. In other words, if `deaths[t1] = [3, 7]`, this means that `u[5:6]` and `u[13:14]` were both deleted at time `t1`. If `t2 > t1` and `deaths[t2] = [3, 7]`, it again means that `u[5:6]` and `u[13:14]` were both deleted at time `t2`, however, these would now correspond to different actual clumps since the deletion at time `t1` shifted the indices.
+- `n_clumps_tot`: An `Integer` equal to the total number of clumps that have ever existed (i.e. it is at least the number of clumps that exist at any specific time.)
+- `connections`: A `Dict` such that `connections[idx]` is a vector of indices `idx'` where a spring is connected between clumps `idx` and `idx'`. This should be updated in-place as clumps grow and die, i.e. `connections` only shows the current connections and refers to vector indices, not absolute clump labels.
+- `loc2label`: A `Dict` such that `loc2label[t]` is itself a `Dict` mapping vector indices to the absolute label of the clump in that location at
+the `i`th time step. For example, `loc2label[t0][j] = j` since, at the initial time `t0`, the `j`th location contains the `j`th clump. If 
+clump 1 dies at some later time `t`, then `loc2label[t][1] = 2`, `loc2label[t][2] = 3` since every clump is shifted by one to the left.
 """
 mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function}
-    xy0::Vector{T}
+    ics::Vector{T}
     clumps::ClumpParameters{T}
     springs::SpringParameters{F, T}
+    n_clumps_tot::U
     connections::Dict{U, Vector{U}}
-    growths::Dict{T, Vector{U}}
-    deaths::Dict{T, Vector{U}}
+    loc2label::Dict{T, Dict{U, U}}
 end
 
 """
-    RaftParameters(x_range, y_range, clump_parameters, spring_parameters; network_type, name)
+    RaftParameters(x_range, y_range, clump_parameters, spring_parameters; network_type)
 
 Construct [`RaftParameters`](@ref) in a rectangular arrangement.
-
-The initial conditions `xy0` are collected in a vector of length `n_row * n_col * 2` arranged as `[x1, y1, x2, y2, ...]`.
 
 ### Arguments
 
 - `x_range`: A range which gives the x coordinates of the clumps in the raft. Should be increasing and in equirectangular coordinates, not longitudes.
 - `y_range`: A range which gives the y coordinates of the clumps in the raft. Should be increasing and in equirectangular coordinates, not latitudes.
 - `clump_parameters`: The [`ClumpParameters`](@ref) shared by each clump.
-- `spring_parameters`: The [`spring_parameters`](@ref) shared by each spring.
+- `spring_k`: The spring function `k(x)` as in `F = - k(x)(x - L)`. The natural length of the spring `L` is set automatically according to the 
+distances between adjacent clumps.
+- `t0`: The initial time.
 
 ### Optional Arguments
 
@@ -163,7 +167,8 @@ function RaftParameters(
     x_range::AbstractRange{<:Real}, 
     y_range::AbstractRange{<:Real},
     clump_parameters::ClumpParameters, 
-    spring_k::Function; 
+    spring_k::Function,
+    t0::Real; 
     network_type::String = "nearest")
 
     @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
@@ -175,6 +180,7 @@ function RaftParameters(
     network = reshape(stack(network, dims = 1), (size(network, 1), size(network, 2), 2)) # convert from matrix of tuples to array
     n_col = length(x_range)
     n_row = length(y_range)
+    n_clumps = n_col *n_row
     connections = Dict{NTuple{2, Int64}, Vector{NTuple{2, Int64}}}()
 
     for i = 1:n_row, j = 1:n_col
@@ -191,8 +197,8 @@ function RaftParameters(
     spring_parameters = SpringParameters(spring_k, L)
 
     # now flatten all quantities
-
-    xy0 = [network[i, j, k] for i = 1:n_row for j = 1:n_col for k = 1:2]
+    ics = [n_clumps]
+    ics = vcat(ics, [network[i, j, k] for i = 1:n_row for j = 1:n_col for k = 1:2])
 
     n(i, j) = (i - 1) * n_col + j
 
@@ -202,15 +208,14 @@ function RaftParameters(
         connections_flat[n(key...)] = connections[key] .|> x -> n(x...)
     end
 
-    growths = Dict{Float64, Vector{Int64}}()
-    deaths = Dict{Float64, Vector{Int64}}()    
+    loc2label = Dict(t0 => Dict(i => i for i = 1:n_clumps))
 
-    return RaftParameters(xy0, clump_parameters, spring_parameters, connections_flat, growths, deaths)
+    return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections_flat, loc2label)
 end
 
 function Base.show(io::IO, x::RaftParameters)
     print(io, "RaftParameters[")
-    show(io, Integer(length(x.xy0)/2))
+    show(io, Integer(x.ics[1]))
     print(io, " Clumps]")
 end
 

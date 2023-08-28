@@ -101,85 +101,62 @@ Construct a [`RaftTrajectory`](@ref) from a differential equation solution `sol`
 - `ref`: An [`EquirectangularReference`](@ref).
 """
 function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters, ref::EquirectangularReference)
-    # n_total_clumps keeps track of the total number of clumps that have ever existed
-    # increases with growths and doesn't change with deaths
-    n_total_clumps = Integer(length(sol[1])/2) 
+    data = zeros(length(unique(sol.t)), rp.n_clumps_tot, 2)
+    n_clumps_t = Int64[]
+    lifetimes = Dict(i => Int64[] for i = 1:rp.n_clumps_tot)
 
-    # n_clumps keeps track of the number of clumps at each time slice
-    # n_clumps[1] = the initial number of clumps = n_total_clumps
-    n_clumps = [n_total_clumps]
+    function update_traj!(i_u, i_t)
+        u = sol.u[i_u][2:end]
+        nc = Integer(length(u)/2)
+        push!(n_clumps_t, nc)
+        nt = length(n_clumps_t)
 
-    # loc_to_label keeps track of which clump actually has its coordinates in positions u[2*i-1, 2*i].
-    # when initialized, this is exactly clump i, but it will change after growths and deaths
-    loc_to_label = [i for i = 1:n_total_clumps]
+        for j = 1:nc
+            label = rp.loc2label[sol.t[i_t]][j]
+            data[nt, label, :] = u[2*j-1:2*j]
+            push!(lifetimes[label], nt)
+        end
 
-    # placing and labeling initial clumps
-    tr = Dict{Int64, Matrix{Float64}}()
-    for i = 1:Integer(length(sol[1])/2)
-        tr[i] = [sol[1][2*i-1] sol[1][2*i] sol.t[1]]
+        return nothing
     end
 
-    for j = 2:length(sol)
-        if sol.t[j] != sol.t[j - 1] # there was no growth or death at this time
-            for i = 1:Integer(length(sol[j])/2)
-                if loc_to_label[i] in keys(tr) # clump trajectory is already started, so add to it
-                    tr[loc_to_label[i]] = vcat(tr[loc_to_label[i]], [sol[j][2*i-1] sol[j][2*i] sol.t[j]])
-                else # clump trajectory must be started
-                    tr[loc_to_label[i]] = [
-                                            sol[j-1][2*i-1] sol[j-1][2*i] sol.t[j-1]; # need previous time since clump was "born" then
-                                            sol[j][2*i-1] sol[j][2*i] sol.t[j]]
-                end
-            end 
+    for i = 1:length(sol.t)
+        t = sol.t[i]
 
-            push!(n_clumps, Integer(length(sol[j])/2))
+        if i == 1
+            update_traj!(i, i)
+            continue
+        end
 
-        else # note that a growth AND a death could happen in the same step; handle deaths first
-            if sol.t[j] in keys(rp.deaths)
-                # suppose that rp.deaths[sol.t[j]] = [k], 
-                # then loc_to_label[k'] should be set to loc_to_label[k' +  1] for each  k <= k <= end-1 (i.e. move everything to the left)
-                # and the last entry should be removed
-                for k1 in rp.deaths[sol.t[j]]
-                    for k2 = k1:length(loc_to_label)-1
-                        loc_to_label[k2] = loc_to_label[k2 + 1]
-                    end
-                    
-                    pop!(loc_to_label)
-                end
+        if i == length(sol.t)
+            if (sol.t[i - 1] != t)
+                update_traj!(i, i)
             end
 
-            if sol.t[j] in keys(rp.growths)
-                # add an extra entry at the end of loc_to_label and increment n_total_clumps for each growth
-                for k1 in rp.growths[sol.t[j]]
-                    n_total_clumps = n_total_clumps + 1
-                    push!(loc_to_label, n_total_clumps)
-                end
+            continue
+        end
+
+        if (sol.t[i - 1] != t) 
+            if (sol.t[i + 1] == t)
+                # starting callbacks, so use loc2label of previous time since at current time it doesn't contain all the clumps that exist now
+                update_traj!(i, i - 1)
+                
+            else
+                update_traj!(i, i)
             end
         end
     end
 
-    # collecting everything into a trajectory
+    # collecting trajectories
     trajectories = Dict{Int64, Trajectory{Float64}}()
-    for i in keys(tr)
-        trajectories[i] = Trajectory(tr[i][:,1:2], tr[i][:,3], ref)
-    end
-    
-    # all unique times
     times = unique(sol.t)
-
-    # arrange trajectories into one big array such that they are matched up by time slice
-    # this makes computing the COM much easier
-    com_array = zeros(n_total_clumps, length(times), 2)
-
-    for i = 1:n_total_clumps
-        # first(trajectories[i].t) is the first time this clump exists
-        # `ind` is therefore the index where this trajectory should be slotted into `com_array`
-        ind = searchsortedfirst(times, first(trajectories[i].t)) 
-        com_array[i,ind:ind+length(trajectories[i])-1,:] .= trajectories[i].xy
+    for i = 1:rp.n_clumps_tot
+        trajectories[i] = Trajectory(data[lifetimes[i],i,:], times[lifetimes[i]], ref)
     end
 
-    com = [sum(com_array[ci,ti,:] for ci = 1:n_total_clumps)/n_clumps[ti] for ti = 1:length(times)]
+    tr_com = Trajectory(sum(data[:,i,:] for i = 1:rp.n_clumps_tot) ./ n_clumps_t, times, ref)
 
-    return RaftTrajectory(trajectories, times, n_clumps, Trajectory(com, times))
+    return RaftTrajectory(trajectories, times, n_clumps_t, tr_com)
 end
 
 function Base.show(io::IO, x::RaftTrajectory)

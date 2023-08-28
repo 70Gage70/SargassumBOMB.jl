@@ -27,6 +27,26 @@ Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * 
 ########################################################################
 ########################################################################
 
+"""
+    `Clump!`(du, u, p::ClumpParameters, t)
+
+Compute the right-hand-side of the differential equation controlling the motion of a single clump with 
+parameters given by [`ClumpParameters`](@ref).
+
+The solution vector `u` is a 2d vector such that `u[1:2] = [x, y]`.
+
+### Example 
+
+```julia
+x0, y0 = -64, 14
+tspan = (0.0, 200.0)
+xy0 = sph2xy(x0, y0, ref_itp) 
+
+cp = ClumpParameters(ref_itp)
+clump_prob = ODEProblem(Clump!, xy0, tspan, cp)
+sol_clump = solve(clump_prob, Tsit5())
+```
+"""
 function Clump!(du, u, p::ClumpParameters, t)
     x, y = u
     α, τ, R, f = (p.α, p.τ, p.R, p.f)
@@ -40,21 +60,32 @@ function Clump!(du, u, p::ClumpParameters, t)
 end
 
 
-# have u[1:2] = (x, y)_1, u[3:4] = (x, y)_2 ... u[2*i-1:2*i] = (x, y)_i
+"""
+    `Raft!`(du, u, p::RaftParameters, t)
+
+Compute the right-hand-side of the differential equation controlling the motion of a raft with parameters 
+given by [`RaftParameters`](@ref).
+
+The solution vector `u` is a vector of length `2n_clumps + 1` such that `u[1]` is an "amount" parameter which 
+controls the growth and death of clumps by biophysical effects. Then, `u[2*i:2*i+1]` for `i = 1:n_clumps` gives 
+the `[x, y]` coordinates of the clump in position `i`.
+"""
 function Raft!(du, u, p::RaftParameters, t)
+    du[1] = 0.1
+
     α, τ, R, f = p.clumps.α, p.clumps.τ, p.clumps.R, p.clumps.f
 
-    for i = 1:Integer(length(u)/2)
-        x, y = u[2*i-1:2*i]
+    for i = 1:floor(Int64, length(u)/2)
+        x, y = u[2*i:2*i+1]
 
-        du[2*i-1] = u_x(x, y, t, α) + τ * (
+        du[2*i] = u_x(x, y, t, α) + τ * (
             R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)
         )
-        du[2*i] = u_y(x, y, t, α) + τ * (
+        du[2*i+1] = u_y(x, y, t, α) + τ * (
             R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
         )
 
-        du[2*i-1:2*i] += τ*sum(spring_force(u[2*i-1:2*i], u[2*j-1:2*j], p.springs) for j in p.connections[i]; init = [0.0, 0.0])
+        du[2*i:2*i+1] += τ*sum(spring_force(u[2*i:2*i+1], u[2*j:2*j+1], p.springs) for j in p.connections[i]; init = [0.0, 0.0])
     end
 end
 

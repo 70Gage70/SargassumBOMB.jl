@@ -12,6 +12,37 @@ isdefined(@__MODULE__, :temp_itp) || (const temp_itp = load(joinpath(itp_path, "
 isdefined(@__MODULE__, :no3_itp) || (const no3_itp = load(joinpath(itp_path, "no3_itp.jld2"), "no3_itp"))
 
 """
+    mutable struct ImmortalModel{U, F}
+
+An `AbstractGrowthDeathModel` such that no growth or death occurs.
+"""
+mutable struct ImmortalModel{U<:Integer, F<:Function} <: AbstractGrowthDeathModel
+    growths::Vector{U}
+    deaths::Vector{U}
+    dSdt::F
+
+    function ImmortalModel()
+        return new{Int64, Function}(Int64[], Int64[], dSdt -> 0.0)
+    end
+end
+
+# condition 
+function (model::ImmortalModel)(u, t, integrator)
+    return false
+end
+
+# affect! 
+function (model::ImmortalModel)(integrator)
+    return nothing
+end
+
+# callback 
+function callback(model::ImmortalModel)
+    return DiscreteCallback(model, model, save_positions = (false, true))
+end
+
+
+"""
     struct BrooksModelParameters
 
 A container for the interpolants and parameters of the model of [Brooks et al. (2018)](https://www.int-res.com/abstracts/meps/v599/p1-18/).

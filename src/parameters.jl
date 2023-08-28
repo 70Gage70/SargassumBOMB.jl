@@ -5,6 +5,13 @@ include("coordinates.jl")
 #################################
 
 """
+    abstract type AbstractGrowthDeathModel
+
+The abstract type for growth and death models.
+"""
+abstract type AbstractGrowthDeathModel end 
+
+"""
     struct ClumpParameters{T}
 
 A container for the high-level parameters of the BOM equations.
@@ -132,18 +139,20 @@ such that `u[1]` is an "amount" parameter which controls the growth and death of
 - `loc2label`: A `Dict` such that `loc2label[t]` is itself a `Dict` mapping vector indices to the absolute label of the clump in that location at
 the `i`th time step. For example, `loc2label[t0][j] = j` since, at the initial time `t0`, the `j`th location contains the `j`th clump. If 
 clump 1 dies at some later time `t`, then `loc2label[t][1] = 2`, `loc2label[t][2] = 3` since every clump is shifted by one to the left.
+- `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
 """
-mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function}
+mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, G<:AbstractGrowthDeathModel}
     ics::Vector{T}
     clumps::ClumpParameters{T}
     springs::SpringParameters{F, T}
     n_clumps_tot::U
     connections::Dict{U, Vector{U}}
     loc2label::Dict{T, Dict{U, U}}
+    gd_model::G
 end
 
 """
-    RaftParameters(x_range, y_range, clump_parameters, spring_parameters; network_type)
+    RaftParameters(x_range, y_range, clump_parameters, spring_parameters, t0, network_type, gd_model)
 
 Construct [`RaftParameters`](@ref) in a rectangular arrangement.
 
@@ -155,21 +164,20 @@ Construct [`RaftParameters`](@ref) in a rectangular arrangement.
 - `spring_k`: The spring function `k(x)` as in `F = - k(x)(x - L)`. The natural length of the spring `L` is set automatically according to the 
 distances between adjacent clumps.
 - `t0`: The initial time.
-
-### Optional Arguments
-
 - `network_type`: How the springs are conencted in the raft.
     - `"nearest"`: The default value. Each clump is connected to its perpendicular neighbors.
     - `"full"`: Each clump is connected to each other clump.
     - `"none"`: No clumps are connected.
+- `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
 """
 function RaftParameters(
     x_range::AbstractRange{<:Real}, 
     y_range::AbstractRange{<:Real},
     clump_parameters::ClumpParameters, 
     spring_k::Function,
-    t0::Real; 
-    network_type::String = "nearest")
+    t0::Real, 
+    network_type::String,
+    gd_model::AbstractGrowthDeathModel)
 
     @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
     @assert step(x_range) > 0 "x range should be inreasing."
@@ -210,7 +218,7 @@ function RaftParameters(
 
     loc2label = Dict(t0 => Dict(i => i for i = 1:n_clumps))
 
-    return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections_flat, loc2label)
+    return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections_flat, loc2label, gd_model)
 end
 
 function Base.show(io::IO, x::RaftParameters)

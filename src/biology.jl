@@ -42,7 +42,7 @@ end
 
 # callback 
 function callback(model::ImmortalModel)
-    return DiscreteCallback(model, model, save_positions = (false, true))
+    return DiscreteCallback(model, model)
 end
 
 

@@ -36,8 +36,8 @@ land = Land()
 
 @time sol_raft = solve(prob_raft, 
     Tsit5(),
-    callback = CallbackSet(cb_loc2label(), callback(land), callback(gd_model))
-    # callback = CallbackSet(cb_loc2label(), callback(land), grow_test([20.0, 40.0, 60.0, 120.0]))
+    # callback = CallbackSet(cb_loc2label(), callback(land), callback(gd_model))
+    callback = CallbackSet(cb_loc2label(), callback(land), grow_test([20.0, 40.0, 60.0, 120.0, 190.0]))
 );
 
 # @time sol_raft = solve(prob_raft, 

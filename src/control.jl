@@ -33,11 +33,11 @@ end
 """
     cb_loc2label()
 
-Create a `DiscreteCallback` which updates `integrator.p.loc2label` at the end of each time step.
+Create a `DiscreteCallback` which updates `integrator.p.loc2label` at the end of each time step using a `deepcopy` of the previous step.
 """
 function cb_loc2label()
     function affect!(integrator)
-        integrator.p.loc2label[integrator.t] = integrator.p.loc2label[integrator.tprev]
+        integrator.p.loc2label[integrator.t] = deepcopy(integrator.p.loc2label[integrator.tprev])
         return nothing
     end
 
@@ -268,7 +268,7 @@ function grow_test(t_grow::Vector{<:Real})
         println("Growing $([integrator.p.n_clumps_tot]) at time $(integrator.t)")
     end
 
-    return DiscreteCallback(condition, affect!, save_positions = (false, true))
+    return DiscreteCallback(condition, affect!)
 end
 
 

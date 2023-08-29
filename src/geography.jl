@@ -51,5 +51,5 @@ end
 
 # callback 
 function callback(land::Land)
-    return DiscreteCallback(land, land, save_positions = (false, true))
+    return DiscreteCallback(land, land)
 end

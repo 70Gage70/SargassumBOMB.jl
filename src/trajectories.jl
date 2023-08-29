@@ -144,6 +144,22 @@ function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters, ref::Equirectan
             else
                 update_traj!(i, i)
             end
+        else 
+            if (sol.t[i + 1] != t)
+                # ending callbacks
+                u = sol.u[i][2:end]
+                nc = Integer(length(u)/2)
+                nt = length(n_clumps_t)
+
+                for j = 1:nc
+                    label = rp.loc2label[sol.t[i]][j]
+                    data[nt, label, :] = u[2*j-1:2*j]
+                    if !(nt in lifetimes[label])
+                        push!(lifetimes[label], nt)
+                    end
+                end
+
+            end
         end
     end
 

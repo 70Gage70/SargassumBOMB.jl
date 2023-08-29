@@ -74,7 +74,7 @@ function kill!(integrator::SciMLBase.DEIntegrator, i::Integer)
     gtr_i(x) = x >= i ? x + 1 : x
     rp.loc2label[t] = Dict(j => rp.loc2label[t][gtr_i(j)] for j = 1:n_clumps(integrator.u))
 
-    # update u[1]
+    # update u[1] to remove a clump
     integrator.u[1] = integrator.u[1] - 1
 
     return nothing
@@ -190,7 +190,7 @@ function grow!(
     rp.n_clumps_tot = rp.n_clumps_tot + 1
     rp.loc2label[t][n_clumps_new] = rp.n_clumps_tot 
 
-    # update u[1]
+    # update u[1] with the new clump
     integrator.u[1] = integrator.u[1] + 1
     
     return nothing

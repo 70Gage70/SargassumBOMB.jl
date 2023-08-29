@@ -24,7 +24,8 @@ cp = ClumpParameters(ref_itp)
 k10 = 2*step(x_range)
 spring_k = x -> 20 * (5/k10) * x * exp(1 - (5/k10)*x) # A(5/k10) * x e^(1 - (5/k10)x)
 
-gd_model = ImmortalModel()
+# gd_model = ImmortalModel()
+gd_model = BrooksModel()
 rp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", gd_model)
 
 prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
@@ -32,20 +33,11 @@ prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
 @info "Solving model."
 
 land = Land()
-# bm = BrooksModel(BrooksModelParameters(temp_itp, no3_itp))
 
 @time sol_raft = solve(prob_raft, 
     Tsit5(),
-    # callback = CallbackSet(cb_loc2label(), callback(land), callback(gd_model))
-    callback = CallbackSet(cb_loc2label(), callback(land), grow_test([20.0, 40.0, 60.0, 120.0]))
+    callback = CallbackSet(cb_loc2label(), callback(land), callback(gd_model))
 );
-
-# @time sol_raft = solve(prob_raft, 
-#     Tsit5(),
-#     callback = die_land(land_itp)
-#     # callback = CallbackSet(die_land(land_itp), growth_death_temperature(temp_itp, t_lag = 5.0, T_opt = 26.0, T_thresh = 0.5))
-#     # callback = DiscreteCallback(bmp, bmp)
-# );
 
 rtr = RaftTrajectory(sol_raft, rp, ref_itp)
 
@@ -80,7 +72,7 @@ trajectory!(ax, ctr,
     opts = (color = ctr.t, colormap = :heat, linewidth = 2)
 ) 
 
-# land!(ax)
+land!(ax)
 
 tticks = collect(range(start = minimum(rtr.t), stop = maximum(rtr.t), length = 5))
 data_legend!(fig_COM[1,2], L"\mathrm{Days}", ticks = tticks)

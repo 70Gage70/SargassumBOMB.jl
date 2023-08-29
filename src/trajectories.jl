@@ -90,7 +90,7 @@ struct RaftTrajectory{U<:Integer, T<:Real}
 end
 
 """
-    RaftTrajectory(sol, rp)
+    RaftTrajectory(sol, rp, ref)
 
 Construct a [`RaftTrajectory`](@ref) from a differential equation solution `sol` and [`RaftParameters`](@ref) `rp`.
 

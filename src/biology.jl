@@ -45,6 +45,9 @@ function callback(model::ImmortalModel)
     return DiscreteCallback(model, model)
 end
 
+function Base.show(io::IO, x::ImmortalModel)
+    print(io, "ImmortalModel")
+end
 
 """
     struct BrooksModelParameters
@@ -71,7 +74,7 @@ A container for the interpolants and parameters of the model of [Brooks et al. (
 The function `BrooksModelParameters(temp, no3; constants...)` is provided, where each constant is a kwarg 
 with the default values given above.
 """
-struct BrooksModelParameters{I<:InterpolatedField, T<:Real}
+struct BrooksModelParameters{I<:InterpolatedField, T<:Real} 
     temp::I
     no3::I
     μ_max::T
@@ -115,13 +118,13 @@ end
     brooks_dSdt(u, t; params::BrooksModelParameters)
 """
 function brooks_dSdt(u::Vector{<:Real}, t::Real; params::BrooksModelParameters)
-    return mean(dSdt1(clump_i(u, i)..., t, params) for i = 1:n_clumps(u))*u[1]
+    return mean(dSdt1(clump_i(u, i)..., t, params = params) for i = 1:n_clumps(u))*u[1]
 end
 
 """
     mutable struct BrooksModel{B, T}
 """
-mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, F<:Function}
+mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, F<:Function} <: AbstractGrowthDeathModel
     params::B
     growths::Vector{U}
     deaths::Vector{U}
@@ -134,39 +137,41 @@ end
     
 # condition 
 function (model::BrooksModel)(u, t, integrator)
-    dSdt = [brooks_dSdt(clump_i(u, i)..., t, params = model.params) for i = 1:n_clumps(u)]
-    dS = mean(dSdt)*n_clumps(u)*integrator.dt
+    delta_n = round(Int64, u[1]) - n_clumps(u)
 
-    if abs(dS) < 1.0 && rand() <= abs(dS)
-        dS = sign(dS)*1.0
+    if delta_n != 0
+        dSdt = [dSdt1(clump_i(u, i)..., t, params = model.params) for i = 1:n_clumps(u)]
+        if delta_n > 0 
+            # need to grow clumps, take the delta_n clumps with largest positive dSdt as parents
+            model.deaths = typeof(model.deaths)[]
+            model.growths = partialsortperm(dSdt, 1:delta_n, rev = true) |> collect
+        else 
+            # need to kill clumps, take the delta_n with largest negative dSdt to kill
+            model.deaths = partialsortperm(dSdt, 1:min(-delta_n, n_clumps(u))) |> collect
+            model.growths = typeof(model.growths)[]
+        end
+
+        return true
     else
-        return false
+        return false 
     end
-
-    delta_n = abs(round(Int64, dS))
-
-    if dS < 0
-        # take the delta_n clumps with the largest negative dSdt (enforcing dS <= n_clumps)
-        model.deaths = partialsortperm(dSdt, 1:min(delta_n, n_clumps(u))) |> collect
-        model.growths = typeof(model.growths)[]
-    else
-        model.deaths = typeof(model.deaths)[]
-        model.growths = partialsortperm(dSdt, 1:delta_n, rev = true) |> collect
-    end
-
-    return true
 end
 
 # affect!
 function (model::BrooksModel)(integrator)
-    println("growing at $(integrator.t) with $(model.growths)")
-    println("killing at $(integrator.t) with $(model.deaths)")
 
     for i in model.growths
+        # println("[BROOKS] Growing $([integrator.p.n_clumps_tot]) at time $(integrator.t)")
         grow!(integrator, locations = i, connections = "full")
     end
 
+    # if length(model.deaths) > 0
+    #     println("[BROOKS] Killing $(model.deaths) at time $(integrator.t)")
+    # end
+
     kill!(integrator, model.deaths)
+
+    return nothing
 end
 
 # callback 

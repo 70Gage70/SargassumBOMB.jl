@@ -37,7 +37,7 @@ land = Land()
 @time sol_raft = solve(prob_raft, 
     Tsit5(),
     # callback = CallbackSet(cb_loc2label(), callback(land), callback(gd_model))
-    callback = CallbackSet(cb_loc2label(), callback(land), grow_test([20.0, 40.0, 60.0, 120.0, 190.0]))
+    callback = CallbackSet(cb_loc2label(), callback(land), grow_test([20.0, 40.0, 60.0, 120.0]))
 );
 
 # @time sol_raft = solve(prob_raft, 
@@ -72,7 +72,7 @@ trajectory!(ax, rtr)
 
 # COM
 trajectory!(ax, rtr.com, 
-    opts = (linestyle = :dot, color = rtr.com.t, linewidth = 5)
+    opts = (linestyle = :dot, color = rtr.com.t, colormap = :heat, linewidth = 5)
 ) 
 
 # clump
@@ -80,7 +80,7 @@ trajectory!(ax, ctr,
     opts = (color = ctr.t, colormap = :heat, linewidth = 2)
 ) 
 
-land!(ax)
+# land!(ax)
 
 tticks = collect(range(start = minimum(rtr.t), stop = maximum(rtr.t), length = 5))
 data_legend!(fig_COM[1,2], L"\mathrm{Days}", ticks = tticks)

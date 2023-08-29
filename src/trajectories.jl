@@ -101,74 +101,54 @@ Construct a [`RaftTrajectory`](@ref) from a differential equation solution `sol`
 - `ref`: An [`EquirectangularReference`](@ref).
 """
 function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters, ref::EquirectangularReference)
+    # unique times
+    times = Float64[]
+
+    # data[time idx, clump label, xy]
     data = zeros(length(unique(sol.t)), rp.n_clumps_tot, 2)
+
+    # the number of clumps at each (unique) time
     n_clumps_t = Int64[]
+
+    # map from clump label to list of time indexes it's alive
     lifetimes = Dict(i => Int64[] for i = 1:rp.n_clumps_tot)
-
-    function update_traj!(i_u, i_t)
-        u = sol.u[i_u][2:end]
-        nc = Integer(length(u)/2)
-        push!(n_clumps_t, nc)
-        nt = length(n_clumps_t)
-
-        for j = 1:nc
-            label = rp.loc2label[sol.t[i_t]][j]
-            data[nt, label, :] = u[2*j-1:2*j]
-            push!(lifetimes[label], nt)
-        end
-
-        return nothing
-    end
 
     for i = 1:length(sol.t)
         t = sol.t[i]
+        u = sol.u[i][2:end]
+        nc = Integer(length(u)/2)
 
-        if i == 1
-            update_traj!(i, i)
-            continue
+        if !(t in times) 
+            push!(times, t)
+            push!(n_clumps_t, nc)
+        else
+            n_clumps_t[end] = max(nc, n_clumps_t[end])
         end
 
-        if i == length(sol.t)
-            if (sol.t[i - 1] != t)
-                update_traj!(i, i)
-            end
+        i_t = length(times)
 
-            continue
-        end
+        label_time = (i != 1) && (i != length(sol.t)) && (sol.t[i+1] == t) && (t != sol.t[i-1]) ? sol.t[i-1] : t
 
-        if (sol.t[i - 1] != t) 
-            if (sol.t[i + 1] == t)
-                # starting callbacks, so use loc2label of previous time since at current time it doesn't contain all the clumps that exist now
-                update_traj!(i, i - 1)
-                
-            else
-                update_traj!(i, i)
-            end
-        else 
-            if (sol.t[i + 1] != t)
-                # ending callbacks
-                u = sol.u[i][2:end]
-                nc = Integer(length(u)/2)
-                nt = length(n_clumps_t)
+        for loc = 1:nc
+            l2l = rp.loc2label[label_time]
+            if !(loc in keys(l2l)) continue end
 
-                for j = 1:nc
-                    label = rp.loc2label[sol.t[i]][j]
-                    data[nt, label, :] = u[2*j-1:2*j]
-                    if !(nt in lifetimes[label])
-                        push!(lifetimes[label], nt)
-                    end
-                end
-
+            label = l2l[loc]
+            data[i_t, label, :] = u[2*loc-1:2*loc]
+            if length(lifetimes[label]) == 0 || lifetimes[label][end] != i_t
+                push!(lifetimes[label], i_t)
             end
         end
     end
 
     # collecting trajectories
     trajectories = Dict{Int64, Trajectory{Float64}}()
-    times = unique(sol.t)
+
     for i = 1:rp.n_clumps_tot
         trajectories[i] = Trajectory(data[lifetimes[i],i,:], times[lifetimes[i]], ref)
     end
+
+    # return data, n_clumps_t 
 
     tr_com = Trajectory(sum(data[:,i,:] for i = 1:rp.n_clumps_tot) ./ n_clumps_t, times, ref)
 

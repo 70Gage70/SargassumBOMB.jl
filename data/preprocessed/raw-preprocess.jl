@@ -156,12 +156,17 @@ no3 = no3 .|> x -> scale_factor * units_factor * x
 
 ####################################################################
 
-rm("wind-2018.mat", force = true)
-rm("water-2018.mat", force = true)
-rm("temp-2018.mat", force = true)
-rm("no3-2018.mat", force = true)
+windout = joinpath(@__DIR__, "wind-2018.mat")
+waterout = joinpath(@__DIR__, "water-2018.mat")
+tempout = joinpath(@__DIR__, "temp-2018.mat")
+no3out = joinpath(@__DIR__, "no3-2018.mat")
 
-matwrite("wind-2018.mat", Dict("lon" => lon_wind, "lat" => lat_wind, "t" => time_wind, "u" => u_wind, "v" => v_wind))
-matwrite("water-2018.mat", Dict("lon" => lon_water, "lat" => lat_water, "t" => time_water, "u" => u_water, "v" => v_water))
-matwrite("temp-2018.mat", Dict("lon" => lon_temp, "lat" => lat_temp, "t" => time_temp, "temp" => temp))
-matwrite("no3-2018.mat", Dict("lon" => lon_nutr, "lat" => lat_nutr, "t" => time_nutr, "no3" => no3))
+rm(windout, force = true)
+rm(waterout, force = true)
+rm(tempout, force = true)
+rm(no3out, force = true)
+
+matwrite(windout, Dict("lon" => lon_wind, "lat" => lat_wind, "t" => time_wind, "u" => u_wind, "v" => v_wind))
+matwrite(waterout, Dict("lon" => lon_water, "lat" => lat_water, "t" => time_water, "u" => u_water, "v" => v_water))
+matwrite(tempout, Dict("lon" => lon_temp, "lat" => lat_temp, "t" => time_temp, "temp" => temp))
+matwrite(no3out, Dict("lon" => lon_nutr, "lat" => lat_nutr, "t" => time_nutr, "no3" => no3))

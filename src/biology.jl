@@ -104,9 +104,9 @@ struct BrooksModelParameters{I<:InterpolatedField, T<:Real}
 end
 
 """
-    dSdt1(x, y, t; params::BrooksModelParameters)
+    dSdt1(n_clumps, x, y, t; params::BrooksModelParameters)
 """
-function dSdt1(x::Real, y::Real, t::Real; params::BrooksModelParameters)
+function dSdt1(n_clumps::Integer, x::Real, y::Real, t::Real; params::BrooksModelParameters)
     light_factor = 1.0 # 1 - exp(I/I_k)
     age_factor = 1.0 # exp(-t/params.a_ref)
     temp_factor = params.temp.fields[:temp](x, y, t) > params.T_ref ? 1.0 : 0.0
@@ -118,7 +118,7 @@ end
     brooks_dSdt(u, t; params::BrooksModelParameters)
 """
 function brooks_dSdt(u::Vector{<:Real}, t::Real; params::BrooksModelParameters)
-    return mean(dSdt1(clump_i(u, i)..., t, params = params) for i = 1:n_clumps(u))*u[1]
+    return median(dSdt1(n_clumps(u), clump_i(u, i)..., t, params = params) for i = 1:n_clumps(u))*u[1]
 end
 
 """
@@ -138,9 +138,18 @@ end
 # condition 
 function (model::BrooksModel)(u, t, integrator)
     delta_n = round(Int64, u[1]) - n_clumps(u)
+    delta_n = sign(delta_n)*min(round(Int64, 0.05*n_clumps(u)), abs(delta_n))
+    # ensures that delta_n does not change the number of clumps by more than 5% at any step
+
+    if u[1] > 500
+        # @warn "There are more than 1000 clumps; halting growth."
+        return false
+    end
 
     if delta_n != 0
-        dSdt = [dSdt1(clump_i(u, i)..., t, params = model.params) for i = 1:n_clumps(u)]
+        dSdt = [dSdt1(n_clumps(u), clump_i(u, i)..., t, params = model.params) for i = 1:n_clumps(u)]
+        # println("t = $t")
+        # println("median dSdt = $(median(dSdt))")
         if delta_n > 0 
             # need to grow clumps, take the delta_n clumps with largest positive dSdt as parents
             model.deaths = typeof(model.deaths)[]
@@ -159,10 +168,11 @@ end
 
 # affect!
 function (model::BrooksModel)(integrator)
+    # println("u = $(integrator.u[1])")
 
     for i in model.growths
         # println("[BROOKS] Growing $([integrator.p.n_clumps_tot]) at time $(integrator.t)")
-        grow!(integrator, locations = i, connections = "full")
+        grow!(integrator, location = i, connections = "full")
     end
 
     # if length(model.deaths) > 0

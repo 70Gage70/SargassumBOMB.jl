@@ -16,7 +16,7 @@ x0, y0 = -55, 10
 # x_range, y_range = sph2xy(range(x0 - 1, x0 + 1, step = 0.5), range(y0 - 1, y0 + 1, step = 0.5), ref_itp)
 x_range, y_range = sph2xy(range(x0 - 2, x0 + 2, step = 0.3), range(y0 - 2, y0 + 2, step = 0.3), ref_itp)
 # tspan = (0.0, 200.0)
-tspan = (151.0, 300) # May 1
+tspan = (151.0, 300) # May 1 - Sep. 27
 cp = ClumpParameters(ref_itp)
 
 # spring_k = x -> 20

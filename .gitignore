@@ -75,6 +75,10 @@ Temporary Items
 
 # NetCDF
 *.nc
+!currents-temperature.nc
+!nutrients.nc
+!wind.nc
+
 
 # workspace
 /src/workspaces.jl

@@ -1,5 +1,0 @@
-module BOM
-
-# code
-
-end

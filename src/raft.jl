@@ -24,15 +24,15 @@ cp = ClumpParameters(ref_itp)
 k10 = 2*step(x_range)
 spring_k = x -> 5 * (5/k10) * x * exp(1 - (5/k10)*x) # A(5/k10) * x e^(1 - (5/k10)x)
 
-# gd_model = ImmortalModel()
-gd_model = BrooksModel()
+gd_model = ImmortalModel()
+# gd_model = BrooksModel()
 rp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", gd_model)
 
 prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
 
 @info "Solving model."
 
-land = Land()
+land = Land(verbose = true)
 
 @time sol_raft = solve(prob_raft, 
     Tsit5(),

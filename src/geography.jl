@@ -17,10 +17,11 @@ A container for data handling death of clumps upon reaching the shore.
 
 - `land_itp`: A `InterpolatedField` such that `land_itp.fields[:land](x, y)` is equal to `1.0` if `(x, y)` is on land and `0.0` otherwise.
 - `deaths`: A `Vector` of indices of clumps that are to be killed.
+- `verbose`: A `Bool` such that `verbose = true` will log times and labels of clumps that hit land.
 
 ### Constructors 
 
-Use `Land(;land_itp::InterpolatedField = land_itp)` to create a new `Land` object.
+Use `Land(;land_itp::InterpolatedField = land_itp, verbose = false)` to create a new `Land` object.
 
 ### Callbacks 
 
@@ -30,9 +31,10 @@ each clump is checked and clumps that are currently on land are killed with [`ki
 mutable struct Land{I<:InterpolatedField, U<:Integer}
     land_itp::I
     deaths::Vector{U}
+    verbose::Bool
 
-    function Land(;land_itp::InterpolatedField = land_itp)
-        return new{typeof(land_itp), Int64}(land_itp, Int64[])
+    function Land(;land_itp::InterpolatedField = land_itp, verbose = false)
+        return new{typeof(land_itp), Int64}(land_itp, Int64[], verbose)
     end
 end
 
@@ -45,7 +47,9 @@ end
 # affect!
 function (land::Land)(integrator)
     deaths = [integrator.p.loc2label[integrator.t][i] for i in land.deaths]
-    println("Killing $(deaths) at time $(integrator.t)")
+    if land.verbose
+        @info "Hit land: $(deaths) at time $(integrator.t)"
+    end
     kill!(integrator, land.deaths)
 end
 

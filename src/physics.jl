@@ -28,24 +28,12 @@ Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * 
 ########################################################################
 
 """
-    `Clump!`(du, u, p::ClumpParameters, t)
+    Clump!(du, u, p::ClumpParameters, t)
 
 Compute the right-hand-side of the differential equation controlling the motion of a single clump with 
 parameters given by [`ClumpParameters`](@ref).
 
 The solution vector `u` is a 2d vector such that `u[1:2] = [x, y]`.
-
-### Example 
-
-```julia
-x0, y0 = -64, 14
-tspan = (0.0, 200.0)
-xy0 = sph2xy(x0, y0, ref_itp) 
-
-cp = ClumpParameters(ref_itp)
-clump_prob = ODEProblem(Clump!, xy0, tspan, cp)
-sol_clump = solve(clump_prob, Tsit5())
-```
 """
 function Clump!(du, u, p::ClumpParameters, t)
     x, y = u
@@ -61,7 +49,7 @@ end
 
 
 """
-    `Raft!`(du, u, p::RaftParameters, t)
+    Raft!(du, u, p::RaftParameters, t)
 
 Compute the right-hand-side of the differential equation controlling the motion of a raft with parameters 
 given by [`RaftParameters`](@ref).

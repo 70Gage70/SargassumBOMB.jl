@@ -13,7 +13,7 @@ function n_clumps(u::Vector{<:Real})
 end
 
 """
-    n_clumps(u)
+    clump_i(u, i)
 
 Return the `[x, y]` coordinates of the `i`th clump in the solution vector `u`. This is `u[2*i:2*i+1]`.
 """

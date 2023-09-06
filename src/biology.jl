@@ -104,9 +104,15 @@ struct BrooksModelParameters{I<:InterpolatedField, T<:Real}
 end
 
 """
-    dSdt1(n_clumps, x, y, t; params::BrooksModelParameters)
+    brooks_dSdt_clump(x, y, t; params::BrooksModelParameters, n_clumps)
+
+Compute `dS/dt` for a single clump at position `(x, y)` and time `t` using the [`BrooksModelParameters`](@ref) in `params`. 
+
+### Optional Arguments
+
+- `n_clumps`: An `Integer` number of total clumps at the current time. Not present in the original Brooks model.
 """
-function dSdt1(n_clumps::Integer, x::Real, y::Real, t::Real; params::BrooksModelParameters)
+function brooks_dSdt_clump(x::Real, y::Real, t::Real, params::BrooksModelParameters; n_clumps::Integer)
     light_factor = 1.0 # 1 - exp(I/I_k)
     age_factor = 1.0 # exp(-t/params.a_ref)
     temp_factor = params.temp.fields[:temp](x, y, t) > params.T_ref ? 1.0 : 0.0
@@ -115,23 +121,50 @@ function dSdt1(n_clumps::Integer, x::Real, y::Real, t::Real; params::BrooksModel
 end
 
 """
-    brooks_dSdt(u, t; params::BrooksModelParameters)
+    brooks_dSdt_raft(u, t, params::BrooksModelParameters)
+
+Compute `dS/dt` for a raft with solution vector `u` at time `t`.
+
+Calculates the median of [`brooks_dSdt_clump`](@ref) evaluated at each clump multiplied by `u[1]`, the "amount" parameter in the solution vector.
 """
-function brooks_dSdt(u::Vector{<:Real}, t::Real; params::BrooksModelParameters)
-    return median(dSdt1(n_clumps(u), clump_i(u, i)..., t, params = params) for i = 1:n_clumps(u))*u[1]
+function brooks_dSdt_raft(u::Vector{<:Real}, t::Real, params::BrooksModelParameters)
+    return median(brooks_dSdt_clump(clump_i(u, i)..., t, params, n_clumps = n_clumps(u)) for i = 1:n_clumps(u))*u[1]
 end
 
 """
     mutable struct BrooksModel{B, T}
+
+The growth/death model of [Brooks et al. (2018)](https://www.int-res.com/abstracts/meps/v599/p1-18/). 
+
+### Fields 
+
+- `params`: The [`BrooksModelParameters`](@ref) parameters of the model.
+- `dSdt`: A `Function` mapping `(u, t)` to `dS/dt`, given by [`brooks_dSdt_raft`](@ref).
+- `growths`:A `Vector` of indices of clumps that are to be grown.
+- `deaths`: A `Vector` of indices of clumps that are to be killed.
+
+### Constructors
+
+Use `BrooksModel(;params = BrooksModelParameters(temp_itp, no3_itp))`.
+
+### Callbacks
+
+Use `callback(model::BrooksModel)` to create a `DiscreteCallback` suitable for use with `OrdinaryDiffEq.solve`. At each time step, the 
+value of `dSdt` is evaluated and clumps are grown with [`grow!`](@ref) and killed with [`kill!`](@ref) according to the following 
+default logic:
+
+- When the difference between `u[1]` and the actual number of clumps is at least 1 (call it `δn`), the `δn` clumps with the most 
+extreme values of [`brooks_dSdt_clump`](@ref) are either grown or killed depending on the sign of `δn`.
+
 """
 mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, F<:Function} <: AbstractGrowthDeathModel
     params::B
+    dSdt::F
     growths::Vector{U}
     deaths::Vector{U}
-    dSdt::F
 
     function BrooksModel(;params::BrooksModelParameters = BrooksModelParameters(temp_itp, no3_itp))
-        return new{typeof(params), Int64, Function}(params, Int64[], Int64[], (u, t) -> brooks_dSdt(u, t, params = params))
+        return new{typeof(params), Int64, Function}(params, (u, t) -> brooks_dSdt_raft(u, t, params), Int64[], Int64[])
     end
 end
     
@@ -147,7 +180,7 @@ function (model::BrooksModel)(u, t, integrator)
     end
 
     if delta_n != 0
-        dSdt = [dSdt1(n_clumps(u), clump_i(u, i)..., t, params = model.params) for i = 1:n_clumps(u)]
+        dSdt = [brooks_dSdt_clump(clump_i(u, i)..., t, model.params, n_clumps = n_clumps(u)) for i = 1:n_clumps(u)]
         # println("t = $t")
         # println("median dSdt = $(median(dSdt))")
         if delta_n > 0 

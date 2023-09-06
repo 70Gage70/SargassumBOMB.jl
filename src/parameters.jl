@@ -221,6 +221,16 @@ function RaftParameters(
     return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections_flat, loc2label, gd_model)
 end
 
+function RPClumpTest(x0::Real, y0::Real, cp::ClumpParameters, t0::Real, gd_model::AbstractGrowthDeathModel)
+    n_clumps = 1
+    ics = [1.0, x0, y0]
+    spring_parameters = SpringParameters(k -> 0.0, 1.0)
+    connections = Dict(1 => Int64[])
+    loc2label = Dict(t0 => Dict(1 => 1))
+
+    return RaftParameters(ics, cp, spring_parameters, n_clumps, connections, loc2label, gd_model)
+end
+
 function Base.show(io::IO, x::RaftParameters)
     print(io, "RaftParameters[")
     show(io, Integer(x.ics[1]))

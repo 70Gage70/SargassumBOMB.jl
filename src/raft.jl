@@ -24,8 +24,8 @@ cp = ClumpParameters(ref_itp)
 k10 = 2*step(x_range)
 spring_k = x -> 5 * (5/k10) * x * exp(1 - (5/k10)*x) # A(5/k10) * x e^(1 - (5/k10)x)
 
-gd_model = ImmortalModel()
-# gd_model = BrooksModel()
+# gd_model = ImmortalModel()
+gd_model = BrooksModel()
 rp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", gd_model)
 
 prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
@@ -35,7 +35,7 @@ prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
 land = Land(verbose = true)
 
 @time sol_raft = solve(prob_raft, 
-    Tsit5(),
+    Tsit5(), abstol = 1e-6, reltol = 1e-6,
     callback = CallbackSet(cb_loc2label(), callback(land), callback(gd_model))
 );
 
@@ -46,7 +46,7 @@ rtr = RaftTrajectory(sol_raft, rp, ref_itp)
 xy0 = sph2xy(x0, y0, ref_itp) 
 clump_prob = ODEProblem(Clump!, xy0, tspan, cp)
 
-sol_clump = solve(clump_prob, Tsit5())
+sol_clump = solve(clump_prob, Tsit5(), abstol = 1e-6, reltol = 1e-6)
 
 ctr = Trajectory(sol_clump.u, sol_clump.t, ref_itp)
 

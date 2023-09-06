@@ -27,25 +27,25 @@ Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * 
 ########################################################################
 ########################################################################
 
-"""
-    Clump!(du, u, p::ClumpParameters, t)
+# """
+#     Clump!(du, u, p::ClumpParameters, t)
 
-Compute the right-hand-side of the differential equation controlling the motion of a single clump with 
-parameters given by [`ClumpParameters`](@ref).
+# Compute the right-hand-side of the differential equation controlling the motion of a single clump with 
+# parameters given by [`ClumpParameters`](@ref).
 
-The solution vector `u` is a 2d vector such that `u[1:2] = [x, y]`.
-"""
-function Clump!(du, u, p::ClumpParameters, t)
-    x, y = u
-    α, τ, R, f = (p.α, p.τ, p.R, p.f)
+# The solution vector `u` is a 2d vector such that `u[1:2] = [x, y]`.
+# """
+# function Clump!(du, u, p::ClumpParameters, t)
+#     x, y = u
+#     α, τ, R, f = (p.α, p.τ, p.R, p.f)
     
-    du[1] = u_x(x, y, t, α) + τ * (
-        R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)
-    )
-    du[2] = u_y(x, y, t, α) + τ * (
-        R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
-    )
-end
+#     du[1] = u_x(x, y, t, α) + τ * (
+#         R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)
+#     )
+#     du[2] = u_y(x, y, t, α) + τ * (
+#         R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
+#     )
+# end
 
 
 """

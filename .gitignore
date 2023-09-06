@@ -87,7 +87,7 @@ Temporary Items
 *.txt
 
 # in prog
-/extras
+/extra
 **/src/data
 
 # JLD files (store interpolants)

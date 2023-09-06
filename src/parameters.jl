@@ -221,14 +221,33 @@ function RaftParameters(
     return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections_flat, loc2label, gd_model)
 end
 
-function RPClumpTest(x0::Real, y0::Real, cp::ClumpParameters, t0::Real, gd_model::AbstractGrowthDeathModel)
+"""
+    OneClumpRaftParameters(x0, y0, clump_parameters, t0, gd_model)
+
+Construct [`RaftParameters`](@ref) with a single clump.
+
+### Arguments
+
+- `x0`: The x coordinate of the clump.
+- `y0`: The x coordinate of the clump.
+- `clump_parameters`: The [`ClumpParameters`](@ref) of the clump.
+- `t0`: The initial time.
+- `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
+"""
+function OneClumpRaftParameters(
+    x0::Real, 
+    y0::Real, 
+    clump_parameters::ClumpParameters, 
+    t0::Real, 
+    gd_model::AbstractGrowthDeathModel)
+
     n_clumps = 1
     ics = [1.0, x0, y0]
     spring_parameters = SpringParameters(k -> 0.0, 1.0)
     connections = Dict(1 => Int64[])
     loc2label = Dict(t0 => Dict(1 => 1))
 
-    return RaftParameters(ics, cp, spring_parameters, n_clumps, connections, loc2label, gd_model)
+    return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections, loc2label, gd_model)
 end
 
 function Base.show(io::IO, x::RaftParameters)

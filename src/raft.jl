@@ -10,6 +10,7 @@ include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 
 @info "Generating model."
 
+# x0, y0 = -90, 23 # GoM
 # x0, y0 = -64, 14
 x0, y0 = -55, 10
 
@@ -43,12 +44,17 @@ rtr = RaftTrajectory(sol_raft, rp, ref_itp)
 
 @info "Generating reference clump."
 
-xy0 = sph2xy(x0, y0, ref_itp) 
-clump_prob = ODEProblem(Clump!, xy0, tspan, cp)
+gd_model = ImmortalModel()
+land = Land(verbose = true)
+rp_1c = OneClumpRaftParameters(sph2xy(x0, y0, ref_itp)..., cp, first(tspan), gd_model)
+prob_raft_1c = ODEProblem(Raft!, rp_1c.ics, tspan, rp_1c)
 
-sol_clump = solve(clump_prob, Tsit5(), abstol = 1e-6, reltol = 1e-6)
+@time sol_clump = solve(prob_raft_1c, 
+    Tsit5(), abstol = 1e-6, reltol = 1e-6,
+    callback = CallbackSet(cb_loc2label(), callback(land), callback(gd_model))
+);
 
-ctr = Trajectory(sol_clump.u, sol_clump.t, ref_itp)
+ctr = RaftTrajectory(sol_clump, rp_1c, ref_itp)
 
 @info "Plotting results."
 

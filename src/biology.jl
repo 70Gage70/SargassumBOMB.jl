@@ -50,7 +50,7 @@ function Base.show(io::IO, x::ImmortalModel)
 end
 
 """
-    struct BrooksModelParameters
+    struct BrooksModelParameters{I, T}
 
 A container for the interpolants and parameters of the model of [Brooks et al. (2018)](https://www.int-res.com/abstracts/meps/v599/p1-18/).
 
@@ -132,7 +132,7 @@ function brooks_dSdt_raft(u::Vector{<:Real}, t::Real, params::BrooksModelParamet
 end
 
 """
-    mutable struct BrooksModel{B, T}
+    mutable struct BrooksModel{B, U, F}
 
 The growth/death model of [Brooks et al. (2018)](https://www.int-res.com/abstracts/meps/v599/p1-18/). 
 
@@ -142,10 +142,11 @@ The growth/death model of [Brooks et al. (2018)](https://www.int-res.com/abstrac
 - `dSdt`: A `Function` mapping `(u, t)` to `dS/dt`, given by [`brooks_dSdt_raft`](@ref).
 - `growths`:A `Vector` of indices of clumps that are to be grown.
 - `deaths`: A `Vector` of indices of clumps that are to be killed.
+- `verbose`: A `Bool` such that `verbose = true` will log times and labels of clumps that grow and die.
 
 ### Constructors
 
-Use `BrooksModel(;params = BrooksModelParameters(temp_itp, no3_itp))`.
+Use `BrooksModel(;params = BrooksModelParameters(temp_itp, no3_itp), verbose = false)`.
 
 ### Callbacks
 
@@ -154,7 +155,8 @@ value of `dSdt` is evaluated and clumps are grown with [`grow!`](@ref) and kille
 default logic:
 
 - When the difference between `u[1]` and the actual number of clumps is at least 1 (call it `δn`), the `δn` clumps with the most 
-extreme values of [`brooks_dSdt_clump`](@ref) are either grown or killed depending on the sign of `δn`.
+extreme values of [`brooks_dSdt_clump`](@ref) are selected. If `δn < 0`, they are killed. If `δn > 0`, then those clumps are chosen 
+as parents in the [`grow!`](@ref) method and are connected to all other clumps.
 
 """
 mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, F<:Function} <: AbstractGrowthDeathModel
@@ -162,9 +164,10 @@ mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, F<:Function} <:
     dSdt::F
     growths::Vector{U}
     deaths::Vector{U}
+    verbose::Bool
 
-    function BrooksModel(;params::BrooksModelParameters = BrooksModelParameters(temp_itp, no3_itp))
-        return new{typeof(params), Int64, Function}(params, (u, t) -> brooks_dSdt_raft(u, t, params), Int64[], Int64[])
+    function BrooksModel(;params::BrooksModelParameters = BrooksModelParameters(temp_itp, no3_itp), verbose = false)
+        return new{typeof(params), Int64, Function}(params, (u, t) -> brooks_dSdt_raft(u, t, params), Int64[], Int64[], verbose)
     end
 end
     
@@ -181,8 +184,7 @@ function (model::BrooksModel)(u, t, integrator)
 
     if delta_n != 0
         dSdt = [brooks_dSdt_clump(clump_i(u, i)..., t, model.params, n_clumps = n_clumps(u)) for i = 1:n_clumps(u)]
-        # println("t = $t")
-        # println("median dSdt = $(median(dSdt))")
+
         if delta_n > 0 
             # need to grow clumps, take the delta_n clumps with largest positive dSdt as parents
             model.deaths = typeof(model.deaths)[]
@@ -201,16 +203,21 @@ end
 
 # affect!
 function (model::BrooksModel)(integrator)
-    # println("u = $(integrator.u[1])")
+    if model.verbose
+        growths = [integrator.p.n_clumps_tot + i for i = 1:length(model.growths)]
+        deaths = [integrator.p.loc2label[integrator.t][i] for i in model.deaths]
+        if length(growths) > 0
+            @info "Growth [t = $(integrator.t)]: $(growths)"
+        end
 
-    for i in model.growths
-        # println("[BROOKS] Growing $([integrator.p.n_clumps_tot]) at time $(integrator.t)")
-        grow!(integrator, location = i, connections = "full")
+        if length(deaths) > 0
+            @info "Death [t = $(integrator.t)]: $(deaths)"
+        end
     end
 
-    # if length(model.deaths) > 0
-    #     println("[BROOKS] Killing $(model.deaths) at time $(integrator.t)")
-    # end
+    for i in model.growths
+        grow!(integrator, location = i, connections = "full")
+    end
 
     kill!(integrator, model.deaths)
 

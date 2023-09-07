@@ -46,10 +46,11 @@ end
 
 # affect!
 function (land::Land)(integrator)
-    deaths = [integrator.p.loc2label[integrator.t][i] for i in land.deaths]
     if land.verbose
-        @info "Hit land: $(deaths) at time $(integrator.t)"
+        deaths = [integrator.p.loc2label[integrator.t][i] for i in land.deaths]
+        @info "Land [t = $(integrator.t)]: $(deaths)"
     end
+    
     kill!(integrator, land.deaths)
 end
 

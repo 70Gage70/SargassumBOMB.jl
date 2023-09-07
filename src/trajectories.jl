@@ -90,22 +90,34 @@ struct RaftTrajectory{U<:Integer, T<:Real}
 end
 
 """
-    RaftTrajectory(sol, rp, ref)
+    RaftTrajectory(sol, rp, ref; dt)
 
 Construct a [`RaftTrajectory`](@ref) from a differential equation solution `sol` and [`RaftParameters`](@ref) `rp`.
+
+Optionally, uniformize the solution to be on a regular time grid.
 
 ### Arguments
 
 - `sol`: The output of `solve(Raft!, args...)`.
 - `rp`: The [`RaftParameters`](@ref) used in solving the [`Raft!`](@ref) model.
 - `ref`: An [`EquirectangularReference`](@ref).
+
+### Optional Arguments
+
+- `dt`: If provided, the trajectory will be evaluated at uniform times separated by `dt`, not including the end point. Default `nothing`.
 """
-function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters, ref::EquirectangularReference)
+function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters, ref::EquirectangularReference; dt::Union{Real, Nothing} = nothing)
+    if dt !== nothing
+        sol_u, sol_t, rp_l2l = uniformize(sol, rp, dt)
+    else
+        sol_u, sol_t, rp_l2l = sol.u, sol.t, rp.loc2label
+    end
+
     # unique times
     times = Float64[]
 
     # data[time idx, clump label, xy]
-    data = zeros(length(unique(sol.t)), rp.n_clumps_tot, 2)
+    data = zeros(length(unique(sol_t)), rp.n_clumps_tot, 2)
 
     # the number of clumps at each (unique) time
     n_clumps_t = Int64[]
@@ -113,9 +125,9 @@ function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters, ref::Equirectan
     # map from clump label to list of time indexes it's alive
     lifetimes = Dict(i => Int64[] for i = 1:rp.n_clumps_tot)
 
-    for i = 1:length(sol.t)
-        t = sol.t[i]
-        u = sol.u[i][2:end]
+    for i = 1:length(sol_t)
+        t = sol_t[i]
+        u = sol_u[i][2:end]
         nc = Integer(length(u)/2)
 
         if !(t in times) 
@@ -127,10 +139,10 @@ function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters, ref::Equirectan
 
         i_t = length(times)
 
-        label_time = (i != 1) && (i != length(sol.t)) && (sol.t[i+1] == t) && (t != sol.t[i-1]) ? sol.t[i-1] : t
+        label_time = (i != 1) && (i != length(sol_t)) && (sol_t[i+1] == t) && (t != sol_t[i-1]) ? sol_t[i-1] : t
 
         for loc = 1:nc
-            l2l = rp.loc2label[label_time]
+            l2l = rp_l2l[label_time]
             if !(loc in keys(l2l)) continue end
 
             label = l2l[loc]
@@ -165,10 +177,12 @@ end
 
 """
     uniformize(sol, raft_parameters::RaftParameters, dt)
+
+Uniformize the solution `sol` with to be on a regular time grid separated by `dt`.
 """
 function uniformize(sol::AbstractMatrix, raft_parameters::RaftParameters, dt::Real)
     times = range(first(sol.t), last(sol.t), step = dt) |> collect
-    time_keys = sort(collect(keys(rp.loc2label)))
+    time_keys = sort(collect(keys(raft_parameters.loc2label)))
     
     xy_unif = Vector{Float64}[]
     t_unif = Float64[]

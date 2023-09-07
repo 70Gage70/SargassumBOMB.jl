@@ -10,9 +10,9 @@ include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 
 @info "Generating model."
 
-x0, y0 = -90, 23 # GoM
+# x0, y0 = -90, 23 # GoM
 # x0, y0 = -64, 14
-# x0, y0 = -55, 10
+x0, y0 = -55, 10
 
 # x_range, y_range = sph2xy(range(x0 - 1, x0 + 1, step = 0.5), range(y0 - 1, y0 + 1, step = 0.5), ref_itp)
 x_range, y_range = sph2xy(range(x0 - 2, x0 + 2, step = 0.3), range(y0 - 2, y0 + 2, step = 0.3), ref_itp)
@@ -58,7 +58,8 @@ ctr = RaftTrajectory(sol_clump, rp_1c, ref_itp)
 
 @info "Plotting results."
 
-limits = (-100, -50, 5, 35)
+# limits = (-100, -50, 5, 35)
+limits = (-70, -50, 5, 25)
 
 ### Trajectory COM
 
@@ -66,17 +67,36 @@ fig_COM = default_fig()
 ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
 
 # raft
-trajectory!(ax, rtr)
+# trajectory!(ax, rtr)
 
 # COM
-trajectory!(ax, rtr.com, 
-    opts = (linestyle = :dot, color = rtr.com.t, colormap = :heat, linewidth = 5)
+# trajectory!(ax, rtr.com, 
+#     opts = (linestyle = :dot, color = rtr.com.t, colormap = :heat, linewidth = 5)
+# ) 
+
+# COM 5
+# rtr_5 = RaftTrajectory(sol_raft, rp, ref_itp, dt = 5.0)
+
+# trajectory!(ax, rtr_5.com, 
+#     opts = (linestyle = :dot, color = rtr_5.com.t, colormap = :viridis, linewidth = 5)
+# ) 
+
+# t400
+trajectory!(ax, rtr.trajectories[1], 
+    opts = (linestyle = :dot, color = rtr.trajectories[1].t, colormap = :heat, linewidth = 5)
+) 
+
+# t400 5
+rtr_5 = RaftTrajectory(sol_raft, rp, ref_itp, dt = 5.0)
+
+trajectory!(ax, rtr_5.trajectories[1], 
+    opts = (linestyle = :dot, color = rtr_5.trajectories[1].t, colormap = :viridis, linewidth = 5)
 ) 
 
 # clump
-trajectory!(ax, ctr, 
-    opts = (color = ctr.t, colormap = :heat, linewidth = 2)
-) 
+# trajectory!(ax, ctr, 
+#     opts = (color = ctr.t, colormap = :heat, linewidth = 2)
+# ) 
 
 land!(ax)
 

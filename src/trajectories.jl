@@ -162,3 +162,25 @@ function Base.show(io::IO, x::RaftTrajectory)
     show(io, length(x.t))
     print(io, " times]")
 end
+
+"""
+    uniformize(sol, raft_parameters::RaftParameters, dt)
+"""
+function uniformize(sol::AbstractMatrix, raft_parameters::RaftParameters, dt::Real)
+    times = range(first(sol.t), last(sol.t), step = dt) |> collect
+    time_keys = sort(collect(keys(rp.loc2label)))
+    
+    xy_unif = Vector{Float64}[]
+    t_unif = Float64[]
+    loc2label_unif = typeof(rp.loc2label)()
+    
+    for t in times
+        push!(xy_unif, sol(t))
+        push!(t_unif, t)
+        closest_t_index = max(1, searchsortedfirst(time_keys, t) - 1)
+        loc2label_unif[t] = raft_parameters.loc2label[time_keys[closest_t_index]]
+    end
+    
+    return (xy_unif, t_unif, loc2label_unif)
+end
+

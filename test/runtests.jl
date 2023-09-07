@@ -1,6 +1,6 @@
-using BOM
+using SargassumBOMB
 using Test
 
-@testset "BOM.jl" begin
+@testset "SargassumBOMB.jl" begin
     # Write your tests here.
 end

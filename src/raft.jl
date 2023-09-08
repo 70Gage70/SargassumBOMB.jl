@@ -22,8 +22,12 @@ cp = ClumpParameters(ref_itp)
 
 # spring_k = x -> 20
 # rp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "nearest")
-k10 = 2*step(x_range)
-spring_k = x -> 5 * (5/k10) * x * exp(1 - (5/k10)*x) # A(5/k10) * x e^(1 - (5/k10)x)
+# k10 = 2*step(x_range)
+# spring_k = x -> 5 * (5/k10) * x * exp(1 - (5/k10)*x) # A(5/k10) * x e^(1 - (5/k10)x)
+
+function spring_k(x::Real; k10::Real = 2*step(x_range))
+    return 5 * (5/k10) * x * exp(1 - (5/k10)*x)
+end
 
 # gd_model = ImmortalModel()
 gd_model = BrooksModel(verbose = true)
@@ -70,28 +74,18 @@ ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
 # trajectory!(ax, rtr)
 
 # COM
-# trajectory!(ax, rtr.com, 
-#     opts = (linestyle = :dot, color = rtr.com.t, colormap = :heat, linewidth = 5)
-# ) 
+trajectory!(ax, rtr.com, 
+    opts = (linestyle = :dot, color = rtr.com.t, colormap = :heat, linewidth = 5)
+) 
 
 # COM 5
-# rtr_5 = RaftTrajectory(sol_raft, rp, ref_itp, dt = 5.0)
+rtr_5 = RaftTrajectory(sol_raft, rp, ref_itp, dt = 5.0)
 
 # trajectory!(ax, rtr_5.com, 
 #     opts = (linestyle = :dot, color = rtr_5.com.t, colormap = :viridis, linewidth = 5)
 # ) 
 
-# t400
-trajectory!(ax, rtr.trajectories[1], 
-    opts = (linestyle = :dot, color = rtr.trajectories[1].t, colormap = :heat, linewidth = 5)
-) 
-
-# t400 5
-rtr_5 = RaftTrajectory(sol_raft, rp, ref_itp, dt = 5.0)
-
-trajectory!(ax, rtr_5.trajectories[1], 
-    opts = (linestyle = :dot, color = rtr_5.trajectories[1].t, colormap = :viridis, linewidth = 5)
-) 
+scatter!(ax, rtr_5.com.xy[:,1], rtr_5.com.xy[:,2])
 
 # clump
 # trajectory!(ax, ctr, 

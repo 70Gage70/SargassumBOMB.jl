@@ -50,7 +50,7 @@ function Base.show(io::IO, x::ImmortalModel)
 end
 
 """
-    struct BrooksModelParameters{I, T}
+    struct BrooksModelParameters{I, U, T}
 
 A container for the interpolants and parameters of the model of [Brooks et al. (2018)](https://www.int-res.com/abstracts/meps/v599/p1-18/).
 
@@ -68,13 +68,16 @@ A container for the interpolants and parameters of the model of [Brooks et al. (
 - `k_N` [mmol N/m^3]: Sargassum nutrient (N) uptake half saturation. Value: `0.012`
 - `T_ref` [°C]: Minimum temperature for Sargassum growth. Value: `18.0`
 - `z_max` [m]: Maximum depth before Sargassum buoyancy is compromised. Value: `120.0`.
+- `clumps_limits`: A `Tuple` of the form `(n_clumps_min, n_clumps_max)`. These impose hard lower 
+and upper limits on the total number of clumps that can exist at any specific time (the total number 
+of clumps that can have ever existed - i.e. `n_clumps_tot` of [`RaftParameters`](@ref) - may be higher.) Default: `(0, 500)`.
 
 ### Constructors 
 
-The function `BrooksModelParameters(temp, no3; constants...)` is provided, where each constant is a kwarg 
+The function `BrooksModelParameters(temp, no3; parameters...)` is provided, where each parameters is a kwarg 
 with the default values given above.
 """
-struct BrooksModelParameters{I<:InterpolatedField, T<:Real} 
+struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real} 
     temp::I
     no3::I
     μ_max::T
@@ -84,7 +87,7 @@ struct BrooksModelParameters{I<:InterpolatedField, T<:Real}
     k_N::T
     T_ref::T
     z_max::T
-
+    clumps_limits::Tuple{U, U}
 
     function BrooksModelParameters(
         temp::InterpolatedField,
@@ -95,11 +98,12 @@ struct BrooksModelParameters{I<:InterpolatedField, T<:Real}
         a_ref::Real = 55.0,
         k_N::Real = 0.012,
         T_ref::Real = 18.0,
-        z_max::Real = 120.0)
+        z_max::Real = 120.0,
+        clumps_limits::Tuple = (0, 500))
 
         μ_max, m, I_k, a_ref, k_N, T_ref, z_max = promote(μ_max, m, I_k, a_ref, k_N, T_ref, z_max)
     
-        return new{typeof(temp), typeof(μ_max)}(temp, no3, μ_max, m, I_k, a_ref, k_N, T_ref, z_max)
+        return new{typeof(temp), eltype(clumps_limits), typeof(μ_max)}(temp, no3, μ_max, m, I_k, a_ref, k_N, T_ref, z_max, clumps_limits)
     end
 end
 
@@ -177,9 +181,10 @@ function (model::BrooksModel)(u, t, integrator)
     delta_n = sign(delta_n)*min(round(Int64, 0.05*n_clumps(u)), abs(delta_n))
     # ensures that delta_n does not change the number of clumps by more than 5% at any step
 
-    if u[1] > 500
-        # @warn "There are more than 1000 clumps; halting growth."
-        return false
+    if (delta_n > 0 && u[1] + delta_n > model.params.clumps_limits[2])
+        delta_n = max(0, model.params.clumps_limits[2] - round(Int64, u[1]))
+    elseif (delta_n < 0 && u[1] + delta_n < model.params.clumps_limits[1])
+        delta_n = min(0, model.params.clumps_limits[1] - round(Int64, u[1]))
     end
 
     if delta_n != 0

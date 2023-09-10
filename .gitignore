@@ -78,6 +78,7 @@ Temporary Items
 !currents-temperature.nc
 !nutrients.nc
 !wind.nc
+!afai.nc
 
 
 # workspace

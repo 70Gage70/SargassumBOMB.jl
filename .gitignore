@@ -63,6 +63,7 @@ Temporary Items
 *.csv
 *.pngs
 *.pdf
+!**/bulletins/*.pdf
 
 # Mathematica
 *.nb

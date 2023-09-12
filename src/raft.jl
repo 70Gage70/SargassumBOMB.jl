@@ -11,25 +11,26 @@ include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 @info "Generating model."
 
 # x0, y0 = -90, 23 # GoM
-x0, y0 = -64, 14
-# x0, y0 = -55, 10
+# x0, y0 = -64, 14
+x0, y0 = -60, 13
 
 # x_range, y_range = sph2xy(range(x0 - 1, x0 + 1, step = 0.5), range(y0 - 1, y0 + 1, step = 0.5), ref_itp)
-x_range, y_range = sph2xy(range(x0 - 2, x0 + 2, step = 0.3), range(y0 - 2, y0 + 2, step = 0.3), ref_itp)
-# tspan = (0.0, 200.0)
-tspan = (151.0, 300) # May 1 - Sep. 27
+x_range, y_range = sph2xy(range(x0 - 2, x0 + 4, step = 0.3), range(y0 - 4, y0 + 3, step = 0.3), ref_itp)
+# x_range, y_range = sph2xy(range(x0 - 30, x0 + 5, step = 0.5), range(y0 - 7, y0 + 2, step = 0.5), ref_itp)
+# tspan = (121.0, 122.0)
+# tspan = (121.0, 151.0) # April 1 - May 1
+tspan = (121.0, 212.0) # April 1 - July 1
 cp = ClumpParameters(ref_itp)
 
-# spring_k = x -> 20
-# rp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "nearest")
+# spring_k_constant = x -> 5
 
 function spring_k(x::Real; A::Real = 5.0, k10::Real = 2*step(x_range))
     return A * (5/k10) * x * exp(1 - (5/k10)*x)
 end
 
 # gd_model = ImmortalModel()
-# gd_model = BrooksModel(params = BrooksModelParameters(temp_itp, no3_itp, clumps_limits = (0, 350)), verbose = true)
-gd_model = BrooksModel(verbose = true)
+gd_model = BrooksModel(params = BrooksModelParameters(temp_itp, no3_itp, clumps_limits = (0, 1000)), verbose = true)
+# gd_model = BrooksModel(verbose = true)
 rp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", gd_model)
 
 prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
@@ -43,6 +44,7 @@ land = Land(verbose = true)
     callback = CallbackSet(cb_loc2label(), callback(land), callback(gd_model))
 );
 
+rtr = RaftTrajectory(sol_raft, rp, ref_itp)
 
 @info "Generating reference clump."
 
@@ -90,7 +92,7 @@ ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
 
 ### hist
 rtr_dt = RaftTrajectory(sol_raft, rp, ref_itp, dt = 1.0)
-tr_hist = trajectory_hist!(ax, rtr_dt, opts = (cellsize = 0.5,))
+tr_hist = trajectory_hist!(ax, rtr_dt)
 
 
 land!(ax)
@@ -101,8 +103,8 @@ land!(ax)
 
 ### counts legend
 min_cts, max_cts = getindex(tr_hist.colorrange)
-tticks = collect(range(start = min_cts, stop = max_cts, length = 5))
-data_legend!(fig_COM[1,2], L"\mathrm{Counts}", ticks = tticks)
+tticks = collect(range(start = log10(min_cts), stop = log10(max_cts), length = 5))
+data_legend!(fig_COM[1,2], L"\log_{10} \left(\mathrm{Counts}\right)", ticks = tticks, colormap = Reverse(:RdYlGn))
 
 fig_COM
 

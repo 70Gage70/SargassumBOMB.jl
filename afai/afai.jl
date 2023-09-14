@@ -57,7 +57,7 @@ matwrite(afaiout, Dict("lon" => lon_range, "lat" => lat_range, "t" => time_range
 
 using JLD2
 
-include("C:\\Users\\gageb\\Desktop\\Postdoc\\Repositories\\SargassumBOMB.jl\\interpolants\\itp-core.jl")
+include(joinpath(@__DIR__, "..", "interpolants", "itp-core.jl"))
 
 afai_file = "afai-2018.mat"
 
@@ -83,6 +83,9 @@ jldsave(outfile, afai_itp = itp)
 #################################################################### Plotting
 ####################################################################
 
+include(joinpath(@__DIR__, "../../CustomMakie.jl/src/geo-methods.jl"))
+include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
+
 afai_itp = itp
 
 fig = default_fig()
@@ -94,7 +97,7 @@ t0 = 121.0 # april 1
 
 xs = range(start = lims[1], stop = lims[2], length = n_points)
 ys = range(start = lims[3], stop = lims[4], length = n_points)
-zs = [afai_itp.fields[:afai](sph2xy(x, y, afai_itp.ref)..., t) for x in xs, y in ys]
+zs = [afai_itp.fields[:afai](sph2xy(x, y, afai_itp.ref)..., t0) for x in xs, y in ys]
 # zs = [sum(afai_itp.fields[:afai](sph2xy(x, y, afai_itp.ref)..., t) for t = t0:t0+31)  for x in xs, y in ys]
 
 heatmap!(ax, xs, ys, zs)

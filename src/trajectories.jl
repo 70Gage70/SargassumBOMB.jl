@@ -9,7 +9,7 @@ A container for the data of a single clump's trajectory.
 
 ### Fields
 
-- `xy`: A `Matrix` of size `N x 2` such that `xy[i,:]` gives the `[x, y]` coordinates at the clump at time `t[i]`.
+- `xy`: A `Matrix` of size `N x 2` such that `xy[i,:]` gives the `[x, y]` or `[lon, lat]` coordinates at the clump at time `t[i]`.
 - `t`: A `Vector` of length `N` giving the time values of the trajectory.
 
 ### Constructors
@@ -199,11 +199,37 @@ function uniformize(sol::AbstractMatrix, raft_parameters::RaftParameters, dt::Re
 end
 
 """
-    bins(raft_trajectory, lon_bins, lat_bins)
+    bins(raft_trajectory, x_bins, y_bins)
 
-Generate rectangular bins from the [`RaftTrajectory`](@ref) in `raft_trajectory` according to 
-the `AbstractRange`s, `lon_bins` longitudinally and `lat_bins` latitudinally.
+Return a matrix `mat` such that `mat[i, j]` is the number of points in `raft_trajectory` that, at any time, 
+were inside the rectangle `lon ∈ (x_bins[i], x_bins[i + 1])`, `lat ∈ (y_bins[i], y_bins[i + 1])`.
+
+Both `x_bins` and `y_bins` should be `StepRangeLen`, i.e. of the form `range(start, stop, length = L)`. Then, 
+`mat` has dimensions `length(x_bins) - 1 x length(y_bins) - 1`.
+
+No coversion from or to spherical coordinates is done on `x_bins` and `y_bins`.
 """
-function bins(raft_trajectory::RaftTrajectory, lon_bins::AbstractRange, lat_bins::AbstractRange)
-    
+function bins(raft_trajectory::RaftTrajectory, x_bins::StepRangeLen, y_bins::StepRangeLen)
+    x = typeof(rtr).parameters[2][]
+    y = typeof(rtr).parameters[2][]
+
+    for (_, tr) in raft_trajectory.trajectories
+        x = vcat(x, tr.xy[:,1])
+        y = vcat(y, tr.xy[:,2])
+    end
+
+    mat = zeros(eltype(x), length(x_bins) - 1, length(y_bins) - 1)
+
+    for i = 1:length(x)
+        x_bin = ceil(Int64, (x[i] - first(x_bins))/step(x_bins))
+        y_bin = ceil(Int64, (y[i] - first(y_bins))/step(y_bins))
+
+        if (x_bin < 1) && (x_bin >= length(x_bins)) && (y_bin < 1) && (y_bin >= length(y_bins))
+            continue
+        else
+            mat[x_bin, y_bin] = mat[x_bin, y_bin] + 1
+        end
+    end
+
+    return mat
 end

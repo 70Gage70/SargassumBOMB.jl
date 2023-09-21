@@ -92,7 +92,10 @@ ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
 
 ### hist
 rtr_dt = RaftTrajectory(sol_raft, rp, ref_itp, dt = 1.0)
-tr_hist = trajectory_hist!(ax, rtr_dt)
+
+lon_bins = range(-100, -50, length = 100)
+lat_bins = range(5, 35, length = 100)
+tr_hist = trajectory_hist!(ax, rtr_dt, lon_bins, lat_bins)
 
 
 land!(ax)
@@ -103,7 +106,7 @@ land!(ax)
 
 ### counts legend
 min_cts, max_cts = getindex(tr_hist.colorrange)
-tticks = collect(range(start = log10(min_cts), stop = log10(max_cts), length = 5))
+tticks = collect(range(start = 0.0, stop = log10(max_cts), length = 5))
 data_legend!(fig_COM[1,2], L"\log_{10} \left(\mathrm{Counts}\right)", ticks = tticks, colormap = Reverse(:RdYlGn))
 
 fig_COM

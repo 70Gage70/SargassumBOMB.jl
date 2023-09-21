@@ -47,7 +47,6 @@ Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * 
 #     )
 # end
 
-
 """
     Raft!(du, u, p::RaftParameters, t)
 
@@ -77,3 +76,26 @@ function Raft!(du, u, p::RaftParameters, t)
     end
 end
 
+
+"""
+    Water!(du, u, p::RaftParameters, t)
+
+Compute the right-hand-side of the differential equation controlling the motion of a raft particles 
+whose velocities are equal to `u = (1 - α)v_water + α v_wind`.
+
+The parameters `p` are given by [`RaftParameters`](@ref), but only `p.α` and `p.gd_model` are used.
+
+This function is equivalent to [`Raft!`](@ref) in the case where `τ = 0`.
+"""
+function Water!(du, u, p::RaftParameters, t)
+    du[1] = p.gd_model.dSdt(u, t)
+
+    α = p.clumps.α
+
+    for i = 1:floor(Int64, length(u)/2)
+        x, y = u[2*i:2*i+1]
+
+        du[2*i] = u_x(x, y, t, α)
+        du[2*i+1] = u_y(x, y, t, α)
+    end
+end

@@ -31,9 +31,12 @@ end
 # gd_model = ImmortalModel()
 gd_model = BrooksModel(params = BrooksModelParameters(temp_itp, no3_itp, clumps_limits = (0, 1000)), verbose = true)
 # gd_model = BrooksModel(verbose = true)
-rp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", gd_model)
 
+rp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", gd_model)
 prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
+
+# wp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", ImmortalModel())
+# prob_raft = ODEProblem(Water!, rp.ics, tspan, rp)
 
 @info "Solving model."
 

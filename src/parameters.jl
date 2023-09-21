@@ -156,6 +156,8 @@ end
 
 Construct [`RaftParameters`](@ref) in a rectangular arrangement.
 
+Use [`OneClumpRaftParameters`](@ref) to construct a raft with single clump.
+
 ### Arguments
 
 - `x_range`: A range which gives the x coordinates of the clumps in the raft. Should be increasing and in equirectangular coordinates, not longitudes.

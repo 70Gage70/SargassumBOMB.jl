@@ -198,3 +198,12 @@ function uniformize(sol::AbstractMatrix, raft_parameters::RaftParameters, dt::Re
     return (xy_unif, t_unif, loc2label_unif)
 end
 
+"""
+    bins(raft_trajectory, lon_bins, lat_bins)
+
+Generate rectangular bins from the [`RaftTrajectory`](@ref) in `raft_trajectory` according to 
+the `AbstractRange`s, `lon_bins` longitudinally and `lat_bins` latitudinally.
+"""
+function bins(raft_trajectory::RaftTrajectory, lon_bins::AbstractRange, lat_bins::AbstractRange)
+    
+end

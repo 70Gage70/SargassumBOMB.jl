@@ -160,6 +160,25 @@ function Base.show(io::IO, x::RaftParameters)
 end
 
 """
+    initial_conditions(xy0; ref = nothing)
+
+Construct initial conditions suitable for use in `RaftParameters.ics` from a list of coordinates of the form 
+`[x1, y1, x2, y2 ..., xN, yN]`. These should be equirectangular coordinates; if `ref` is provided, the coordinates 
+are converted from spherical coordinates.
+"""
+function initial_conditions(xy0::Vector{<:Real}; ref::Union{Nothing, EquirectangularReference} = nothing)
+    if ref !== nothing
+        ics = sph2xy(xy0, ref)
+    else
+        ics = deepcopy(xy0)
+    end
+
+    pushfirst!(ics, length(xy0)/2)
+    return ics
+end
+
+
+"""
     RectangularRaftParameters(x_range, y_range, clump_parameters, spring_parameters, t0, network_type, gd_model)
 
 Construct [`RaftParameters`](@ref) in a rectangular arrangement.

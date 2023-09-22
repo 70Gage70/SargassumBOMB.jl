@@ -39,6 +39,9 @@ The units of `x` and `y` the same as `ref.R`.
 
 Can be applied as `sph2xy(lon_range, lat_range, ref)` where `lon_range` and `lat_range` are `AbstractRange`. Returns `(x_range, y_range)`.
 
+Can be applied as `sph2xy(lon_lat, ref)` where `lon_lat` is an `N x 2` `Matrix` or a `Vector` of length `2N` with 
+entries of the form `[lon1, lat1, lon2, lat2 ... lonN, latN]`. Returns a result in the same shape as the input.
+
 ### Arguments
 
 - `lon`: Longitude in degrees (East/West).
@@ -69,6 +72,28 @@ function sph2xy(lon_range::AbstractRange, lat_range::AbstractRange, ref::Equirec
             )
 end
 
+function sph2xy(lon_lat::Matrix{T}, ref::EquirectangularReference) where {T<:Real}
+    @assert size(lon_lat, 2) == 2 "lon_lat should be an `N x 2` matrix"
+    xy = zeros(T, size(lon_lat))
+    
+    for i = 1:size(lon_lat, 1)
+        xy[i,:] .= sph2xy(lon_lat[i,1], lon_lat[i,2], ref)
+    end
+
+    return xy
+end
+
+function sph2xy(lon_lat::Vector{T}, ref::EquirectangularReference) where {T<:Real}
+    @assert iseven(length(lon_lat)) "lon_lat should be of the form `[lon1, lat1, lon2, lat2 ... lon3, lat3]`."
+
+    xy = zeros(T, length(lon_lat))
+    
+    for i = 1:2:length(lon_lat)
+        xy[i:i+1] .= sph2xy(lon_lat[i], lon_lat[i + 1], ref)
+    end
+
+    return xy
+end
 
 """
     xy2sph(x, y, ref)
@@ -77,7 +102,7 @@ Compute spherical coordinates `[lon, lat]` [deg] from rectilinear coordinates `(
 
 The units of `x` and `y` should be the same as `ref.R`.
 
-Can be applied as `xy2sph(xy, ref)` where `xy` is a `Vector{Vector{T}}` or a `Matrix`. Returns a `Matrix`.
+Can be applied as `xy2sph(xy, ref)` where `xy` is a `Vector{Vector{T}}` or an `N x 2` `Matrix`. Returns an `N x 2` `Matrix` in these cases.
 
 Can be applied as `xy2sph(x_range, y_range, ref)` where `x_range` and `y_range` are `AbstractRange`. Returns `(lon_range, lat_range)`.
 
@@ -99,20 +124,21 @@ function xy2sph(x::Real, y::Real, ref::EquirectangularReference)
 end
 
 function xy2sph(xy::Vector{<:Vector{T}}, ref::EquirectangularReference) where {T<:Real}
-    lonlat = zeros(length(xy), 2) 
+    lonlat = zeros(T, length(xy), 2) 
     
     for i = 1:length(xy)
-        lonlat[i,:] = xy2sph(xy[i]..., ref)
+        lonlat[i,:] = xy2sph(xy[i][1], xy[i][2],ref)
     end
 
     return lonlat
 end
 
 function xy2sph(xy::Matrix{T}, ref::EquirectangularReference) where {T<:Real}
-    lonlat = zeros(size(xy)...)
+    @assert size(xy, 2) == 2 "xy should be an `N x 2` matrix"
+    lonlat = zeros(T, size(xy))
     
     for i = 1:size(xy, 1)
-        lonlat[i,:] = xy2sph(xy[i,:]..., ref)
+        lonlat[i,:] = xy2sph(xy[i,1], xy[i,2], ref)
     end
 
     return lonlat

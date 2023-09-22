@@ -165,6 +165,10 @@ end
 Construct initial conditions suitable for use in `RaftParameters.ics` from a list of coordinates of the form 
 `[x1, y1, x2, y2 ..., xN, yN]`. These should be equirectangular coordinates; if `ref` is provided, the coordinates 
 are converted from spherical coordinates.
+
+Can be applied as `initial_conditions(x_range, y_range; ref = nothing)` to generate clumps in a rectangular arrangement.
+
+Can be applied as `initial_conditions(x0, y0; ref = nothing)` for a single clump with coordinates `(x0, y0)`.
 """
 function initial_conditions(xy0::Vector{<:Real}; ref::Union{Nothing, EquirectangularReference} = nothing)
     if ref !== nothing
@@ -177,6 +181,108 @@ function initial_conditions(xy0::Vector{<:Real}; ref::Union{Nothing, Equirectang
     return ics
 end
 
+function initial_conditions(
+    x_range::AbstractRange{T}, 
+    y_range::AbstractRange{T}; 
+    ref::Union{Nothing, EquirectangularReference} = nothing) where {T<:Real}
+
+    if ref !== nothing
+        ics_x, ics_y = sph2xy(x_range, y_range, ref)
+    else
+        ics_x, ics_y = x_range, y_range
+    end
+
+    ics = T[length(x_range)*length(y_range)]
+
+    for x in ics_x, y in ics_y
+        push!(ics, x, y)
+    end
+
+    return ics
+end
+
+function initial_conditions(x0::Real, y0::Real; ref::Union{Nothing, EquirectangularReference} = nothing)
+    if ref !== nothing
+        ics = sph2xy(x0, y0, ref)
+    else
+        ics = [x0, y0]
+    end
+
+    pushfirst!(ics, 1)
+    return ics
+end
+
+"""
+    initial_connections(ics, network_type; neighbor_parameter = nothing)
+
+Construct initial connections between clumps suitable for use in `RaftParameters.connections`.
+
+### Arguments 
+
+- `ics`: A `Vector` of initial conditions as defined by [`RaftParameters`](@ref).
+- `network_type`: A `String` identifying how the connections should be consructed.
+    - `"full"`: Every clump is connected to every other clump.
+    - `"none"`: No clumps are connected.
+    - `"radius"`: Each clump is connected to clumps within a distance `neighbor_parameter`. If `neighbor_parameter` is not provided, 
+                    the distance is taken to be the mean value of all pairwise clump distances in `ics`.
+    - `"nearest"`: Each clump is connected to its `neighbor_parameter` nearest neighbors (not including itself). If `neighbor_parameter` 
+                    is not provided, each clump is connected to its nearest neighbor, i.e. `neighbor_parameter = 1`.
+
+### Optional Arguments
+
+- `neighbor_parameter`: A parameter controlling the connections for the `"radius"` and `"nearest"` options of `network_type`; see above.
+"""
+function initial_connections(
+    ics::Vector{<:Real}, 
+    network_type::String; 
+    neighbor_parameter::Union{Nothing, Real} = nothing)
+    @assert network_type in ["full", "none", "radius", "nearest"] "`network_type` not recognized."
+
+    n_clumps = Int64((length(ics) - 1)/2)
+
+    if network_type == "full"
+        connections = Dict(1:n_clumps .=> [[j for j = 1:n_clumps if j != i] for i = 1:n_clumps])
+    elseif network_type == "none"
+        connections = Dict(1:n_clumps .=> [Int64[] for i = 1:n_clumps])
+    elseif network_type == "radius"
+        data = reshape(ics[2:end], 2, n_clumps)
+
+        if neighbor_parameter === nothing
+            dists = Float64[]
+            for i = 1:size(data, 2) - 1
+                for j = i+1:size(data, 2)
+                    push!(dists, norm(data[:,i] - data[:, j]))
+                end
+            end
+
+            radius = mean(dists)
+        else
+            radius = neighbor_parameter
+        end
+        
+        balltree = BallTree(data)
+        idx = inrange(balltree, data, radius, true)
+        idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]
+        connections = Dict(1:n_clumps .=> idx)
+    elseif network_type == "nearest"
+        # each point is considered one of its own nearest neighbors, so have to add 1
+        if neighbor_parameter === nothing
+            k = 2
+        else
+            k = neighbor_parameter + 1
+        end
+        
+        k = min(n_clumps, k)
+
+        data = reshape(ics[2:end], 2, n_clumps)
+        kdtree = KDTree(data)
+        idx, dists = knn(kdtree, data, k, true)
+        idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]
+        connections = Dict(1:n_clumps .=> idx)
+    end
+
+    return connections
+end
 
 """
     RectangularRaftParameters(x_range, y_range, clump_parameters, spring_parameters, t0, network_type, gd_model)

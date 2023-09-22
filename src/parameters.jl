@@ -1,4 +1,5 @@
 using LinearAlgebra: norm
+using SargassumFromAFAI
 
 include("coordinates.jl")
 
@@ -151,8 +152,14 @@ mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, G<:AbstractGrowt
     gd_model::G
 end
 
+function Base.show(io::IO, x::RaftParameters)
+    print(io, "RaftParameters[")
+    show(io, Integer(x.ics[1]))
+    print(io, " Clumps]")
+end
+
 """
-    RaftParameters(x_range, y_range, clump_parameters, spring_parameters, t0, network_type, gd_model)
+    RectangularRaftParameters(x_range, y_range, clump_parameters, spring_parameters, t0, network_type, gd_model)
 
 Construct [`RaftParameters`](@ref) in a rectangular arrangement.
 
@@ -172,7 +179,7 @@ distances between adjacent clumps.
     - `"none"`: No clumps are connected.
 - `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
 """
-function RaftParameters(
+function RectangularRaftParameters(
     x_range::AbstractRange{<:Real}, 
     y_range::AbstractRange{<:Real},
     clump_parameters::ClumpParameters, 
@@ -252,9 +259,94 @@ function OneClumpRaftParameters(
     return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections, loc2label, gd_model)
 end
 
-function Base.show(io::IO, x::RaftParameters)
-    print(io, "RaftParameters[")
-    show(io, Integer(x.ics[1]))
-    print(io, " Clumps]")
+# dists = SargassumDistribution("/Users/gagebonner/Desktop/Repositories/SargassumFromAFAI.jl/data/dist-2018.nc")
+
+"""
+    DistributionRaftParameters
+
+### Arguments 
+- `dist`:
+- `number`: The number of clumps to initialize.
+
+### Optional Arguments
+
+- `sample_type`: A `String` identifying one of the methods of assigning clump locations based on the distribution. Default `"sample"`.
+ - `"sample"`: A number `number` of samples are drawn from `dist`. Each sample is placed uniformly at random inside corresponding box.
+ - `"sorted"`: Boxed are filled with one clump placed uniformly at random inside them, starting from the box with the highest concentration. If `number` 
+                is greater than the total number of boxes, repeat the loop starting again from the highest concentration box.
+ - `"uniform"`: Exactly one clump is placed in the center of each box with nonzero concentration. Note that this ignores `number`.
+"""
+function DistributionRaftParameters(
+    dist::SargassumDistribution, 
+    number::Integer,
+    clump_parameters::ClumpParameters, 
+    spring_k::Function,
+    t0::Real, 
+    network_type::String,
+    gd_model::AbstractGrowthDeathModel;
+    sample_type::String = "sample")
+
+    @assert type in ["sample", "sorted", "uniform"]
+
+    sarg = dist.sargassum
+    lons = dist.lon
+    lats = dist.lat
+
+    δ_x = abs(lons[2] - lons[1])
+    δ_y = abs(lats[2] - lats[1])
+
+    xy0 = Float64[]
+
+    if sample_type == "sample"
+        pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
+        wts = sarg |> x -> reduce(vcat, x)
+        samples = sample(pts, Weights(wts), number)
+
+        for samp in samples
+            push!(xy0, rand(Uniform(samp[1] - δ_x/2, samp[1] + δ_x/2)))
+            push!(xy0, rand(Uniform(samp[2] - δ_y/2, samp[2] + δ_y/2)))
+        end
+    elseif sample_type == "sorted"
+        pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
+        wts = sarg |> x -> reduce(vcat, x)
+
+        idx = findall(x -> x > 0, wts)
+        pts = pts[idx]
+        wts = wts[idx]
+
+        pts = pts[sortperm(wts, rev = true)]
+
+        n_c = 1
+        while n_c <= number
+            idx = n_c == length(pts) ? length(pts) : mod(n_c, length(pts))
+            pt = pts[idx]
+
+            push!(xy0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))
+            push!(xy0, rand(Uniform(pt[2] - δ_y/2, pt[2] + δ_y/2)))       
+
+            n_c = n_c + 1
+        end
+    elseif sample_type == "uniform"
+        pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
+        wts = sarg |> x -> reduce(vcat, x)
+
+        idx = findall(x -> x > 0, wts)
+        pts = pts[idx]
+
+        for pt in pts
+            push!(xy0, pt[1])
+            push!(xy0, pt[2])  
+        end
+    end
+
+    n_clumps = length(xy0)/2
+    pushfirst!(xy0, n_clumps)
+
+    spring_parameters = SpringParameters(spring_k, (δ_x + δ_y)/2)
+
+    # how to actually set L of spring_parameters?
+    # how to deal with connections?
+
+    return RaftParameters(xy0, clump_parameters, spring_parameters, n_clumps, connections, loc2label, gd_model)
 end
 

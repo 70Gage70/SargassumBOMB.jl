@@ -32,7 +32,7 @@ end
 gd_model = BrooksModel(params = BrooksModelParameters(temp_itp, no3_itp, clumps_limits = (0, 1000)), verbose = true)
 # gd_model = BrooksModel(verbose = true)
 
-rp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", gd_model)
+rp = RectangularRaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", gd_model)
 prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
 
 # wp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", ImmortalModel())

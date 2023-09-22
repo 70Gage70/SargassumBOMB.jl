@@ -14,25 +14,41 @@ include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 # x0, y0 = -64, 14
 x0, y0 = -60, 13
 
-# x_range, y_range = sph2xy(range(x0 - 1, x0 + 1, step = 0.5), range(y0 - 1, y0 + 1, step = 0.5), ref_itp)
-x_range, y_range = sph2xy(range(x0 - 2, x0 + 4, step = 0.3), range(y0 - 4, y0 + 3, step = 0.3), ref_itp)
-# x_range, y_range = sph2xy(range(x0 - 30, x0 + 5, step = 0.5), range(y0 - 7, y0 + 2, step = 0.5), ref_itp)
+Δ_clump = 0.3
+x_range, y_range = range(x0 - 2, x0 + 4, step = Δ_clump), range(y0 - 4, y0 + 3, step = Δ_clump)
+
 # tspan = (121.0, 122.0)
 # tspan = (121.0, 151.0) # April 1 - May 1
 tspan = (121.0, 212.0) # April 1 - July 1
+
 cp = ClumpParameters(ref_itp)
 
 # spring_k_constant = x -> 5
+# sp = SpringParameters(spring_k_constant, Δ_clump)
 
-function spring_k(x::Real; A::Real = 5.0, k10::Real = 2*step(x_range))
+function spring_k(x::Real; A::Real = 5.0, k10::Real = 2*Δ_clump)
     return A * (5/k10) * x * exp(1 - (5/k10)*x)
 end
 
-# gd_model = ImmortalModel()
-gd_model = BrooksModel(params = BrooksModelParameters(temp_itp, no3_itp, clumps_limits = (0, 1000)), verbose = true)
-# gd_model = BrooksModel(verbose = true)
+sp = SpringParameters(spring_k, Δ_clump)
 
-rp = RectangularRaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", gd_model)
+gdm = ImmortalModel()
+# gdm = BrooksModel(params = BrooksModelParameters(temp_itp, no3_itp, clumps_limits = (0, 1000)), verbose = true)
+# gdm = BrooksModel(verbose = true)
+
+# rp = RectangularRaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", gdm)
+
+ics = initial_conditions(x_range, y_range, ref = ref_itp)
+icons = initial_connections(ics, "nearest", neighbor_parameter = 4)
+rp = RaftParameters(
+    ics = ics,
+    clumps = cp,
+    springs = sp,
+    connections = icons,
+    t0 = first(tspan),
+    gd_model = gdm
+)
+
 prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
 
 # wp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", ImmortalModel())
@@ -44,21 +60,32 @@ land = Land(verbose = true)
 
 @time sol_raft = solve(prob_raft, 
     Tsit5(), abstol = 1e-6, reltol = 1e-6,
-    callback = CallbackSet(cb_loc2label(), callback(land), callback(gd_model))
+    callback = CallbackSet(cb_loc2label(), callback(land), callback(gdm))
 );
 
 rtr = RaftTrajectory(sol_raft, rp, ref_itp)
 
 @info "Generating reference clump."
 
-gd_model = ImmortalModel()
+gdm = ImmortalModel()
 land = Land(verbose = true)
-rp_1c = OneClumpRaftParameters(sph2xy(x0, y0, ref_itp)..., cp, first(tspan), gd_model)
+
+ics_1c = initial_conditions(x0, y0, ref = ref_itp)
+icons_1c = initial_connections(ics, "none")
+rp_1c = RaftParameters(
+    ics = ics_1c,
+    clumps = cp,
+    springs = sp,
+    connections = icons_1c,
+    t0 = first(tspan),
+    gd_model = gdm
+)
+
 prob_raft_1c = ODEProblem(Raft!, rp_1c.ics, tspan, rp_1c)
 
 @time sol_clump = solve(prob_raft_1c, 
     Tsit5(), abstol = 1e-6, reltol = 1e-6,
-    callback = CallbackSet(cb_loc2label(), callback(land), callback(gd_model))
+    callback = CallbackSet(cb_loc2label(), callback(land), callback(gdm))
 );
 
 ctr = RaftTrajectory(sol_clump, rp_1c, ref_itp)

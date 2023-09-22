@@ -141,7 +141,16 @@ such that `u[1]` is an "amount" parameter which controls the growth and death of
 - `loc2label`: A `Dict` such that `loc2label[t]` is itself a `Dict` mapping vector indices to the absolute label of the clump in that location at
 the `i`th time step. For example, `loc2label[t0][j] = j` since, at the initial time `t0`, the `j`th location contains the `j`th clump. If 
 clump 1 dies at some later time `t`, then `loc2label[t][1] = 2`, `loc2label[t][2] = 3` since every clump is shifted by one to the left.
-- `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
+- `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector and current time, 
+i.e. it must be a function `dSdt(u, t)`.
+
+### Constructors 
+
+Use `RaftParameters(; ics, clumps, springs, connections, t0, gd_model)`. The arguments `clumps`, `springs` and 
+`gd_model` are passed directly to the struct.
+
+The function [`initial_conditions`](@ref) helps with the construction of `ics` and the function [`initial_connections`](@ref) 
+helps with the construction of `connections`. Finally, `t0` is the initial time of the simulation.
 """
 mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, G<:AbstractGrowthDeathModel}
     ics::Vector{T}
@@ -151,6 +160,20 @@ mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, G<:AbstractGrowt
     connections::Dict{U, Vector{U}}
     loc2label::Dict{T, Dict{U, U}}
     gd_model::G
+
+    function RaftParameters(;
+        ics::Vector{T},
+        clumps::ClumpParameters{T},
+        springs::SpringParameters{F, T},
+        connections::Dict{U, Vector{U}},
+        t0::T,
+        gd_model::G) where {T<:Real, U<:Integer, F<:Function, G<:AbstractGrowthDeathModel}
+
+        n_clumps = Int64((length(ics) - 1)/2)
+        loc2label = Dict(t0 => Dict(i => i for i = 1:n_clumps))
+
+        return new{T, U, F, G}(ics, clumps, springs, n_clumps, connections, loc2label, gd_model)
+    end
 end
 
 function Base.show(io::IO, x::RaftParameters)
@@ -284,106 +307,106 @@ function initial_connections(
     return connections
 end
 
-"""
-    RectangularRaftParameters(x_range, y_range, clump_parameters, spring_parameters, t0, network_type, gd_model)
+# """
+#     RectangularRaftParameters(x_range, y_range, clump_parameters, spring_parameters, t0, network_type, gd_model)
 
-Construct [`RaftParameters`](@ref) in a rectangular arrangement.
+# Construct [`RaftParameters`](@ref) in a rectangular arrangement.
 
-Use [`OneClumpRaftParameters`](@ref) to construct a raft with single clump.
+# Use [`OneClumpRaftParameters`](@ref) to construct a raft with single clump.
 
-### Arguments
+# ### Arguments
 
-- `x_range`: A range which gives the x coordinates of the clumps in the raft. Should be increasing and in equirectangular coordinates, not longitudes.
-- `y_range`: A range which gives the y coordinates of the clumps in the raft. Should be increasing and in equirectangular coordinates, not latitudes.
-- `clump_parameters`: The [`ClumpParameters`](@ref) shared by each clump.
-- `spring_k`: The spring function `k(x)` as in `F = - k(x)(x - L)`. The natural length of the spring `L` is set automatically according to the 
-distances between adjacent clumps.
-- `t0`: The initial time.
-- `network_type`: How the springs are conencted in the raft.
-    - `"nearest"`: The default value. Each clump is connected to its perpendicular neighbors.
-    - `"full"`: Each clump is connected to each other clump.
-    - `"none"`: No clumps are connected.
-- `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
-"""
-function RectangularRaftParameters(
-    x_range::AbstractRange{<:Real}, 
-    y_range::AbstractRange{<:Real},
-    clump_parameters::ClumpParameters, 
-    spring_k::Function,
-    t0::Real, 
-    network_type::String,
-    gd_model::AbstractGrowthDeathModel)
+# - `x_range`: A range which gives the x coordinates of the clumps in the raft. Should be increasing and in equirectangular coordinates, not longitudes.
+# - `y_range`: A range which gives the y coordinates of the clumps in the raft. Should be increasing and in equirectangular coordinates, not latitudes.
+# - `clump_parameters`: The [`ClumpParameters`](@ref) shared by each clump.
+# - `spring_k`: The spring function `k(x)` as in `F = - k(x)(x - L)`. The natural length of the spring `L` is set automatically according to the 
+# distances between adjacent clumps.
+# - `t0`: The initial time.
+# - `network_type`: How the springs are conencted in the raft.
+#     - `"nearest"`: The default value. Each clump is connected to its perpendicular neighbors.
+#     - `"full"`: Each clump is connected to each other clump.
+#     - `"none"`: No clumps are connected.
+# - `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
+# """
+# function RectangularRaftParameters(
+#     x_range::AbstractRange{<:Real}, 
+#     y_range::AbstractRange{<:Real},
+#     clump_parameters::ClumpParameters, 
+#     spring_k::Function,
+#     t0::Real, 
+#     network_type::String,
+#     gd_model::AbstractGrowthDeathModel)
 
-    @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
-    @assert step(x_range) > 0 "x range should be inreasing."
-    @assert step(y_range) > 0 "y range should be increasing."
+#     @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
+#     @assert step(x_range) > 0 "x range should be inreasing."
+#     @assert step(y_range) > 0 "y range should be increasing."
 
-    # a rectangular mesh
-    network = reverse.(collect(Iterators.product(reverse(y_range), x_range))) # reverse so that the first row has the largest y
-    network = reshape(stack(network, dims = 1), (size(network, 1), size(network, 2), 2)) # convert from matrix of tuples to array
-    n_col = length(x_range)
-    n_row = length(y_range)
-    n_clumps = n_col *n_row
-    connections = Dict{NTuple{2, Int64}, Vector{NTuple{2, Int64}}}()
+#     # a rectangular mesh
+#     network = reverse.(collect(Iterators.product(reverse(y_range), x_range))) # reverse so that the first row has the largest y
+#     network = reshape(stack(network, dims = 1), (size(network, 1), size(network, 2), 2)) # convert from matrix of tuples to array
+#     n_col = length(x_range)
+#     n_row = length(y_range)
+#     n_clumps = n_col *n_row
+#     connections = Dict{NTuple{2, Int64}, Vector{NTuple{2, Int64}}}()
 
-    for i = 1:n_row, j = 1:n_col
-        if network_type == "nearest"
-            connections[(i, j)] = filter(idx -> (1 <= idx[1] <= n_row) && (1 <= idx[2] <= n_col), [(i-1, j), (i+1, j), (i, j-1), (i, j+1)])
-        elseif network_type == "full"
-            connections[(i, j)] = [(a, b) for a = 1:n_row for b = 1:n_col if (a, b) != (i, j)]
-        elseif network_type == "none"
-            connections[(i, j)] = Vector{NTuple{2, Int64}}()
-        end
-    end
+#     for i = 1:n_row, j = 1:n_col
+#         if network_type == "nearest"
+#             connections[(i, j)] = filter(idx -> (1 <= idx[1] <= n_row) && (1 <= idx[2] <= n_col), [(i-1, j), (i+1, j), (i, j-1), (i, j+1)])
+#         elseif network_type == "full"
+#             connections[(i, j)] = [(a, b) for a = 1:n_row for b = 1:n_col if (a, b) != (i, j)]
+#         elseif network_type == "none"
+#             connections[(i, j)] = Vector{NTuple{2, Int64}}()
+#         end
+#     end
 
-    L = (step(x_range) + step(y_range))/2
-    spring_parameters = SpringParameters(spring_k, L)
+#     L = (step(x_range) + step(y_range))/2
+#     spring_parameters = SpringParameters(spring_k, L)
 
-    # now flatten all quantities
-    ics = [n_clumps]
-    ics = vcat(ics, [network[i, j, k] for i = 1:n_row for j = 1:n_col for k = 1:2])
+#     # now flatten all quantities
+#     ics = [n_clumps]
+#     ics = vcat(ics, [network[i, j, k] for i = 1:n_row for j = 1:n_col for k = 1:2])
 
-    n(i, j) = (i - 1) * n_col + j
+#     n(i, j) = (i - 1) * n_col + j
 
-    connections_flat = Dict{Int64, Vector{Int64}}()
+#     connections_flat = Dict{Int64, Vector{Int64}}()
 
-    for key in keys(connections)
-        connections_flat[n(key...)] = connections[key] .|> x -> n(x...)
-    end
+#     for key in keys(connections)
+#         connections_flat[n(key...)] = connections[key] .|> x -> n(x...)
+#     end
 
-    loc2label = Dict(t0 => Dict(i => i for i = 1:n_clumps))
+#     loc2label = Dict(t0 => Dict(i => i for i = 1:n_clumps))
 
-    return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections_flat, loc2label, gd_model)
-end
+#     return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections_flat, loc2label, gd_model)
+# end
 
-"""
-    OneClumpRaftParameters(x0, y0, clump_parameters, t0, gd_model)
+# """
+#     OneClumpRaftParameters(x0, y0, clump_parameters, t0, gd_model)
 
-Construct [`RaftParameters`](@ref) with a single clump.
+# Construct [`RaftParameters`](@ref) with a single clump.
 
-### Arguments
+# ### Arguments
 
-- `x0`: The x coordinate of the clump.
-- `y0`: The x coordinate of the clump.
-- `clump_parameters`: The [`ClumpParameters`](@ref) of the clump.
-- `t0`: The initial time.
-- `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
-"""
-function OneClumpRaftParameters(
-    x0::Real, 
-    y0::Real, 
-    clump_parameters::ClumpParameters, 
-    t0::Real, 
-    gd_model::AbstractGrowthDeathModel)
+# - `x0`: The x coordinate of the clump.
+# - `y0`: The x coordinate of the clump.
+# - `clump_parameters`: The [`ClumpParameters`](@ref) of the clump.
+# - `t0`: The initial time.
+# - `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
+# """
+# function OneClumpRaftParameters(
+#     x0::Real, 
+#     y0::Real, 
+#     clump_parameters::ClumpParameters, 
+#     t0::Real, 
+#     gd_model::AbstractGrowthDeathModel)
 
-    n_clumps = 1
-    ics = [1.0, x0, y0]
-    spring_parameters = SpringParameters(k -> 0.0, 1.0)
-    connections = Dict(1 => Int64[])
-    loc2label = Dict(t0 => Dict(1 => 1))
+#     n_clumps = 1
+#     ics = [1.0, x0, y0]
+#     spring_parameters = SpringParameters(k -> 0.0, 1.0)
+#     connections = Dict(1 => Int64[])
+#     loc2label = Dict(t0 => Dict(1 => 1))
 
-    return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections, loc2label, gd_model)
-end
+#     return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections, loc2label, gd_model)
+# end
 
 # dists = SargassumDistribution("/Users/gagebonner/Desktop/Repositories/SargassumFromAFAI.jl/data/dist-2018.nc")
 

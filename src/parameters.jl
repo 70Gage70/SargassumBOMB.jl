@@ -1,5 +1,6 @@
 using LinearAlgebra: norm
 using SargassumFromAFAI
+using NearestNeighbors
 
 include("coordinates.jl")
 
@@ -262,31 +263,40 @@ end
 # dists = SargassumDistribution("/Users/gagebonner/Desktop/Repositories/SargassumFromAFAI.jl/data/dist-2018.nc")
 
 """
-    DistributionRaftParameters
+    DistributionRaftParameters(dist, number, sample_type, clump_parameters, spring_k, t0, network_type, gd_model)
+
+Construct [`RaftParameters`](@ref) from a `SargassumDistribution`.
 
 ### Arguments 
-- `dist`:
-- `number`: The number of clumps to initialize.
-
-### Optional Arguments
-
-- `sample_type`: A `String` identifying one of the methods of assigning clump locations based on the distribution. Default `"sample"`.
- - `"sample"`: A number `number` of samples are drawn from `dist`. Each sample is placed uniformly at random inside corresponding box.
- - `"sorted"`: Boxed are filled with one clump placed uniformly at random inside them, starting from the box with the highest concentration. If `number` 
+- `dist`: A `SargassumDistribution`.
+- `number`: The number of clumps to initialize; interactive with `sample_type`.
+- `sample_type`: A `String` identifying one of the methods of assigning clump locations based on the distribution.
+    - `"sample"`: A number `number` of samples are drawn from `dist`. Each sample is placed uniformly at random inside corresponding box.
+    - `"sorted"`: Boxed are filled with one clump placed uniformly at random inside them, starting from the box with the highest concentration. If `number` 
                 is greater than the total number of boxes, repeat the loop starting again from the highest concentration box.
- - `"uniform"`: Exactly one clump is placed in the center of each box with nonzero concentration. Note that this ignores `number`.
+    - `"uniform"`: Exactly one clump is placed in the center of each box with nonzero concentration. Note that this ignores `number`.
+- `clump_parameters`: The [`ClumpParameters`](@ref) shared by each clump.
+- `spring_k`: The spring function `k(x)` as in `F = - k(x)(x - L)`. The natural length of the spring `L` is set automatically according to the 
+distances between adjacent clumps.
+- `t0`: The initial time.
+- `network_type`: How the springs are conencted in the raft.
+    - `"nearest"`: Each clump is connected to all neighbors within a radius of approximately two gridpoints.
+    - `"full"`: Each clump is connected to each other clump.
+    - `"none"`: No clumps are connected.
+- `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
 """
 function DistributionRaftParameters(
     dist::SargassumDistribution, 
     number::Integer,
+    sample_type::String,
     clump_parameters::ClumpParameters, 
     spring_k::Function,
     t0::Real, 
     network_type::String,
-    gd_model::AbstractGrowthDeathModel;
-    sample_type::String = "sample")
+    gd_model::AbstractGrowthDeathModel)
 
-    @assert type in ["sample", "sorted", "uniform"]
+    @assert sample_type in ["sample", "sorted", "uniform"] "`sample_type` not recognized."
+    @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
 
     sarg = dist.sargassum
     lons = dist.lon
@@ -341,11 +351,24 @@ function DistributionRaftParameters(
 
     n_clumps = length(xy0)/2
     pushfirst!(xy0, n_clumps)
+    n_clumps = Int64(n_clumps)
 
-    spring_parameters = SpringParameters(spring_k, (δ_x + δ_y)/2)
+    L = (δ_x + δ_y)/2
+    spring_parameters = SpringParameters(spring_k, L)
 
-    # how to actually set L of spring_parameters?
-    # how to deal with connections?
+    if network_type == "full"
+        connections = Dict(1:n_clumps .=> [[j for j = 1:n_clumps if j != i] for i = 1:n_clumps])
+    elseif network_type == "none"
+        connections = Dict(1:n_clumps .=> [Int64[] for i = 1:n_clumps])
+    elseif network_type == "nearest"
+        data = reshape(xy0[2:end], 2, n_clumps)
+        balltree = BallTree(data)
+        idx = inrange(balltree, data, 2*L, true)
+        idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]
+        connections = Dict(1:n_clumps .=> idx)
+    end
+
+    loc2label = Dict(t0 => Dict(i => i for i = 1:n_clumps))
 
     return RaftParameters(xy0, clump_parameters, spring_parameters, n_clumps, connections, loc2label, gd_model)
 end

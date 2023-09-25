@@ -107,13 +107,13 @@ end
 
 
 """
-    grow!(integrator, x, y, connections)
+    grow!(integrator, location, connections)
 
 Add a clump to the [`RaftParameters`](@ref), `rp = integrator.p` with an index equal to `rp.n_clumps_tot + 1` and also update `rp.connections` and `rp.loc2label` appropriately.
 
 ### Location 
 
-`location` can be a pre-defined flag, and integer, or a `[x, y]` vector.
+`location` can be a pre-defined flag, an integer, or a `[x, y]` vector.
 
 The possible flags are:
 - `"parent"`: A parent clump is chosen randomly among clumps that already exist, and the new clump is placed a distance `integrator.rp.springs.L` away and at a 

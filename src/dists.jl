@@ -27,9 +27,10 @@ p2 = sph2xy(dist.lon[2], dist.lat[2], ref_itp)
 # spring_k_constant = x -> 5
 # sp = SpringParameters(spring_k_constant, ΔL)
 
+A_spring = 3.0
 k10 = 2*ΔL
 L_spring = k10/5
-function spring_k(x::Real; A::Real = 3.0, k10::Real = k10)
+function spring_k(x::Real; A::Real = A_spring, k10::Real = k10)
     return A * (5/k10) * x * exp(1 - (5/k10)*x)
 end
 sp = SpringParameters(spring_k, L_spring)
@@ -42,7 +43,7 @@ gdm = ImmortalModel()
 
 ###################################################################### CONDITIONS
 
-ics = initial_conditions(dist, 100, "sorted", ref_itp)
+ics = initial_conditions(dist, 1, "uniform", ref_itp)
 
 # icons = initial_connections(ics, "nearest", neighbor_parameter = 4)
 icons = initial_connections(ics, "full")
@@ -72,8 +73,8 @@ rtr = RaftTrajectory(sol_raft, rp, ref_itp)
 
 @info "Plotting results."
 
-limits = (-100, -50, 5, 35)
-# limits = (-70, -50, 5, 25)
+limits = (-100, -50, 5, 35) # full plot``
+# limits = (-90, -38, 5, 22) # compare with dist
 
 fig_COM = default_fig()
 ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
@@ -88,9 +89,9 @@ tr_hist = trajectory_hist!(ax, rtr_dt, lon_bins, lat_bins)
 land!(ax)
 
 ### counts legend
-min_cts, max_cts = getindex(tr_hist.colorrange)
-tticks = collect(range(start = 0.0, stop = log10(max_cts), length = 5))
-data_legend!(fig_COM[1,2], L"\log_{10} \left(\mathrm{Counts}\right)", ticks = tticks, colormap = Reverse(:RdYlGn))
+# min_cts, max_cts = getindex(tr_hist.colorrange)
+# tticks = collect(range(start = 0.0, stop = log10(max_cts), length = 5))
+# data_legend!(fig_COM[1,2], L"\log_{10} \left(\mathrm{Counts}\right)", ticks = tticks, colormap = Reverse(:RdYlGn))
 
 fig_COM
 

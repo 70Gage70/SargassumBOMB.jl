@@ -104,6 +104,9 @@ The units of `x` and `y` should be the same as `ref.R`.
 
 Can be applied as `xy2sph(xy, ref)` where `xy` is a `Vector{Vector{T}}` or an `N x 2` `Matrix`. Returns an `N x 2` `Matrix` in these cases.
 
+Can be applied as `xy2sph(xy, ref)` where `xy` a `Vector` of length `2N` with 
+entries of the form `[lon1, lat1, lon2, lat2 ... lonN, latN]`. Returns a result in the same shape as the input.
+
 Can be applied as `xy2sph(x_range, y_range, ref)` where `x_range` and `y_range` are `AbstractRange`. Returns `(lon_range, lat_range)`.
 
 ### Arguments
@@ -153,4 +156,16 @@ function xy2sph(x_range::AbstractRange, y_range::AbstractRange, ref::Equirectang
             range(start = xmin, length = length(x_range), stop = xmax), 
             range(start = ymin, length = length(y_range), stop = ymax)
             )
+end
+
+function xy2sph(xy::Vector{T}, ref::EquirectangularReference) where {T<:Real}
+    @assert iseven(length(xy)) "xy should be of the form `[x1, y1, x2, y2 ... x3, y3]`."
+
+    lon_lat = zeros(T, length(xy))
+    
+    for i = 1:2:length(xy)
+        lon_lat[i:i+1] .= xy2sph(xy[i], xy[i + 1], ref)
+    end
+
+    return lon_lat
 end

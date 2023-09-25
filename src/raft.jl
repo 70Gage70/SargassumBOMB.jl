@@ -15,7 +15,7 @@ include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 x0, y0 = -60, 13
 
 Δ_clump = 0.3
-x_range, y_range = range(x0 - 2, x0 + 4, step = Δ_clump), range(y0 - 4, y0 + 3, step = Δ_clump)
+x_range, y_range = sph2xy(range(x0 - 2, x0 + 4, step = Δ_clump), range(y0 - 4, y0 + 3, step = Δ_clump), ref_itp)
 
 # tspan = (121.0, 122.0)
 # tspan = (121.0, 151.0) # April 1 - May 1
@@ -24,13 +24,15 @@ tspan = (121.0, 212.0) # April 1 - July 1
 cp = ClumpParameters(ref_itp)
 
 # spring_k_constant = x -> 5
-# sp = SpringParameters(spring_k_constant, Δ_clump)
+# L_spring = 2*(step(x_range) + step(y_range))/2
+# sp = SpringParameters(spring_k_constant, L_spring)
 
-function spring_k(x::Real; A::Real = 5.0, k10::Real = 2*Δ_clump)
+k10 = 2*(step(x_range) + step(y_range))/2
+L_spring = k10/5
+function spring_k(x::Real; A::Real = 3.0, k10::Real = k10)
     return A * (5/k10) * x * exp(1 - (5/k10)*x)
 end
-
-sp = SpringParameters(spring_k, Δ_clump)
+sp = SpringParameters(spring_k, L_spring)
 
 gdm = ImmortalModel()
 # gdm = BrooksModel(params = BrooksModelParameters(temp_itp, no3_itp, clumps_limits = (0, 1000)), verbose = true)
@@ -38,8 +40,10 @@ gdm = ImmortalModel()
 
 # rp = RectangularRaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", gdm)
 
-ics = initial_conditions(x_range, y_range, ref = ref_itp)
-icons = initial_connections(ics, "nearest", neighbor_parameter = 4)
+ics = initial_conditions(x_range, y_range)
+# icons = initial_connections(ics, "nearest", neighbor_parameter = 4)
+# icons = initial_connections(ics, "full")
+icons = initial_connections(ics, "none")
 rp = RaftParameters(
     ics = ics,
     clumps = cp,

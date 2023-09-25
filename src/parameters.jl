@@ -149,8 +149,8 @@ i.e. it must be a function `dSdt(u, t)`.
 Use `RaftParameters(; ics, clumps, springs, connections, t0, gd_model)`. The arguments `clumps`, `springs` and 
 `gd_model` are passed directly to the struct.
 
-The function [`initial_conditions`](@ref) helps with the construction of `ics` and the function [`initial_connections`](@ref) 
-helps with the construction of `connections`. Finally, `t0` is the initial time of the simulation.
+The [`initial_conditions`](@ref) methods help with the construction of `ics` and the function [`initial_connections`](@ref) 
+helps with the construction of `connections`.
 """
 mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, G<:AbstractGrowthDeathModel}
     ics::Vector{T}
@@ -236,6 +236,88 @@ function initial_conditions(x0::Real, y0::Real; ref::Union{Nothing, Equirectangu
 end
 
 """
+    initial_conditions(dist, number, sample_type, ref)
+
+Construct [`RaftParameters`](@ref) from a `SargassumDistribution`.
+
+### Arguments 
+- `dist`: A `SargassumDistribution`.
+- `number`: The number of clumps to initialize; interactive with `sample_type`.
+- `sample_type`: A `String` identifying one of the methods of assigning clump locations based on the distribution.
+    - `"sample"`: A number `number` of samples are drawn from `dist`. Each sample is placed uniformly at random inside corresponding box.
+    - `"sorted"`: Boxed are filled with one clump placed uniformly at random inside them, starting from the box with the highest concentration. If `number` 
+                is greater than the total number of boxes, repeat the loop starting again from the highest concentration box.
+    - `"uniform"`: Exactly one clump is placed in the center of each box with nonzero concentration. Note that this ignores `number`.
+- `ref`: An [`EquirectangularReference`](@ref). A `SargassumDistribution` has fields `lon` and `lat`, so this is necessary to 
+                covert these to equirectangular coordinates.
+"""
+function initial_conditions(
+    dist::SargassumDistribution, 
+    number::Integer,
+    sample_type::String,
+    ref::EquirectangularReference)
+
+    @assert sample_type in ["sample", "sorted", "uniform"] "`sample_type` not recognized."
+
+    sarg = dist.sargassum
+    lons = dist.lon
+    lats = dist.lat
+
+    δ_x = abs(lons[2] - lons[1])
+    δ_y = abs(lats[2] - lats[1])
+
+    xy0 = Float64[]
+
+    if sample_type == "sample"
+        pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
+        wts = sarg |> x -> reduce(vcat, x)
+        samples = sample(pts, Weights(wts), number)
+
+        for samp in samples
+            push!(xy0, rand(Uniform(samp[1] - δ_x/2, samp[1] + δ_x/2)))
+            push!(xy0, rand(Uniform(samp[2] - δ_y/2, samp[2] + δ_y/2)))
+        end
+    elseif sample_type == "sorted"
+        pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
+        wts = sarg |> x -> reduce(vcat, x)
+
+        idx = findall(x -> x > 0, wts)
+        pts = pts[idx]
+        wts = wts[idx]
+
+        pts = pts[sortperm(wts, rev = true)]
+
+        n_c = 1
+        while n_c <= number
+            idx = n_c == length(pts) ? length(pts) : mod(n_c, length(pts))
+            pt = pts[idx]
+
+            push!(xy0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))
+            push!(xy0, rand(Uniform(pt[2] - δ_y/2, pt[2] + δ_y/2)))       
+
+            n_c = n_c + 1
+        end
+    elseif sample_type == "uniform"
+        pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
+        wts = sarg |> x -> reduce(vcat, x)
+
+        idx = findall(x -> x > 0, wts)
+        pts = pts[idx]
+
+        for pt in pts
+            push!(xy0, pt[1])
+            push!(xy0, pt[2])  
+        end
+    end
+
+    xy0 = sph2xy(xy0, ref)
+    n_clumps = length(xy0)/2
+    pushfirst!(xy0, n_clumps)
+    
+    return xy0
+end
+
+"""
     initial_connections(ics, network_type; neighbor_parameter = nothing)
 
 Construct initial connections between clumps suitable for use in `RaftParameters.connections`.
@@ -306,218 +388,3 @@ function initial_connections(
 
     return connections
 end
-
-# """
-#     RectangularRaftParameters(x_range, y_range, clump_parameters, spring_parameters, t0, network_type, gd_model)
-
-# Construct [`RaftParameters`](@ref) in a rectangular arrangement.
-
-# Use [`OneClumpRaftParameters`](@ref) to construct a raft with single clump.
-
-# ### Arguments
-
-# - `x_range`: A range which gives the x coordinates of the clumps in the raft. Should be increasing and in equirectangular coordinates, not longitudes.
-# - `y_range`: A range which gives the y coordinates of the clumps in the raft. Should be increasing and in equirectangular coordinates, not latitudes.
-# - `clump_parameters`: The [`ClumpParameters`](@ref) shared by each clump.
-# - `spring_k`: The spring function `k(x)` as in `F = - k(x)(x - L)`. The natural length of the spring `L` is set automatically according to the 
-# distances between adjacent clumps.
-# - `t0`: The initial time.
-# - `network_type`: How the springs are conencted in the raft.
-#     - `"nearest"`: The default value. Each clump is connected to its perpendicular neighbors.
-#     - `"full"`: Each clump is connected to each other clump.
-#     - `"none"`: No clumps are connected.
-# - `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
-# """
-# function RectangularRaftParameters(
-#     x_range::AbstractRange{<:Real}, 
-#     y_range::AbstractRange{<:Real},
-#     clump_parameters::ClumpParameters, 
-#     spring_k::Function,
-#     t0::Real, 
-#     network_type::String,
-#     gd_model::AbstractGrowthDeathModel)
-
-#     @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
-#     @assert step(x_range) > 0 "x range should be inreasing."
-#     @assert step(y_range) > 0 "y range should be increasing."
-
-#     # a rectangular mesh
-#     network = reverse.(collect(Iterators.product(reverse(y_range), x_range))) # reverse so that the first row has the largest y
-#     network = reshape(stack(network, dims = 1), (size(network, 1), size(network, 2), 2)) # convert from matrix of tuples to array
-#     n_col = length(x_range)
-#     n_row = length(y_range)
-#     n_clumps = n_col *n_row
-#     connections = Dict{NTuple{2, Int64}, Vector{NTuple{2, Int64}}}()
-
-#     for i = 1:n_row, j = 1:n_col
-#         if network_type == "nearest"
-#             connections[(i, j)] = filter(idx -> (1 <= idx[1] <= n_row) && (1 <= idx[2] <= n_col), [(i-1, j), (i+1, j), (i, j-1), (i, j+1)])
-#         elseif network_type == "full"
-#             connections[(i, j)] = [(a, b) for a = 1:n_row for b = 1:n_col if (a, b) != (i, j)]
-#         elseif network_type == "none"
-#             connections[(i, j)] = Vector{NTuple{2, Int64}}()
-#         end
-#     end
-
-#     L = (step(x_range) + step(y_range))/2
-#     spring_parameters = SpringParameters(spring_k, L)
-
-#     # now flatten all quantities
-#     ics = [n_clumps]
-#     ics = vcat(ics, [network[i, j, k] for i = 1:n_row for j = 1:n_col for k = 1:2])
-
-#     n(i, j) = (i - 1) * n_col + j
-
-#     connections_flat = Dict{Int64, Vector{Int64}}()
-
-#     for key in keys(connections)
-#         connections_flat[n(key...)] = connections[key] .|> x -> n(x...)
-#     end
-
-#     loc2label = Dict(t0 => Dict(i => i for i = 1:n_clumps))
-
-#     return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections_flat, loc2label, gd_model)
-# end
-
-# """
-#     OneClumpRaftParameters(x0, y0, clump_parameters, t0, gd_model)
-
-# Construct [`RaftParameters`](@ref) with a single clump.
-
-# ### Arguments
-
-# - `x0`: The x coordinate of the clump.
-# - `y0`: The x coordinate of the clump.
-# - `clump_parameters`: The [`ClumpParameters`](@ref) of the clump.
-# - `t0`: The initial time.
-# - `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
-# """
-# function OneClumpRaftParameters(
-#     x0::Real, 
-#     y0::Real, 
-#     clump_parameters::ClumpParameters, 
-#     t0::Real, 
-#     gd_model::AbstractGrowthDeathModel)
-
-#     n_clumps = 1
-#     ics = [1.0, x0, y0]
-#     spring_parameters = SpringParameters(k -> 0.0, 1.0)
-#     connections = Dict(1 => Int64[])
-#     loc2label = Dict(t0 => Dict(1 => 1))
-
-#     return RaftParameters(ics, clump_parameters, spring_parameters, n_clumps, connections, loc2label, gd_model)
-# end
-
-# dists = SargassumDistribution("/Users/gagebonner/Desktop/Repositories/SargassumFromAFAI.jl/data/dist-2018.nc")
-
-"""
-    DistributionRaftParameters(dist, number, sample_type, clump_parameters, spring_k, t0, network_type, gd_model)
-
-Construct [`RaftParameters`](@ref) from a `SargassumDistribution`.
-
-### Arguments 
-- `dist`: A `SargassumDistribution`.
-- `number`: The number of clumps to initialize; interactive with `sample_type`.
-- `sample_type`: A `String` identifying one of the methods of assigning clump locations based on the distribution.
-    - `"sample"`: A number `number` of samples are drawn from `dist`. Each sample is placed uniformly at random inside corresponding box.
-    - `"sorted"`: Boxed are filled with one clump placed uniformly at random inside them, starting from the box with the highest concentration. If `number` 
-                is greater than the total number of boxes, repeat the loop starting again from the highest concentration box.
-    - `"uniform"`: Exactly one clump is placed in the center of each box with nonzero concentration. Note that this ignores `number`.
-- `clump_parameters`: The [`ClumpParameters`](@ref) shared by each clump.
-- `spring_k`: The spring function `k(x)` as in `F = - k(x)(x - L)`. The natural length of the spring `L` is set automatically according to the 
-distances between adjacent clumps.
-- `t0`: The initial time.
-- `network_type`: How the springs are conencted in the raft.
-    - `"nearest"`: Each clump is connected to all neighbors within a radius of approximately two gridpoints.
-    - `"full"`: Each clump is connected to each other clump.
-    - `"none"`: No clumps are connected.
-- `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector `u`.
-"""
-function DistributionRaftParameters(
-    dist::SargassumDistribution, 
-    number::Integer,
-    sample_type::String,
-    clump_parameters::ClumpParameters, 
-    spring_k::Function,
-    t0::Real, 
-    network_type::String,
-    gd_model::AbstractGrowthDeathModel)
-
-    @assert sample_type in ["sample", "sorted", "uniform"] "`sample_type` not recognized."
-    @assert network_type in ["nearest", "full", "none"] "`network_type` not recognized."
-
-    sarg = dist.sargassum
-    lons = dist.lon
-    lats = dist.lat
-
-    δ_x = abs(lons[2] - lons[1])
-    δ_y = abs(lats[2] - lats[1])
-
-    xy0 = Float64[]
-
-    if sample_type == "sample"
-        pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
-        wts = sarg |> x -> reduce(vcat, x)
-        samples = sample(pts, Weights(wts), number)
-
-        for samp in samples
-            push!(xy0, rand(Uniform(samp[1] - δ_x/2, samp[1] + δ_x/2)))
-            push!(xy0, rand(Uniform(samp[2] - δ_y/2, samp[2] + δ_y/2)))
-        end
-    elseif sample_type == "sorted"
-        pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
-        wts = sarg |> x -> reduce(vcat, x)
-
-        idx = findall(x -> x > 0, wts)
-        pts = pts[idx]
-        wts = wts[idx]
-
-        pts = pts[sortperm(wts, rev = true)]
-
-        n_c = 1
-        while n_c <= number
-            idx = n_c == length(pts) ? length(pts) : mod(n_c, length(pts))
-            pt = pts[idx]
-
-            push!(xy0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))
-            push!(xy0, rand(Uniform(pt[2] - δ_y/2, pt[2] + δ_y/2)))       
-
-            n_c = n_c + 1
-        end
-    elseif sample_type == "uniform"
-        pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
-        wts = sarg |> x -> reduce(vcat, x)
-
-        idx = findall(x -> x > 0, wts)
-        pts = pts[idx]
-
-        for pt in pts
-            push!(xy0, pt[1])
-            push!(xy0, pt[2])  
-        end
-    end
-
-    n_clumps = length(xy0)/2
-    pushfirst!(xy0, n_clumps)
-    n_clumps = Int64(n_clumps)
-
-    L = (δ_x + δ_y)/2
-    spring_parameters = SpringParameters(spring_k, L)
-
-    if network_type == "full"
-        connections = Dict(1:n_clumps .=> [[j for j = 1:n_clumps if j != i] for i = 1:n_clumps])
-    elseif network_type == "none"
-        connections = Dict(1:n_clumps .=> [Int64[] for i = 1:n_clumps])
-    elseif network_type == "nearest"
-        data = reshape(xy0[2:end], 2, n_clumps)
-        balltree = BallTree(data)
-        idx = inrange(balltree, data, 2*L, true)
-        idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]
-        connections = Dict(1:n_clumps .=> idx)
-    end
-
-    loc2label = Dict(t0 => Dict(i => i for i = 1:n_clumps))
-
-    return RaftParameters(xy0, clump_parameters, spring_parameters, n_clumps, connections, loc2label, gd_model)
-end
-

@@ -224,7 +224,7 @@ function bins(raft_trajectory::RaftTrajectory, x_bins::StepRangeLen, y_bins::Ste
         x_bin = ceil(Int64, (x[i] - first(x_bins))/step(x_bins))
         y_bin = ceil(Int64, (y[i] - first(y_bins))/step(y_bins))
 
-        if (x_bin < 1) && (x_bin >= length(x_bins)) && (y_bin < 1) && (y_bin >= length(y_bins))
+        if (x_bin < 1) || (x_bin >= length(x_bins)) || (y_bin < 1) || (y_bin >= length(y_bins))
             continue
         else
             mat[x_bin, y_bin] = mat[x_bin, y_bin] + 1

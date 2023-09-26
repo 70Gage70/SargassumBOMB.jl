@@ -1,6 +1,7 @@
 using StatsBase
 using Distributions
 using NearestNeighbors
+using Crayons.Box
 
 ############################################################
 
@@ -32,14 +33,25 @@ function com(u::Vector{<:Real})
 end
 
 """
-    cb_loc2label()
+    cb_update(; showprogress = false)
+
+This callback is mandatory, and must be the first callback in a `CallbackSet`.
 
 Create a `DiscreteCallback` which updates `integrator.p.loc2label` at the end of each time step using a `deepcopy` of the previous step.
 
-This callback is mandatory, and must be the first callback in a `CallbackSet`.
+If `showprogress = true`, then the percentage completion of the integration will be displayed.
+
+
 """
-function cb_loc2label()
+function cb_update(;showprogress::Bool = false)
     function affect!(integrator)
+        if showprogress
+            t0, tend = integrator.sol.prob.tspan
+            val = round(100*(integrator.t - t0)/(tend - t0), sigdigits = 3)
+            print(WHITE_BG("Integrating: $(val)%   \r"))
+            flush(stdout)
+        end
+
         integrator.p.loc2label[integrator.t] = deepcopy(integrator.p.loc2label[integrator.tprev])
         return nothing
     end

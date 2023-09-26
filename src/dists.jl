@@ -43,6 +43,7 @@ gdm = ImmortalModel()
 
 ###################################################################### CONDITIONS
 
+# ics = initial_conditions(dist, 100, "sorted", ref_itp)
 ics = initial_conditions(dist, 1, "uniform", ref_itp)
 
 # icons = initial_connections(ics, "nearest", neighbor_parameter = 4)
@@ -64,9 +65,14 @@ prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
 
 land = Land(verbose = true)
 
-@time sol_raft = solve(prob_raft, 
+@time sol_raft = solve(
+    prob_raft, 
     Tsit5(), abstol = 1e-6, reltol = 1e-6,
-    callback = CallbackSet(cb_loc2label(), callback(land), callback(gdm), cb_connections_radius(radius = 2*k10))
+    callback = CallbackSet(
+        cb_update(showprogress = true), 
+        callback(land), 
+        callback(gdm), 
+        cb_connections_radius(radius = 2*k10))
 );
 
 rtr = RaftTrajectory(sol_raft, rp, ref_itp)

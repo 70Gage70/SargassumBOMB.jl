@@ -62,13 +62,34 @@ function Base.length(tr::Trajectory)
 end
 
 function Base.show(io::IO, x::Trajectory)
-    print(io, "Trajectory[(")
-    show(io, first(x.t))
-    print(io, ", ")
-    show(io, last(x.t))
-    print(io, "), ")
-    show(io, length(x.t))
-    print(io, " pts]")
+    if length(x.t) == 0
+        print(io, "Trajectory[0 pts]")
+    else
+        print(io, "Trajectory[(")
+        show(io, first(x.t))
+        print(io, ", ")
+        show(io, last(x.t))
+        print(io, "), ")
+        show(io, length(x.t))
+        print(io, " pts]")
+    end
+end
+
+"""
+    time_slice(traj, tspan)
+
+Return a new [`Trajectory`](@ref) consisting of points and times of `traj` that are between `first(tspan)`
+and `last(tspan)`. The result `Trajectory` may be empty.
+
+Can also be applied to a [`RaftTrajectory`](@ref) in which case `time_slice` is applied to each member `Trajectory`.
+"""
+function time_slice(traj::Trajectory, tspan::NTuple{2, Real})
+    t = traj.t
+    xy = traj.xy
+
+    idx = findall(x -> first(tspan) <= x <= last(tspan), t)
+
+    return Trajectory(xy[idx,:], t[idx])
 end
 
 """
@@ -232,4 +253,14 @@ function bins(raft_trajectory::RaftTrajectory, x_bins::StepRangeLen, y_bins::Ste
     end
 
     return mat
+end
+
+function time_slice(traj::RaftTrajectory, tspan::NTuple{2, Real})
+    trajectories = traj.trajectories
+    trajectories_new = Dict(key => time_slice(trajectories[key], tspan) for key in keys(trajectories))
+
+    t = traj.t
+    idx = findall(x -> first(tspan) <= x <= last(tspan), t)
+
+    return RaftTrajectory(trajectories_new, t[idx], traj.n_clumps[idx], time_slice(traj.com, tspan))
 end

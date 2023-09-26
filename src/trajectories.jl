@@ -186,7 +186,7 @@ function uniformize(sol::AbstractMatrix, raft_parameters::RaftParameters, dt::Re
     
     xy_unif = Vector{Float64}[]
     t_unif = Float64[]
-    loc2label_unif = typeof(rp.loc2label)()
+    loc2label_unif = typeof(raft_parameters.loc2label)()
     
     for t in times
         push!(xy_unif, sol(t))
@@ -210,8 +210,8 @@ Both `x_bins` and `y_bins` should be `StepRangeLen`, i.e. of the form `range(sta
 No coversion from or to spherical coordinates is done on `x_bins` and `y_bins`.
 """
 function bins(raft_trajectory::RaftTrajectory, x_bins::StepRangeLen, y_bins::StepRangeLen)
-    x = typeof(rtr).parameters[2][]
-    y = typeof(rtr).parameters[2][]
+    x = typeof(raft_trajectory).parameters[2][]
+    y = typeof(raft_trajectory).parameters[2][]
 
     for (_, tr) in raft_trajectory.trajectories
         x = vcat(x, tr.xy[:,1])

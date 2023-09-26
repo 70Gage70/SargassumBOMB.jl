@@ -66,7 +66,7 @@ land = Land(verbose = true)
 
 @time sol_raft = solve(prob_raft, 
     Tsit5(), abstol = 1e-6, reltol = 1e-6,
-    callback = CallbackSet(cb_loc2label(), callback(land), callback(gdm))
+    callback = CallbackSet(cb_loc2label(), callback(land), callback(gdm), cb_connections_radius(radius = 2*k10))
 );
 
 rtr = RaftTrajectory(sol_raft, rp, ref_itp)

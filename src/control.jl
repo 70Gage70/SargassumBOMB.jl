@@ -1,5 +1,6 @@
 using StatsBase
 using Distributions
+using NearestNeighbors
 
 ############################################################
 
@@ -34,10 +35,49 @@ end
     cb_loc2label()
 
 Create a `DiscreteCallback` which updates `integrator.p.loc2label` at the end of each time step using a `deepcopy` of the previous step.
+
+This callback is mandatory, and must be the first callback in a `CallbackSet`.
 """
 function cb_loc2label()
     function affect!(integrator)
         integrator.p.loc2label[integrator.t] = deepcopy(integrator.p.loc2label[integrator.tprev])
+        return nothing
+    end
+
+    return DiscreteCallback((u, t, integrator) -> true, affect!, save_positions = (false, false))
+end
+
+"""
+    cb_connections_radius(;radius = nothing)
+
+Create a `DiscreteCallback` which updates `integrator.p.connections` at the end of each time step such that only connections within `radius` of 
+each clump are formed. If `radius` is not provided, it is computed automatically as the mean value of all pairwise distances between clumps.
+
+This should be the last callback in a `CallbackSet`.
+"""
+function cb_connections_radius(;radius::Union{Nothing, Real} = nothing)
+    function affect!(integrator)
+        u = integrator.u
+        data = reshape(u[2:end], 2, n_clumps(u))
+
+        if radius === nothing
+            dists = Float64[]
+            for i = 1:size(data, 2) - 1
+                for j = i+1:size(data, 2)
+                    push!(dists, norm(data[:,i] - data[:, j]))
+                end
+            end
+
+            r = mean(dists)
+        else
+            r = radius
+        end
+        
+        balltree = BallTree(data)
+        idx = inrange(balltree, data, r, true)
+        idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]
+        integrator.p.connections = Dict(1:n_clumps(u) .=> idx)
+
         return nothing
     end
 

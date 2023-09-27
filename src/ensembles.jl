@@ -79,20 +79,43 @@ function ensemble(start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64}; rtr_
     return RaftTrajectory(sol_raft, rp, ref_itp, dt = rtr_dt)
 end
 
-rtrs = [ensemble((2018, t_start), (2018, 7)) for t_start = 4:6]
+# integrate to August 1, point is that the distribution for July take into account the entirety of 
+# July, not just July 1st.
+rtrs = [ensemble((2018, t_start), (2018, 8)) for t_start = 4:6]
 
 @info "Plotting results."
 
 limits = (-100, -50, 5, 35) # full plot``
 
 fig_COM = default_fig()
-ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{April/May/June - July}")
+ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{April/May/June/July TOT - July}")
 
 ### hist
 
 lon_bins = range(-100, -50, length = 100)
 lat_bins = range(5, 35, length = 100)
 tr_hist = trajectory_hist!(ax, rtrs, lon_bins, lat_bins)
+
+land!(ax)
+
+fig_COM
+
+##################################################################################################
+
+t_start = last(rtrs[1].t) - 31.0
+t_end = last(rtrs[1].t)
+rtrs_slice = [time_slice(rtr, (t_start, t_end)) for rtr in rtrs]
+
+limits = (-100, -50, 5, 35) # full plot``
+
+fig_COM = default_fig()
+ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{April/May/June/July JUL - July}")
+
+### hist
+
+lon_bins = range(-100, -50, length = 100)
+lat_bins = range(5, 35, length = 100)
+tr_hist = trajectory_hist!(ax, rtrs_slice, lon_bins, lat_bins)
 
 land!(ax)
 

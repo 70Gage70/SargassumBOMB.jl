@@ -46,8 +46,8 @@ function ensemble(start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64}; rtr_
 
     ###################################################################### CONDITIONS
 
-    ics = initial_conditions(dist, 100, "sorted", ref_itp)
-    # ics = initial_conditions(dist, 1, "uniform", ref_itp)
+    # ics = initial_conditions(dist, 200, "sorted", ref_itp)
+    ics = initial_conditions(dist, 1, "uniform", ref_itp)
 
     # icons = initial_connections(ics, "nearest", neighbor_parameter = 4)
     icons = initial_connections(ics, "full")
@@ -72,9 +72,9 @@ function ensemble(start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64}; rtr_
         callback = CallbackSet(
             cb_update(showprogress = true), 
             callback(land), 
-            callback(gdm)) #, 
-            # cb_connections_radius(radius = 2*k10))
-    );
+            callback(gdm), 
+            cb_connections_radius(radius = 2*k10))
+        )
 
     return RaftTrajectory(sol_raft, rp, ref_itp, dt = rtr_dt)
 end

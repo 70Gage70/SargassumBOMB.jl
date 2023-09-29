@@ -121,6 +121,14 @@ function spring_force(xy1::Vector{<:Real}, xy2::Vector{<:Real}, parameters::Spri
     return parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)
 end
 
+function spring_force(
+    xy1::SubArray{T, 1, Vector{T}, Tuple{UnitRange{R}}},
+    xy2::SubArray{T, 1, Vector{T}, Tuple{UnitRange{R}}},
+    parameters::SpringParameters) where {T <:Real, R<:Integer}
+    d = norm(xy1 - xy2)
+    return parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)
+end
+
 """
     mutable struct RaftParameters{T, U, F}
 

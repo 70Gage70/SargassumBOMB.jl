@@ -27,26 +27,6 @@ Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * 
 ########################################################################
 ########################################################################
 
-# """
-#     Clump!(du, u, p::ClumpParameters, t)
-
-# Compute the right-hand-side of the differential equation controlling the motion of a single clump with 
-# parameters given by [`ClumpParameters`](@ref).
-
-# The solution vector `u` is a 2d vector such that `u[1:2] = [x, y]`.
-# """
-# function Clump!(du, u, p::ClumpParameters, t)
-#     x, y = u
-#     α, τ, R, f = (p.α, p.τ, p.R, p.f)
-    
-#     du[1] = u_x(x, y, t, α) + τ * (
-#         R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)
-#     )
-#     du[2] = u_y(x, y, t, α) + τ * (
-#         R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
-#     )
-# end
-
 """
     Raft!(du, u, p::RaftParameters, t)
 
@@ -63,16 +43,29 @@ function Raft!(du, u, p::RaftParameters, t)
     α, τ, R, f = p.clumps.α, p.clumps.τ, p.clumps.R, p.clumps.f
 
     for i = 1:floor(Int64, length(u)/2)
-        x, y = u[2*i:2*i+1]
+        # note that x, y = u[2*i], u[2*i+1]
 
-        du[2*i] = u_x(x, y, t, α) + τ * (
-            R*Dv_xDt(x, y, t) - R*(f + ω(x, y, t)/3)*v_y(x, y, t) - Du_xDt(x, y, t, α) + (f + R*ω(x, y, t)/3)*u_y(x, y, t, α)
+        du[2*i] = 
+            u_x(u[2*i], u[2*i+1], t, α) 
+            + τ * (
+            R*Dv_xDt(u[2*i], u[2*i+1], t) 
+            - R*(f + ω(u[2*i], u[2*i+1], t)/3)*v_y(u[2*i], u[2*i+1], t) 
+            - Du_xDt(u[2*i], u[2*i+1], t, α) 
+            + (f + R*ω(u[2*i], u[2*i+1], t)/3)*u_y(u[2*i], u[2*i+1], t, α)
         )
-        du[2*i+1] = u_y(x, y, t, α) + τ * (
-            R*Dv_yDt(x, y, t) + R*(f + ω(x, y, t)/3)*v_x(x, y, t) - Du_yDt(x, y, t, α) - (f + R*ω(x, y, t)/3)*u_x(x, y, t, α)
+        du[2*i+1] = 
+            u_y(u[2*i], u[2*i+1], t, α) 
+            + τ * (
+            R*Dv_yDt(u[2*i], u[2*i+1], t) 
+            + R*(f + ω(u[2*i], u[2*i+1], t)/3)*v_x(u[2*i], u[2*i+1], t) 
+            - Du_yDt(u[2*i], u[2*i+1], t, α) 
+            - (f + R*ω(u[2*i], u[2*i+1], t)/3)*u_x(u[2*i], u[2*i+1], t, α)
         )
 
-        du[2*i:2*i+1] += τ*sum(spring_force(u[2*i:2*i+1], u[2*j:2*j+1], p.springs) for j in p.connections[i]; init = [0.0, 0.0])
+        # @views combined with .= minimizes allocations by not creating small/temporary arrays
+        @views for j in p.connections[i]
+            du[2*i:2*i+1] .= du[2*i:2*i+1] .+ τ*spring_force(u[2*i:2*i+1], u[2*j:2*j+1], p.springs)
+        end
     end
 end
 

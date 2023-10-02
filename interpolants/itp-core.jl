@@ -1,5 +1,6 @@
 using MAT
 using Interpolations
+using LinearAlgebra: ⋅
 
 include("itp-coordinates.jl")
 include("itp-helpers.jl")
@@ -233,7 +234,7 @@ a constant extrapolat `extrapolate_value`.
 
 ### Optional Arguments
 
-- `interpolant_type`: Two convenience flags are provided, `"cubic"` and `"nearest` which refer to cubic BSpline and nearest-neighbor interpolation, respectively. Alternatively, any `Interpolations.InterpolationType` can be provided. Default `"cubic"`.
+- `interpolant_type`: Two convenience flags are provided, `"cubic"` and `"nearest"` which refer to cubic BSpline and nearest-neighbor interpolation, respectively. Alternatively, any `Interpolations.InterpolationType` can be provided. Default `"cubic"`.
 - `extrapolate_value`: A constant extrapolation is performed with this value. Default `"0.0"`.
 """
 function interpolate(
@@ -257,7 +258,7 @@ function interpolate(
     field_names = collect(keys(gridded_field.fields))
     interps = [
         extrapolate(
-            scale(
+            Interpolations.scale(
                 Interpolations.interpolate(gridded_field.fields[name], spline), 
             vars...), 
         extrapolate_value) 
@@ -305,4 +306,92 @@ function Base.show(io::IO, x::Union{GriddedField, InterpolatedField})
         println(io, " Ref: ", "lon0 = ", x.ref.lon0, ", lat0 = ", x.ref.lat0)
     end  
 
+end
+
+"""
+    add_derivatives(vector_field; interpolant_type, xyt_names, vxvy_names, Dx_Dy_vort_names)
+
+Construct a new [`InterpolatedField`](@ref) from `vector_field` with three additional fields, the x and y components 
+of the material derivative and the vorticity.
+
+### Arguments 
+
+- `vector_field`: An [`InterpolatedField`](@ref). The field should have x, y and t variables along with x and y components 
+    of the corresponding field (e.g. water currents.)
+
+### Optional Arguments 
+
+- `interpolant_type`: Two convenience flags are provided, `"cubic"` and `"nearest"` which refer to cubic BSpline and 
+    nearest-neighbor interpolation, respectively. Alternatively, any `Interpolations.InterpolationType` can be provided. Default `"cubic"`.
+- `extrapolate_value`: A constant extrapolation is performed with this value. Default `"0.0"`.
+- `xyt_names`: A `Tuple` with three symbols, corresponding to the x, y and t variables in that order.
+- `vxvy_names`: A `Tuple` with two symbols, corresponding to the x and y components of the vector field, in that order.
+- `Dx_Dy_vort_names`: A `Tuple` with three symbols, corresponding to the x component of the material derivative, the 
+    y component of the material derivative and the vorticity, in that order.
+""" 
+function add_derivatives(
+    vector_field::InterpolatedField;
+    interpolant_type::Union{String, Interpolations.InterpolationType} = "cubic", 
+    extrapolate_value::Real = 0.0,
+    xyt_names::NTuple{3, Symbol} = (:x, :y, :t),
+    vxvy_names::NTuple{2, Symbol} = (:u, :v),
+    Dx_Dy_vort_names::NTuple{3, Symbol} = (:DDt_x, :DDt_y, :vorticity))
+
+    if interpolant_type isa String
+        @assert interpolant_type in ["cubic", "nearest"] "kwarg `interpolant_type` should be either $("cubic"), $("nearest") or an `Interpolations.InterpolationType`."
+
+        if interpolant_type == "cubic"
+            spline = BSpline(Cubic(Interpolations.Line(OnGrid())))
+        elseif interpolant_type == "nearest"
+            spline = BSpline(Constant)
+        end
+    else
+        spline = interpolant_type
+    end
+
+    x_var, y_var, t_var = [vector_field.vars[name] for name in xyt_names]
+    vx, vy = [vector_field.fields[name] for name in vxvy_names]
+
+    DDx(x, y, t) = gradient(vx, x, y, t) ⋅ [vx(x, y, t), vy(x, y, t), 1.0] 
+    DDy(x, y, t) = gradient(vy, x, y, t) ⋅ [vx(x, y, t), vy(x, y, t), 1.0]
+    vort(x, y, t) = gradient(vy, x, y, t)[1] - gradient(vx, x, y, t)[2]
+
+    data_ddx = [DDx(x, y, t) for x in x_var, y in y_var, t in t_var]
+    data_ddy = [DDy(x, y, t) for x in x_var, y in y_var, t in t_var]
+    data_vort = [vort(x, y, t) for x in x_var, y in y_var, t in t_var]
+
+    itp_ddx = extrapolate(
+        Interpolations.scale(
+                Interpolations.interpolate(data_ddx, spline), 
+            x_var, y_var, t_var), 
+        extrapolate_value) 
+
+    itp_ddy = extrapolate(
+        Interpolations.scale(
+            Interpolations.interpolate(data_ddy, spline), 
+        x_var, y_var, t_var), 
+    extrapolate_value) 
+
+    itp_vort = extrapolate(
+        Interpolations.scale(
+            Interpolations.interpolate(data_vort, spline), 
+        x_var, y_var, t_var), 
+    extrapolate_value)     
+
+    fields_dict = deepcopy(vector_field.fields)
+    merge!(fields_dict, Dict(Dx_Dy_vort_names .=>  (itp_ddx, itp_ddy, itp_vort)))
+
+    ### could probably get this to work more generally with Unitful
+    fields_units_dict = deepcopy(vector_field.fields_units)
+    deriv_units = "1/$(vector_field.vars_units[xyt_names[3]])"
+    merge!(fields_units_dict, Dict(Dx_Dy_vort_names .=> (deriv_units, deriv_units, deriv_units)))
+
+    return InterpolatedField(
+        vector_field.var_names, 
+        vector_field.vars, 
+        fields_dict, 
+        vector_field.vars_units, 
+        fields_units_dict, 
+        vector_field.time_start, 
+        vector_field.ref)
 end

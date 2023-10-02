@@ -1,6 +1,7 @@
 using JLD2
 
 include(joinpath(@__DIR__, "..", "itp-core.jl"))
+include(joinpath(@__DIR__, "..", "itp-derivatives.jl"))
 
 #############################################################################
 
@@ -19,9 +20,10 @@ itp = GriddedField(wind_file, ["lon", "lat", "t"], ["u", "v"],
     time2datetime = rata2datetime_minute, 
     NaN_replacement = 0.0, 
     var_units = ["deg E/W", "deg N/S", "days"], 
-    field_units = ["km/s", "km/s"], 
+    field_units = ["km/d", "km/d"], 
     ref = ref_itp)
 itp = itp |> sph2xy |> interpolate
+itp = add_derivatives(itp)
 
 jldsave(outfile, wind_itp = itp)
 
@@ -39,9 +41,10 @@ itp = GriddedField(water_file, ["lon", "lat", "t"], ["u", "v"],
     time2datetime = rata2datetime_minute, 
     NaN_replacement = 0.0, 
     var_units = ["deg E/W", "deg N/S", "days"], 
-    field_units = ["km/s", "km/s"], 
+    field_units = ["km/d", "km/d"], 
     ref = ref_itp)
 itp = itp |> sph2xy |> interpolate
+itp = add_derivatives(itp)
 
 jldsave(outfile, water_itp = itp)
 

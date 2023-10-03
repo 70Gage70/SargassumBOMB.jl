@@ -39,9 +39,9 @@ gdm = ImmortalModel()
 # gdm = BrooksModel(verbose = true)
 
 ics = initial_conditions(x_range, y_range)
-# icons = initial_connections(ics, "nearest", neighbor_parameter = 4)
-# icons = initial_connections(ics, "full")
-icons = initial_connections(ics, "none")
+# icons = form_connections(ics, "nearest", neighbor_parameter = 4)
+# icons = form_connections(ics, "full")
+icons = form_connections(ics, "none")
 rp = RaftParameters(
     ics = ics,
     clumps = cp,
@@ -73,7 +73,7 @@ gdm = ImmortalModel()
 land = Land(verbose = true)
 
 ics_1c = initial_conditions(x0, y0, ref = ref_itp)
-icons_1c = initial_connections(ics, "none")
+icons_1c = form_connections(ics, "none")
 rp_1c = RaftParameters(
     ics = ics_1c,
     clumps = cp,

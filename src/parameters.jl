@@ -157,7 +157,7 @@ i.e. it must be a function `dSdt(u, t)`.
 Use `RaftParameters(; ics, clumps, springs, connections, t0, gd_model)`. The arguments `clumps`, `springs` and 
 `gd_model` are passed directly to the struct.
 
-The [`initial_conditions`](@ref) methods help with the construction of `ics` and the function [`initial_connections`](@ref) 
+The [`initial_conditions`](@ref) methods help with the construction of `ics` and the function [`form_connections`](@ref) 
 helps with the construction of `connections`.
 """
 mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, G<:AbstractGrowthDeathModel}
@@ -326,7 +326,7 @@ function initial_conditions(
 end
 
 """
-    initial_connections(ics, network_type; neighbor_parameter = nothing)
+    form_connections(ics, network_type; neighbor_parameter = nothing)
 
 Construct initial connections between clumps suitable for use in `RaftParameters.connections`.
 
@@ -345,7 +345,7 @@ Construct initial connections between clumps suitable for use in `RaftParameters
 
 - `neighbor_parameter`: A parameter controlling the connections for the `"radius"` and `"nearest"` options of `network_type`; see above.
 """
-function initial_connections(
+function form_connections(
     ics::Vector{<:Real}, 
     network_type::String; 
     neighbor_parameter::Union{Nothing, Real} = nothing)
@@ -358,7 +358,7 @@ function initial_connections(
     elseif network_type == "none"
         connections = Dict(1:n_clumps .=> [Int64[] for i = 1:n_clumps])
     elseif network_type == "radius"
-        data = reshape(ics[2:end], 2, n_clumps)
+        data = reshape(@view(ics[2:end]), 2, n_clumps)
 
         if neighbor_parameter === nothing
             dists = Float64[]
@@ -387,7 +387,7 @@ function initial_connections(
         
         k = min(n_clumps, k)
 
-        data = reshape(ics[2:end], 2, n_clumps)
+        data = reshape(@view(ics[2:end]), 2, n_clumps)
         kdtree = KDTree(data)
         idx, dists = knn(kdtree, data, k, true)
         idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]

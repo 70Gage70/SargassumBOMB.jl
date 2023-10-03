@@ -44,6 +44,8 @@ If `showprogress = true`, then the percentage completion of the integration will
 
 """
 function cb_update(;showprogress::Bool = false)
+    condition!(u, t, integrator) = true   
+
     function affect!(integrator)
         if showprogress
             t0, tend = integrator.sol.prob.tspan
@@ -56,44 +58,28 @@ function cb_update(;showprogress::Bool = false)
         return nothing
     end
 
-    return DiscreteCallback((u, t, integrator) -> true, affect!, save_positions = (false, false))
+    return DiscreteCallback(condition!, affect!, save_positions = (false, false))
 end
 
 """
-    cb_connections_radius(;radius = nothing)
+    cb_connections(;radius, neighbor_parameter)
 
-Create a `DiscreteCallback` which updates `integrator.p.connections` at the end of each time step such that only connections within `radius` of 
-each clump are formed. If `radius` is not provided, it is computed automatically as the mean value of all pairwise distances between clumps.
+Create a `DiscreteCallback` which updates `integrator.p.connections` at the end of each time step using [`form_connections`](@ref).
+
+The optional arguments are identical to those of [`form_connections`](@ref). THe default behavior is for each clump to 
+establish connections with the 10 closest clumps.
 
 This should be the last callback in a `CallbackSet`.
 """
-function cb_connections_radius(;radius::Union{Nothing, Real} = nothing)
+function cb_connections(;network_type::String = "nearest", neighbor_parameter::Union{Nothing, Real} = 10)
+    condition!(u, t, integrator) = true    
+
     function affect!(integrator)
-        u = integrator.u
-        data = reshape(u[2:end], 2, n_clumps(u))
-
-        if radius === nothing
-            dists = Float64[]
-            for i = 1:size(data, 2) - 1
-                for j = i+1:size(data, 2)
-                    push!(dists, norm(data[:,i] - data[:, j]))
-                end
-            end
-
-            r = mean(dists)
-        else
-            r = radius
-        end
-        
-        balltree = BallTree(data)
-        idx = inrange(balltree, data, r, true)
-        idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]
-        integrator.p.connections = Dict(1:n_clumps(u) .=> idx)
-
+        integrator.p.connections = form_connections(integrator.u, network_type, neighbor_parameter = neighbor_parameter)
         return nothing
     end
 
-    return DiscreteCallback((u, t, integrator) -> true, affect!, save_positions = (false, false))
+    return DiscreteCallback(condition!, affect!, save_positions = (false, false))
 end
 
 """

@@ -49,9 +49,9 @@ function ensemble(start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64}; rtr_
     # ics = initial_conditions(dist, 200, "sorted", ref_itp)
     ics = initial_conditions(dist, 1, "uniform", ref_itp)
 
-    # icons = initial_connections(ics, "nearest", neighbor_parameter = 4)
-    icons = initial_connections(ics, "full")
-    # icons = initial_connections(ics, "none")
+    # icons = form_connections(ics, "nearest", neighbor_parameter = 4)
+    icons = form_connections(ics, "full")
+    # icons = form_connections(ics, "none")
 
     rp = RaftParameters(
         ics = ics,
@@ -73,7 +73,7 @@ function ensemble(start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64}; rtr_
             cb_update(showprogress = true), 
             callback(land), 
             callback(gdm), 
-            cb_connections_radius(radius = 2*k10))
+            cb_connections())
         )
 
     return RaftTrajectory(sol_raft, rp, ref_itp, dt = rtr_dt)
@@ -87,7 +87,7 @@ july_plot = SargassumFromAFAI.plot(dists[(2018, 7)], resolution = (1920, 1080), 
 # integrate to August 1, point is that the distribution for July take into account the entirety of 
 # July, not just July 1st.
 # rtrs = [ensemble((2018, t_start), (2018, 8)) for t_start = 4:6]
-rtrs = [ensemble((2018, 4), (2018, 5))]
+rtrs = [ensemble((2018, 4), (2018, 6))]
 
 @info "Plotting results."
 

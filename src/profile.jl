@@ -49,9 +49,9 @@ function ensemble(start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64}; rtr_
     ics = initial_conditions(dist, 100, "sorted", ref_itp)
     # ics = initial_conditions(dist, 1, "uniform", ref_itp)
 
-    # icons = initial_connections(ics, "nearest", neighbor_parameter = 4)
-    icons = initial_connections(ics, "full")
-    # icons = initial_connections(ics, "none")
+    # icons = form_connections(ics, "nearest", neighbor_parameter = 4)
+    icons = form_connections(ics, "full")
+    # icons = form_connections(ics, "none")
 
     rp = RaftParameters(
         ics = ics,
@@ -66,15 +66,17 @@ function ensemble(start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64}; rtr_
 
     land = Land(verbose = false)
 
-    @time sol_raft = solve(
-        prob_raft, 
-        Tsit5(), abstol = 1e-6, reltol = 1e-6,
-        callback = CallbackSet(
-            cb_update(showprogress = true), 
-            callback(land), 
-            callback(gdm)) #, 
-            # cb_connections_radius(radius = 2*k10))
-    );
-
-    return RaftTrajectory(sol_raft, rp, ref_itp, dt = rtr_dt)
+    return (k10, prob_raft, land, gdm)
 end
+
+k10, prob_raft, land, gdm = ensemble((2018, 4), (2018, 5))
+
+profile_sol(k10, prob_raft, land, gdm) = solve(
+    prob_raft, 
+    Tsit5(), abstol = 1e-6, reltol = 1e-6,
+    callback = CallbackSet(
+        cb_update(showprogress = true), 
+        callback(land), 
+        callback(gdm), 
+        cb_connections(radius = 2*k10))
+    )

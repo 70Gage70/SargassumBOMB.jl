@@ -46,9 +46,9 @@ gdm = ImmortalModel()
 # ics = initial_conditions(dist, 100, "sorted", ref_itp)
 ics = initial_conditions(dist, 1, "uniform", ref_itp)
 
-# icons = initial_connections(ics, "nearest", neighbor_parameter = 4)
-icons = initial_connections(ics, "full")
-# icons = initial_connections(ics, "none")
+# icons = form_connections(ics, "nearest", neighbor_parameter = 4)
+icons = form_connections(ics, "full")
+# icons = form_connections(ics, "none")
 
 rp = RaftParameters(
     ics = ics,
@@ -72,7 +72,7 @@ land = Land(verbose = true)
         cb_update(showprogress = true), 
         callback(land), 
         callback(gdm), 
-        cb_connections_radius(radius = 2*k10))
+        cb_connections(radius = 2*k10))
 );
 
 rtr = RaftTrajectory(sol_raft, rp, ref_itp)

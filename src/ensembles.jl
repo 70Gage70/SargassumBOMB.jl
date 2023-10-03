@@ -9,7 +9,7 @@ include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 using SargassumFromAFAI
 ######################################################################
 
-function ensemble(start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64}; rtr_dt::Real = 1.0)
+function ensemble(rhs, start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64}; rtr_dt::Real = 1.0)
 
     dists = SargassumDistribution(joinpath(@__DIR__, "..", "..", "SargassumFromAFAI.jl", "data", "dist-2018.nc"))
     dist = dists[start_date]
@@ -62,7 +62,7 @@ function ensemble(start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64}; rtr_
         gd_model = gdm
     )
 
-    prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
+    prob_raft = ODEProblem(rhs, rp.ics, tspan, rp)
 
     land = Land(verbose = false)
 
@@ -87,7 +87,8 @@ july_plot = SargassumFromAFAI.plot(dists[(2018, 7)], resolution = (1920, 1080), 
 # integrate to August 1, point is that the distribution for July take into account the entirety of 
 # July, not just July 1st.
 # rtrs = [ensemble((2018, t_start), (2018, 8)) for t_start = 4:6]
-rtrs = [ensemble((2018, 4), (2018, 6))]
+rtrs = [ensemble(Water!, (2018, 4), (2018, 6))]
+rtrs = [ensemble(Raft!, (2018, 4), (2018, 6))]
 
 @info "Plotting results."
 

@@ -81,12 +81,14 @@ Temporary Items
 !wind.nc
 !afai.nc
 
-
 # workspace
 /src/workspaces.jl
 
 # Test
 *.txt
+
+# Figures
+**/figures
 
 # in prog
 /extra

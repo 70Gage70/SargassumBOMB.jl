@@ -9,7 +9,12 @@ include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 using SargassumFromAFAI
 ######################################################################
 
-function ensemble(rhs, start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64}; rtr_dt::Real = 1.0)
+function ensemble(
+    rhs, 
+    start_date::NTuple{2, Int64}, 
+    end_date::NTuple{2, Int64}; 
+    cb_connections_type::String = "nearest", 
+    rtr_dt::Real = 1.0)
 
     dists = SargassumDistribution(joinpath(@__DIR__, "..", "..", "SargassumFromAFAI.jl", "data", "dist-2018.nc"))
     dist = dists[start_date]
@@ -47,7 +52,8 @@ function ensemble(rhs, start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64};
     ###################################################################### CONDITIONS
 
     # ics = initial_conditions(dist, 200, "sorted", ref_itp)
-    ics = initial_conditions(dist, 1, "uniform", ref_itp)
+    # ics = initial_conditions(dist, 1, "uniform", ref_itp)
+    ics = initial_conditions(dist, 2000, "sample", ref_itp)
 
     # icons = form_connections(ics, "nearest", neighbor_parameter = 4)
     icons = form_connections(ics, "full")
@@ -66,6 +72,13 @@ function ensemble(rhs, start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64};
 
     land = Land(verbose = false)
 
+    @assert cb_connections_type in ["nearest", "none"]
+    if cb_connections_type == "nearest"
+        cb_c = cb_connections()
+    elseif cb_connections_type == "none"
+        cb_c = cb_connections(network_type = "none")
+    end
+        
     @time sol_raft = solve(
         prob_raft, 
         Tsit5(), abstol = 1e-6, reltol = 1e-6,
@@ -73,7 +86,7 @@ function ensemble(rhs, start_date::NTuple{2, Int64}, end_date::NTuple{2, Int64};
             cb_update(showprogress = true), 
             callback(land), 
             callback(gdm), 
-            cb_connections())
+            cb_c)
         )
 
     return RaftTrajectory(sol_raft, rp, ref_itp, dt = rtr_dt)
@@ -87,41 +100,87 @@ july_plot = SargassumFromAFAI.plot(dists[(2018, 7)], resolution = (1920, 1080), 
 # integrate to August 1, point is that the distribution for July take into account the entirety of 
 # July, not just July 1st.
 # rtrs = [ensemble((2018, t_start), (2018, 8)) for t_start = 4:6]
-rtrs = [ensemble(Water!, (2018, 4), (2018, 6))]
-rtrs = [ensemble(Raft!, (2018, 4), (2018, 6))]
+# rtrs = [ensemble(Water!, (2018, 4), (2018, 6))]
+# rtrs = [ensemble(Raft!, (2018, 4), (2018, 6))]
 
-@info "Plotting results."
+# @info "Plotting results."
 
-limits = (-100, -50, 5, 35) # full plot``
+# limits = (-100, -50, 5, 35) # full plot``
 
-fig_tot = default_fig()
-ax = geo_axis(fig_tot[1, 1], limits = limits, title = L"\mathrm{April/May/June/July TOT - July}")
+# fig_tot = default_fig()
+# ax = geo_axis(fig_tot[1, 1], limits = limits, title = L"\mathrm{April/May/June/July TOT - July}")
 
-### hist
+# ### hist
 
-lon_bins = range(-100, -50, length = 100)
-lat_bins = range(5, 35, length = 100)
-tr_hist = trajectory_hist!(ax, rtrs, lon_bins, lat_bins)
+# lon_bins = range(-100, -50, length = 100)
+# lat_bins = range(5, 35, length = 100)
+# tr_hist = trajectory_hist!(ax, rtrs, lon_bins, lat_bins)
 
-land!(ax)
+# land!(ax)
 
 ##################################################################################################
 
-t_start = last(rtrs[1].t) - 31.0
-t_end = last(rtrs[1].t)
-rtrs_slice = [time_slice(rtr, (t_start, t_end)) for rtr in rtrs]
+# t_start = last(rtrs[1].t) - 31.0
+# t_end = last(rtrs[1].t)
+# rtrs_slice = [time_slice(rtr, (t_start, t_end)) for rtr in rtrs]
 
-limits = (-100, -50, 5, 35) # full plot``
+# limits = (-100, -50, 5, 35) # full plot``
 
-fig_jul = default_fig()
-ax = geo_axis(fig_jul[1, 1], limits = limits, title = L"\mathrm{APRIL}")
+# fig_jul = default_fig()
+# ax = geo_axis(fig_jul[1, 1], limits = limits, title = L"\mathrm{APRIL}")
 
-### hist
+# ### hist
 
-lon_bins = range(-100, -50, length = 100)
-lat_bins = range(5, 35, length = 100)
-tr_hist = trajectory_hist!(ax, rtrs_slice, lon_bins, lat_bins)
+# lon_bins = range(-100, -50, length = 100)
+# lat_bins = range(5, 35, length = 100)
+# tr_hist = trajectory_hist!(ax, rtrs_slice, lon_bins, lat_bins)
 
-land!(ax)
+# land!(ax)
 
-fig_jul
+# fig_jul
+
+#########
+
+###
+
+rtr_water = ensemble(Water!, (2018, 4), (2018, 5), rtr_dt = 0.1)
+rtr_none = ensemble(Raft!, (2018, 4), (2018, 5), cb_connections_type = "none", rtr_dt = 0.1)
+rtr_near = ensemble(Raft!, (2018, 4), (2018, 5), cb_connections_type = "nearest", rtr_dt = 0.1)
+
+fig = default_fig()
+limits = (-100, -50, 5, 35)
+
+
+function change_trh(tspan)
+    for i in 1:length(fig.content)
+        delete!(fig.content[1])
+    end
+
+    day = round(first(tspan) - 121 + 1, digits = 2)
+    lon_bins = range(-100, -50, length = 50)
+    lat_bins = range(5, 35, length = 50)
+
+    ax_water = geo_axis(fig[1, 1], limits = limits, title = L"\mathrm{Water: April } \, %$(day)")
+    trajectory_hist!(ax_water, time_slice(rtr_water, tspan), lon_bins, lat_bins, opts= (
+        colormap = Reverse(:RdYlGn),
+        colorscale = x -> x == 0.0 ? -1.0 : x))
+    land!(ax_water)
+
+    ax_none = geo_axis(fig[2, 1], limits = limits, title = L"\mathrm{Disconnected Raft: April } \, %$(day)")
+    trajectory_hist!(ax_none, time_slice(rtr_none, tspan), lon_bins, lat_bins, opts= (
+        colormap = Reverse(:RdYlGn),
+        colorscale = x -> x == 0.0 ? -1.0 : x))
+    land!(ax_none) 
+    
+    ax_near = geo_axis(fig[2, 2], limits = limits, title = L"\mathrm{Connected Raft: April } \, %$(day)")
+    trajectory_hist!(ax_near, time_slice(rtr_near, tspan), lon_bins, lat_bins, opts= (
+        colormap = Reverse(:RdYlGn),
+        colorscale = x -> x == 0.0 ? -1.0 : x))
+    land!(ax_near)     
+end
+
+trh_iterator = [(121 + 0.1*i, 121 + 0.1*(i + 1)) for i = 0:300]
+
+record(change_trh, fig, joinpath(@__DIR__, "..", "figures", "comparison.mp4"), trh_iterator; framerate = 20)
+
+###

@@ -252,7 +252,7 @@ Construct [`RaftParameters`](@ref) from a `SargassumDistribution`.
 - `dist`: A `SargassumDistribution`.
 - `number`: The number of clumps to initialize; interactive with `sample_type`.
 - `sample_type`: A `String` identifying one of the methods of assigning clump locations based on the distribution.
-    - `"sample"`: A number `number` of samples are drawn from `dist`. Each sample is placed uniformly at random inside corresponding box.
+    - `"sample"`: A number `number` of samples are drawn from `dist`. Each sample is placed uniformly at random inside the corresponding box.
     - `"sorted"`: Boxed are filled with one clump placed uniformly at random inside them, starting from the box with the highest concentration. If `number` 
                 is greater than the total number of boxes, repeat the loop starting again from the highest concentration box.
     - `"uniform"`: Exactly one clump is placed in the center of each box with nonzero concentration. Note that this ignores `number`.
@@ -328,11 +328,12 @@ end
 """
     form_connections(ics, network_type; neighbor_parameter = nothing)
 
-Construct initial connections between clumps suitable for use in `RaftParameters.connections`.
+Construct connections between clumps suitable for use in `RaftParameters.connections`.
 
 ### Arguments 
 
-- `ics`: A `Vector` of initial conditions as defined by [`RaftParameters`](@ref).
+- `ics`: A `Vector` of initial conditions as defined by [`RaftParameters`](@ref). Note that a solution vector of a [`Raft!`](@ref) problem 
+    can actually be provided at any time to form connections dynamically as with [`cb_connections`](@ref).
 - `network_type`: A `String` identifying how the connections should be consructed.
     - `"full"`: Every clump is connected to every other clump.
     - `"none"`: No clumps are connected.

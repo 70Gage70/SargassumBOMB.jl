@@ -9,10 +9,11 @@ include(joinpath(@__DIR__, "..", "interpolants", "itp-derivatives.jl"))
 
 # loading interpolants
 itp_path = joinpath(@__DIR__, "..", "interpolants", "ocean-atmos")
+isdefined(@__MODULE__, :rick_itp) || (const rick_itp = load(joinpath(itp_path, "rick_itp.jld2"), "rick_itp"))
 isdefined(@__MODULE__, :water_itp) || (const water_itp = load(joinpath(itp_path, "water_itp.jld2"), "water_itp"))
 isdefined(@__MODULE__, :wind_itp) || (const wind_itp = load(joinpath(itp_path, "wind_itp.jld2"), "wind_itp"))
 
-# All the functions depending on wind and water vector fields.
+### All the functions depending on wind and water vector fields.
 # v_x(x, y, t) = water_itp.fields[:u](x, y, t)
 # v_y(x, y, t) =  water_itp.fields[:v](x, y, t)
 # Dv_xDt(x, y, t) = MaterialDerivativeX(water_itp, x, y, t)
@@ -23,15 +24,25 @@ isdefined(@__MODULE__, :wind_itp) || (const wind_itp = load(joinpath(itp_path, "
 # Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * MaterialDerivativeY(wind_itp, x, y, t) 
 # ω(x, y, t) = Vorticity(water_itp, x, y, t)
 
-v_x(x, y, t) = water_itp.fields[:u](x, y, t)
-v_y(x, y, t) =  water_itp.fields[:v](x, y, t)
-Dv_xDt(x, y, t) = water_itp.fields[:DDt_x](x, y, t)
-Dv_yDt(x, y, t) = water_itp.fields[:DDt_y](x, y, t)
-u_x(x, y, t, α) = (1 - α) * water_itp.fields[:u](x, y, t) + α * wind_itp.fields[:u](x, y, t)
-u_y(x, y, t, α) = (1 - α) * water_itp.fields[:v](x, y, t) + α * wind_itp.fields[:v](x, y, t)
-Du_xDt(x, y, t, α) = (1 - α) * water_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_x](x, y, t) 
-Du_yDt(x, y, t, α) = (1 - α) * water_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_y](x, y, t) 
-ω(x, y, t) = water_itp.fields[:vorticity](x, y, t)
+# v_x(x, y, t) = water_itp.fields[:u](x, y, t)
+# v_y(x, y, t) =  water_itp.fields[:v](x, y, t)
+# Dv_xDt(x, y, t) = water_itp.fields[:DDt_x](x, y, t)
+# Dv_yDt(x, y, t) = water_itp.fields[:DDt_y](x, y, t)
+# u_x(x, y, t, α) = (1 - α) * water_itp.fields[:u](x, y, t) + α * wind_itp.fields[:u](x, y, t)
+# u_y(x, y, t, α) = (1 - α) * water_itp.fields[:v](x, y, t) + α * wind_itp.fields[:v](x, y, t)
+# Du_xDt(x, y, t, α) = (1 - α) * water_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_x](x, y, t) 
+# Du_yDt(x, y, t, α) = (1 - α) * water_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_y](x, y, t) 
+# ω(x, y, t) = water_itp.fields[:vorticity](x, y, t)
+
+v_x(x, y, t) = rick_itp.fields[:u](x, y, t)
+v_y(x, y, t) =  rick_itp.fields[:v](x, y, t)
+Dv_xDt(x, y, t) = rick_itp.fields[:DDt_x](x, y, t)
+Dv_yDt(x, y, t) = rick_itp.fields[:DDt_y](x, y, t)
+u_x(x, y, t, α) = (1 - α) * rick_itp.fields[:u](x, y, t) + α * wind_itp.fields[:u](x, y, t)
+u_y(x, y, t, α) = (1 - α) * rick_itp.fields[:v](x, y, t) + α * wind_itp.fields[:v](x, y, t)
+Du_xDt(x, y, t, α) = (1 - α) * rick_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_x](x, y, t) 
+Du_yDt(x, y, t, α) = (1 - α) * rick_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_y](x, y, t) 
+ω(x, y, t) = rick_itp.fields[:vorticity](x, y, t)
 
 ########################################################################
 ########################################################################

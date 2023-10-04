@@ -10,7 +10,9 @@ Construct a plot of the `u` and `v` components of `windwater_itp`.
 
 ### Arguments
 
-- `windwater_itp`: A `InterpolatedField` for either wind or water speeds.
+- `windwater_itp`: A `Vector{InterpolatedField}` whose entries are wind/water vector fields. Each vector field is plotted in its 
+    own row.
+- `names`: A `Vector` of `String`s such that `names[i]` is the name of `windwater_itp[i]`.
 - `time`: The time at which to plot the fields.
 
 ### Optional Arguments
@@ -21,25 +23,32 @@ Construct a plot of the `u` and `v` components of `windwater_itp`.
 - `v_name`: A `Symbol` giving the name of the field corresponding to the x component of the velocity. Default `v_name = :v`.
 """
 function check_windwater(
-    windwater_itp::InterpolatedField,
+    windwater_itp::Vector{<:InterpolatedField},
+    names::Vector{<:String},
     time::Real = 0.0;
     limits::NTuple{4, Real} = (-100, -50, 5, 35),
     n_points::Integer = 1000,
     u_name::Symbol = :u,
     v_name::Symbol = :v)
 
-    xs = range(start=limits[1], stop=limits[2], length = n_points)
-    ys = range(start=limits[3], stop=limits[4], length = n_points)
-    us = [windwater_itp.fields[u_name](sph2xy(x, y, windwater_itp.ref)..., time) for x in xs, y in ys]
-    vs = [windwater_itp.fields[v_name](sph2xy(x, y, windwater_itp.ref)..., time) for x in xs, y in ys]
+    @assert length(names) == length(windwater_itp)
 
     fig = default_fig()
 
-    ax_u = geo_axis(fig[1, 1], title = "u", limits = limits)
-    heatmap!(ax_u, xs, ys, us)
+    xs = range(start=limits[1], stop=limits[2], length = n_points)
+    ys = range(start=limits[3], stop=limits[4], length = n_points)
 
-    ax_v = geo_axis(fig[1, 2], title = "v", limits = limits)
-    heatmap!(ax_v, xs, ys, vs)    
+    for i = 1:length(windwater_itp)
+        itp = windwater_itp[i]
+        us = [itp.fields[u_name](sph2xy(x, y, itp.ref)..., time) for x in xs, y in ys]
+        vs = [itp.fields[v_name](sph2xy(x, y, itp.ref)..., time) for x in xs, y in ys]
+
+        ax_u = geo_axis(fig[i, 1], title = "$(names[i]) u", limits = limits)
+        heatmap!(ax_u, xs, ys, us)
+
+        ax_v = geo_axis(fig[i, 2], title = "$(names[i]) v", limits = limits)
+        heatmap!(ax_v, xs, ys, vs)
+    end    
 
     return fig
 end

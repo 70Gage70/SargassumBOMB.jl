@@ -19,8 +19,8 @@ Construct a plot of the land locations from `land_itp`.
 """
 function check_land(
     land_itp::InterpolatedField;
-    limits=(-180, 180, -90, 90),
-    n_points=1000)
+    limits::NTuple{4, Real} = (-180, 180, -90, 90),
+    n_points::Integer = 1000)
 
     xs = range(start=limits[1], stop=limits[2], length=n_points)
     ys = range(start=limits[3], stop=limits[4], length=n_points)

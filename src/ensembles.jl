@@ -10,9 +10,9 @@ using SargassumFromAFAI
 ######################################################################
 
 function ensemble(
-    rhs, 
     start_date::NTuple{2, Int64}, 
-    end_date::NTuple{2, Int64}; 
+    end_date::NTuple{2, Int64};
+    cp::ClumpParameters = ClumpParameters(ref_itp), 
     cb_connections_type::String = "nearest", 
     rtr_dt::Real = 1.0)
 
@@ -25,12 +25,18 @@ function ensemble(
 
     @info "Integrating $(tspan)"
 
-    cp = ClumpParameters(ref_itp)
+    # cp = ClumpParameters(ref_itp)
+    # cp = ClumpParameters(ref_itp, a = 1.0e-3)
 
     ###################################################################### SPRINGS
-    p1 = sph2xy(dist.lon[1], dist.lat[1], ref_itp)
-    p2 = sph2xy(dist.lon[2], dist.lat[2], ref_itp)
-    ΔL = norm(p1 - p2)
+    x_range = range(-65.0, -55.0, step = 0.5)
+    y_range = range(8.0, 17.0, step = 0.5)
+    x_range, y_range = sph2xy(x_range, y_range, ref_itp)
+    ΔL = norm([x_range[1], y_range[1]] - [x_range[2], y_range[2]])
+
+    # p1 = sph2xy(dist.lon[1], dist.lat[1], ref_itp)
+    # p2 = sph2xy(dist.lon[2], dist.lat[2], ref_itp)
+    # ΔL = norm(p1 - p2)
 
     # spring_k_constant = x -> 5
     # sp = SpringParameters(spring_k_constant, ΔL)
@@ -53,10 +59,12 @@ function ensemble(
 
     # ics = initial_conditions(dist, 200, "sorted", ref_itp)
     # ics = initial_conditions(dist, 1, "uniform", ref_itp)
-    ics = initial_conditions(dist, 2000, "sample", ref_itp)
+    # ics = initial_conditions(dist, 2000, "sample", ref_itp)
 
-    # icons = form_connections(ics, "nearest", neighbor_parameter = 4)
-    icons = form_connections(ics, "full")
+    ics = initial_conditions(x_range, y_range)
+
+    icons = form_connections(ics, "nearest", neighbor_parameter = 100)
+    # icons = form_connections(ics, "full")
     # icons = form_connections(ics, "none")
 
     rp = RaftParameters(
@@ -68,7 +76,7 @@ function ensemble(
         gd_model = gdm
     )
 
-    prob_raft = ODEProblem(rhs, rp.ics, tspan, rp)
+    prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
 
     land = Land(verbose = false)
 
@@ -143,9 +151,14 @@ july_plot = SargassumFromAFAI.plot(dists[(2018, 7)], resolution = (1920, 1080), 
 
 ###
 
-rtr_water = ensemble(Water!, (2018, 4), (2018, 5), rtr_dt = 0.1)
-rtr_none = ensemble(Raft!, (2018, 4), (2018, 5), cb_connections_type = "none", rtr_dt = 0.1)
-rtr_near = ensemble(Raft!, (2018, 4), (2018, 5), cb_connections_type = "nearest", rtr_dt = 0.1)
+cp_default = ClumpParameters(ref_itp)
+cp_water = ClumpParameters(ref_itp, 0.0, 0.0, 0.0, 0.0)
+cp_wind = ClumpParameters(ref_itp, cp_default.α, 0.0, 0.0, 0.0)
+
+rtr_water = ensemble((2018, 4), (2018, 5), cp = cp_water, rtr_dt = 0.1)
+rtr_wind = ensemble((2018, 4), (2018, 5), cp = cp_wind, rtr_dt = 0.1)
+rtr_none = ensemble((2018, 4), (2018, 5), cp = cp_default, cb_connections_type = "none", rtr_dt = 0.1)
+rtr_near = ensemble((2018, 4), (2018, 5), cp = cp_default, cb_connections_type = "nearest", rtr_dt = 0.1)
 
 fig = default_fig()
 limits = (-100, -50, 5, 35)
@@ -166,13 +179,19 @@ function change_trh(tspan)
         colorscale = x -> x == 0.0 ? -1.0 : x))
     land!(ax_water)
 
-    ax_none = geo_axis(fig[2, 1], limits = limits, title = L"\mathrm{Disconnected Raft: April } \, %$(day)")
+    ax_wind = geo_axis(fig[1, 2], limits = limits, title = L"\mathrm{Water + Wind: April } \, %$(day)")
+    trajectory_hist!(ax_wind, time_slice(rtr_wind, tspan), lon_bins, lat_bins, opts= (
+        colormap = Reverse(:RdYlGn),
+        colorscale = x -> x == 0.0 ? -1.0 : x))
+    land!(ax_wind)    
+
+    ax_none = geo_axis(fig[2, 1], limits = limits, title = L"\mathrm{BOM: April } \, %$(day)")
     trajectory_hist!(ax_none, time_slice(rtr_none, tspan), lon_bins, lat_bins, opts= (
         colormap = Reverse(:RdYlGn),
         colorscale = x -> x == 0.0 ? -1.0 : x))
     land!(ax_none) 
     
-    ax_near = geo_axis(fig[2, 2], limits = limits, title = L"\mathrm{Connected Raft: April } \, %$(day)")
+    ax_near = geo_axis(fig[2, 2], limits = limits, title = L"\mathrm{eBOM: April } \, %$(day)")
     trajectory_hist!(ax_near, time_slice(rtr_near, tspan), lon_bins, lat_bins, opts= (
         colormap = Reverse(:RdYlGn),
         colorscale = x -> x == 0.0 ? -1.0 : x))
@@ -181,6 +200,6 @@ end
 
 trh_iterator = [(121 + 0.1*i, 121 + 0.1*(i + 1)) for i = 0:300]
 
-record(change_trh, fig, joinpath(@__DIR__, "..", "figures", "comparison.mp4"), trh_iterator; framerate = 20)
+record(change_trh, fig, joinpath(@__DIR__, "..", "figures", "comparison-test.mp4"), trh_iterator; framerate = 20)
 
 ###

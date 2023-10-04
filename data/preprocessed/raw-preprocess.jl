@@ -182,3 +182,5 @@ matwrite(windout, Dict("lon" => lon_wind, "lat" => lat_wind, "t" => time_wind, "
 matwrite(waterout, Dict("lon" => lon_water, "lat" => lat_water, "t" => time_water, "u" => u_water, "v" => v_water))
 matwrite(tempout, Dict("lon" => lon_temp, "lat" => lat_temp, "t" => time_temp, "temp" => temp))
 matwrite(no3out, Dict("lon" => lon_nutr, "lat" => lat_nutr, "t" => time_nutr, "no3" => no3))
+
+include(joinpath(@__DIR__), "rick-preprocess.jl")

@@ -17,9 +17,8 @@ x0, y0 = -60, 13
 Δ_clump = 0.3
 x_range, y_range = sph2xy(range(x0 - 2, x0 + 4, step = Δ_clump), range(y0 - 4, y0 + 3, step = Δ_clump), ref_itp)
 
-# tspan = (121.0, 122.0)
-# tspan = (121.0, 151.0) # April 1 - May 1
-tspan = (121.0, 212.0) # April 1 - July 1
+# tspan = (90.0, 120.0) # April 1 - May 1
+tspan = (90.0, 181.0) # April 1 - July 1
 
 cp = ClumpParameters(ref_itp)
 

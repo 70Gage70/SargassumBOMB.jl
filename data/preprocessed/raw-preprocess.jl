@@ -20,6 +20,9 @@ const UNITS_OUT_SPEED = u"km/d"
 const UNITS_OUT_TEMP = u"°C"
 const UNITS_OUT_NUTR = u"mmol/m^3"
 
+const t_start = DateTime(2018, 1, 1)
+const t_end = DateTime(2018, 12, 31)
+
 # use ncinfo(file) to see attributes/metadata
 # use ncgetatt(file, variable, attribute) to read an attribute of a variable
 # use ncread(file, variable) to read the value of a variable
@@ -39,13 +42,13 @@ lat_wind = ncread(wind_raw, "latitude") .|> Float64
 
 tref = DateTime(1900, 1, 1, 0, 0, 0)
 time_wind = ncread(wind_raw, "time") .|> (x -> tref + Hour(x)) .|> datetime2rata
-dec1_2017 = searchsortedfirst(rata2datetime.(time_wind), DateTime(2017, 12, 1))
-jan31_2019 = searchsortedfirst(rata2datetime.(time_wind), DateTime(2019, 1, 31))
-time_wind = time_wind[dec1_2017:jan31_2019]
+t_start_idx = searchsortedfirst(rata2datetime.(time_wind), t_start)
+t_end_idx = searchsortedfirst(rata2datetime.(time_wind), t_end)
+time_wind = time_wind[t_start_idx:t_end_idx]
 
 # u
 
-u_wind = ncread(wind_raw, "u10")[:,:,dec1_2017:jan31_2019]
+u_wind = ncread(wind_raw, "u10")[:, :, t_start_idx:t_end_idx]
 scale_factor = ncgetatt(wind_raw, "u10", "scale_factor")
 units_factor = ncgetatt(wind_raw, "u10", "units") |> x -> uconvert(UNITS_OUT_SPEED, 1.0 * NetCDF_units[x]).val
 fill_value = ncgetatt(wind_raw, "u10", "_FillValue")
@@ -55,7 +58,7 @@ u_wind = u_wind .|> x -> scale_factor * units_factor * x
 
 # v
 
-v_wind = ncread(wind_raw, "v10")[:,:,dec1_2017:jan31_2019]
+v_wind = ncread(wind_raw, "v10")[:, :, t_start_idx:t_end_idx]
 scale_factor = ncgetatt(wind_raw, "v10", "scale_factor")
 units_factor = ncgetatt(wind_raw, "v10", "units") |> x -> uconvert(UNITS_OUT_SPEED, 1.0 * NetCDF_units[x]).val
 fill_value = ncgetatt(wind_raw, "v10", "_FillValue")
@@ -79,10 +82,13 @@ lat_water = ncread(water_temp_raw, "latitude") .|> Float64
 
 tref = DateTime(1950, 1, 1, 0, 0, 0)
 time_water = ncread(water_temp_raw, "time") .|> (x -> tref + Day(x)) .|> datetime2rata
+t_start_idx = searchsortedfirst(rata2datetime.(time_water), t_start)
+t_end_idx = searchsortedfirst(rata2datetime.(time_water), t_end)
+time_water = time_water[t_start_idx:t_end_idx]
 
 # u
 
-u_water = ncread(water_temp_raw, "uo_glor")[:, :, 1, :]
+u_water = ncread(water_temp_raw, "uo_glor")[:, :, 1, t_start_idx:t_end_idx]
 scale_factor = ncgetatt(water_temp_raw, "uo_glor", "scale_factor")
 units_factor = ncgetatt(water_temp_raw, "uo_glor", "units") |> x -> uconvert(UNITS_OUT_SPEED, 1.0 * NetCDF_units[x]).val
 fill_value = ncgetatt(water_temp_raw, "uo_glor", "_FillValue")
@@ -92,7 +98,7 @@ u_water = u_water .|> x -> scale_factor * units_factor * x
 
 # v
 
-v_water = ncread(water_temp_raw, "vo_glor")[:, :, 1, :]
+v_water = ncread(water_temp_raw, "vo_glor")[:, :, 1, t_start_idx:t_end_idx]
 scale_factor = ncgetatt(water_temp_raw, "vo_glor", "scale_factor")
 units_factor = ncgetatt(water_temp_raw, "vo_glor", "units") |> x -> uconvert(UNITS_OUT_SPEED, 1.0 * NetCDF_units[x]).val
 fill_value = ncgetatt(water_temp_raw, "vo_glor", "_FillValue")
@@ -116,10 +122,13 @@ lat_temp = ncread(water_temp_raw, "latitude") .|> Float64
 
 tref = DateTime(1950, 1, 1, 0, 0, 0)
 time_temp = ncread(water_temp_raw, "time") .|> (x -> tref + Day(x)) .|> datetime2rata
+t_start_idx = searchsortedfirst(rata2datetime.(time_temp), t_start)
+t_end_idx = searchsortedfirst(rata2datetime.(time_temp), t_end)
+time_temp = time_temp[t_start_idx:t_end_idx]
 
 # temp
 
-temp = ncread(water_temp_raw, "thetao_glor")[:, :, 1, :]
+temp = ncread(water_temp_raw, "thetao_glor")[:, :, 1, t_start_idx:t_end_idx]
 scale_factor = ncgetatt(water_temp_raw, "thetao_glor", "scale_factor")
 units_factor = ncgetatt(water_temp_raw, "thetao_glor", "units") |> x -> uconvert(UNITS_OUT_TEMP, 1.0 * NetCDF_units[x]).val
 fill_value = ncgetatt(water_temp_raw, "thetao_glor", "_FillValue")
@@ -143,10 +152,13 @@ lat_nutr = ncread(nutr_raw, "latitude") .|> Float64
 
 tref = DateTime(1950, 1, 1, 0, 0, 0)
 time_nutr = ncread(nutr_raw, "time") .|> (x -> tref + Hour(x)) .|> datetime2rata
+t_start_idx = searchsortedfirst(rata2datetime.(time_nutr), t_start)
+t_end_idx = searchsortedfirst(rata2datetime.(time_nutr), t_end)
+time_nutr = time_nutr[t_start_idx:t_end_idx]
 
 # no3
 
-no3 = ncread(nutr_raw, "no3")[:, :, 1, :]
+no3 = ncread(nutr_raw, "no3")[:, :, 1, t_start_idx:t_end_idx]
 scale_factor = 1.0
 units_factor = ncgetatt(nutr_raw, "no3", "units") |> x -> uconvert(UNITS_OUT_NUTR, 1.0 * NetCDF_units[x]).val
 fill_value = ncgetatt(nutr_raw, "no3", "_FillValue")

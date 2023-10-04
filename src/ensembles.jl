@@ -169,7 +169,7 @@ function change_trh(tspan)
         delete!(fig.content[1])
     end
 
-    day = round(first(tspan) - 121 + 1, digits = 2)
+    day = round(first(tspan) - 90 + 1, digits = 2)
     lon_bins = range(-100, -50, length = 50)
     lat_bins = range(5, 35, length = 50)
 
@@ -198,7 +198,7 @@ function change_trh(tspan)
     land!(ax_near)     
 end
 
-trh_iterator = [(121 + 0.1*i, 121 + 0.1*(i + 1)) for i = 0:300]
+trh_iterator = [(90 + 0.1*i, 90 + 0.1*(i + 1)) for i = 0:300]
 
 record(change_trh, fig, joinpath(@__DIR__, "..", "figures", "comparison-test.mp4"), trh_iterator; framerate = 20)
 

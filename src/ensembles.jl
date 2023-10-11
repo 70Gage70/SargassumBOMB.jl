@@ -29,8 +29,8 @@ function ensemble(
     # cp = ClumpParameters(ref_itp, a = 1.0e-3)
 
     ###################################################################### SPRINGS
-    x_range = range(-65.0, -55.0, step = 0.5)
-    y_range = range(8.0, 17.0, step = 0.5)
+    x_range = range(-65.0, -55.0, step = 0.1)
+    y_range = range(8.0, 17.0, step = 0.1)
     x_range, y_range = sph2xy(x_range, y_range, ref_itp)
     ΔL = norm([x_range[1], y_range[1]] - [x_range[2], y_range[2]])
 
@@ -155,10 +155,10 @@ cp_default = ClumpParameters(ref_itp)
 cp_water = ClumpParameters(ref_itp, 0.0, 0.0, 0.0, 0.0)
 cp_wind = ClumpParameters(ref_itp, cp_default.α, 0.0, 0.0, 0.0)
 
-rtr_water = ensemble((2018, 4), (2018, 5), cp = cp_water, rtr_dt = 0.1)
-rtr_wind = ensemble((2018, 4), (2018, 5), cp = cp_wind, rtr_dt = 0.1)
-rtr_none = ensemble((2018, 4), (2018, 5), cp = cp_default, cb_connections_type = "none", rtr_dt = 0.1)
-rtr_near = ensemble((2018, 4), (2018, 5), cp = cp_default, cb_connections_type = "nearest", rtr_dt = 0.1)
+rtr_water = ensemble((2018, 4), (2018, 8), cp = cp_water, rtr_dt = 0.1)
+rtr_wind = ensemble((2018, 4), (2018, 8), cp = cp_wind, rtr_dt = 0.1)
+rtr_none = ensemble((2018, 4), (2018, 8), cp = cp_default, cb_connections_type = "none", rtr_dt = 0.1)
+rtr_near = ensemble((2018, 4), (2018, 8), cp = cp_default, cb_connections_type = "nearest", rtr_dt = 0.1)
 
 fig = default_fig()
 limits = (-100, -50, 5, 35)
@@ -173,33 +173,33 @@ function change_trh(tspan)
     lon_bins = range(-100, -50, length = 50)
     lat_bins = range(5, 35, length = 50)
 
-    ax_water = geo_axis(fig[1, 1], limits = limits, title = L"\mathrm{Water: April } \, %$(day)")
+    ax_water = geo_axis(fig[1, 1], limits = limits, title = L"\mathrm{Water: Day } \, %$(day)")
     trajectory_hist!(ax_water, time_slice(rtr_water, tspan), lon_bins, lat_bins, opts= (
         colormap = Reverse(:RdYlGn),
         colorscale = x -> x == 0.0 ? -1.0 : x))
     land!(ax_water)
 
-    ax_wind = geo_axis(fig[1, 2], limits = limits, title = L"\mathrm{Water + Wind: April } \, %$(day)")
+    ax_wind = geo_axis(fig[1, 2], limits = limits, title = L"\mathrm{Water + Wind: Day } \, %$(day)")
     trajectory_hist!(ax_wind, time_slice(rtr_wind, tspan), lon_bins, lat_bins, opts= (
         colormap = Reverse(:RdYlGn),
         colorscale = x -> x == 0.0 ? -1.0 : x))
     land!(ax_wind)    
 
-    ax_none = geo_axis(fig[2, 1], limits = limits, title = L"\mathrm{BOM: April } \, %$(day)")
+    ax_none = geo_axis(fig[2, 1], limits = limits, title = L"\mathrm{BOM: Day } \, %$(day)")
     trajectory_hist!(ax_none, time_slice(rtr_none, tspan), lon_bins, lat_bins, opts= (
         colormap = Reverse(:RdYlGn),
         colorscale = x -> x == 0.0 ? -1.0 : x))
     land!(ax_none) 
     
-    ax_near = geo_axis(fig[2, 2], limits = limits, title = L"\mathrm{eBOM: April } \, %$(day)")
+    ax_near = geo_axis(fig[2, 2], limits = limits, title = L"\mathrm{eBOM: Day } \, %$(day)")
     trajectory_hist!(ax_near, time_slice(rtr_near, tspan), lon_bins, lat_bins, opts= (
         colormap = Reverse(:RdYlGn),
         colorscale = x -> x == 0.0 ? -1.0 : x))
     land!(ax_near)     
 end
 
-trh_iterator = [(90 + 0.1*i, 90 + 0.1*(i + 1)) for i = 0:300]
+trh_iterator = [(90 + 0.1*i, 90 + 0.1*(i + 1)) for i = 0:1219]
 
-record(change_trh, fig, joinpath(@__DIR__, "..", "figures", "comparison-test.mp4"), trh_iterator; framerate = 20)
+record(change_trh, fig, joinpath(@__DIR__, "..", "figures", "comparison-test.mp4"), trh_iterator; framerate = 30)
 
 ###

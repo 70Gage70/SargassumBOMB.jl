@@ -68,3 +68,22 @@ are preprocessed, the actual interpolants may be constructed using the `itp-cons
 - `biology`: Constructs `no3_itp.jld2` storing nitrogen and `temp_itp.jld2` storing temperature.
 - `land`: Constructs `land_itp.jld2` storing a heatmap of land vs. ocean locations.
 - `ocean-atmos`: Constructs `water_itp.jld2` storing ocean currents and `wind_itp.jld2` storing wind velocities.
+
+## Rick's Data
+
+Data: data are stored in files with the naming convention “merged_YYYY.mat” where YYYY is the year, starting with 1993.  Variables contained within are:
+(The following are identical for each year, and need only be loaded once)
+
+- `Lon`, `Lat`: longitude and latitude grid points
+- `Uek_bar`, `Vek_bar`: time mean zonal and meridional wind-driven velocities (m/s)
+- `Ug_bar`, `Vg_bar`: time mean zonal and meridional geostrophic velocities (m/s)
+ 
+(The following variables change in each yearly file) 
+- `T`: time in Julian days.  2448989.00 = 1 January 1993, 0000 UTC.
+- `Uek_a`, `Vek_a`: daily wind-driven current anomalies (m/s)
+- `Ug_a`, `Vg_a`: daily geostrophic current anomalies (m/s)
+- `Uslip_d`, `Vslip_d`: daily slip velocities for drogued drifter (m/s)
+- `Uslip_ud`, `Vslip_ud`: daily slip velocities for undrogued drifters (m/s)
+- `erH`: errors in sea level anomaly (m)
+ 
+The total zonal speed of the water at 15m depth is `Uek_bar+Uek_a+Ug_bar+Ug_a`.  If the term `Uslip_d` is also added, then the zonal speed of a drogued drifter is reproduced.  If instead the term `Uslip_ud` is added, this matches as closely as possible the zonal speed of an undrogued drifter.

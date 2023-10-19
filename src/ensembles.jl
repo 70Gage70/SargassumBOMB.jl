@@ -7,6 +7,7 @@ include(joinpath(@__DIR__, "../../CustomMakie.jl/src/geo-methods.jl"))
 include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 
 using SargassumFromAFAI
+using Random: seed!
 ######################################################################
 
 function ensemble(
@@ -29,14 +30,14 @@ function ensemble(
     # cp = ClumpParameters(ref_itp, a = 1.0e-3)
 
     ###################################################################### SPRINGS
-    x_range = range(-65.0, -55.0, step = 0.1)
-    y_range = range(8.0, 17.0, step = 0.1)
-    x_range, y_range = sph2xy(x_range, y_range, ref_itp)
-    ΔL = norm([x_range[1], y_range[1]] - [x_range[2], y_range[2]])
+    # x_range = range(-65.0, -55.0, step = 0.1)
+    # y_range = range(8.0, 17.0, step = 0.1)
+    # x_range, y_range = sph2xy(x_range, y_range, ref_itp)
+    # ΔL = norm([x_range[1], y_range[1]] - [x_range[2], y_range[2]])
 
-    # p1 = sph2xy(dist.lon[1], dist.lat[1], ref_itp)
-    # p2 = sph2xy(dist.lon[2], dist.lat[2], ref_itp)
-    # ΔL = norm(p1 - p2)
+    p1 = sph2xy(dist.lon[1], dist.lat[1], ref_itp)
+    p2 = sph2xy(dist.lon[2], dist.lat[2], ref_itp)
+    ΔL = norm(p1 - p2)
 
     # spring_k_constant = x -> 5
     # sp = SpringParameters(spring_k_constant, ΔL)
@@ -57,11 +58,11 @@ function ensemble(
 
     ###################################################################### CONDITIONS
 
-    # ics = initial_conditions(dist, 200, "sorted", ref_itp)
-    # ics = initial_conditions(dist, 1, "uniform", ref_itp)
-    # ics = initial_conditions(dist, 2000, "sample", ref_itp)
+    # ics = initial_conditions(dist, [1], 200, "sorted", ref_itp)
+    # ics = initial_conditions(dist, [1], 1, "uniform", ref_itp)
+    ics = initial_conditions(dist, [1, 2, 3, 4], 1000, "sample", ref_itp)
 
-    ics = initial_conditions(x_range, y_range)
+    # ics = initial_conditions(x_range, y_range)
 
     icons = form_connections(ics, "nearest", neighbor_parameter = 100)
     # icons = form_connections(ics, "full")
@@ -155,9 +156,13 @@ cp_default = ClumpParameters(ref_itp)
 cp_water = ClumpParameters(ref_itp, 0.0, 0.0, 0.0, 0.0)
 cp_wind = ClumpParameters(ref_itp, cp_default.α, 0.0, 0.0, 0.0)
 
+seed!(1234)
 rtr_water = ensemble((2018, 4), (2018, 8), cp = cp_water, rtr_dt = 0.1)
+seed!(1234)
 rtr_wind = ensemble((2018, 4), (2018, 8), cp = cp_wind, rtr_dt = 0.1)
+seed!(1234)
 rtr_none = ensemble((2018, 4), (2018, 8), cp = cp_default, cb_connections_type = "none", rtr_dt = 0.1)
+seed!(1234)
 rtr_near = ensemble((2018, 4), (2018, 8), cp = cp_default, cb_connections_type = "nearest", rtr_dt = 0.1)
 
 fig = default_fig()
@@ -198,7 +203,8 @@ function change_trh(tspan)
     land!(ax_near)     
 end
 
-trh_iterator = [(90 + 0.1*i, 90 + 0.1*(i + 1)) for i = 0:1219]
+# trh_iterator = [(90 + 0.1*i, 90 + 0.1*(i + 1)) for i = 0:1219]
+trh_iterator = [(90 + 0.1*i, 90 + 0.1*(i + 1)) for i = 0:0]
 
 record(change_trh, fig, joinpath(@__DIR__, "..", "figures", "comparison-test.mp4"), trh_iterator; framerate = 30)
 

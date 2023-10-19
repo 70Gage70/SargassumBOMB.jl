@@ -250,6 +250,7 @@ Construct [`RaftParameters`](@ref) from a `SargassumDistribution`.
 
 ### Arguments 
 - `dist`: A `SargassumDistribution`.
+- `weeks`: A `Vector{<:Integer}` giving the weeks of the month to consider. Each entry should be between 1 and 4 and appear only once.
 - `number`: The number of clumps to initialize; interactive with `sample_type`.
 - `sample_type`: A `String` identifying one of the methods of assigning clump locations based on the distribution.
     - `"sample"`: A number `number` of samples are drawn from `dist`. Each sample is placed uniformly at random inside the corresponding box.
@@ -261,13 +262,17 @@ Construct [`RaftParameters`](@ref) from a `SargassumDistribution`.
 """
 function initial_conditions(
     dist::SargassumDistribution, 
+    weeks::Vector{<:Integer},
     number::Integer,
     sample_type::String,
     ref::EquirectangularReference)
 
     @assert sample_type in ["sample", "sorted", "uniform"] "`sample_type` not recognized."
+    @assert length(weeks) > 0 "At least one week must be selected."
+    @assert all(map(x -> 1 <= x <= 4, weeks)) "Each entry of `weeks` must be between 1 and 4."
+    @assert allunique(weeks) "Each week should only appear once."
 
-    sarg = dist.sargassum
+    sarg = sum(dist.sargassum[:,:,week] for week in weeks)
     lons = dist.lon
     lats = dist.lat
 

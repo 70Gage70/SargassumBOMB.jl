@@ -53,7 +53,7 @@ rp = RaftParameters(
 prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
 
 # wp = RaftParameters(x_range, y_range, cp, spring_k, first(tspan), "full", ImmortalModel())
-# prob_raft = ODEProblem(Water!, rp.ics, tspan, rp)
+# prob_raft = ODEProblem(WaterWind!, rp.ics, tspan, rp)
 
 @info "Solving model."
 

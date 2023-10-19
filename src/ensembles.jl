@@ -13,6 +13,7 @@ using Random: seed!
 function ensemble(
     start_date::NTuple{2, Int64}, 
     end_date::NTuple{2, Int64};
+    rhs::Function = Raft!,
     cp::ClumpParameters = ClumpParameters(ref_itp), 
     cb_connections_type::String = "nearest", 
     rtr_dt::Real = 1.0)
@@ -30,8 +31,8 @@ function ensemble(
     # cp = ClumpParameters(ref_itp, a = 1.0e-3)
 
     ###################################################################### SPRINGS
-    # x_range = range(-65.0, -55.0, step = 0.1)
-    # y_range = range(8.0, 17.0, step = 0.1)
+    # x_range = range(-65.0, -55.0, step = 0.2)
+    # y_range = range(8.0, 17.0, step = 0.2)
     # x_range, y_range = sph2xy(x_range, y_range, ref_itp)
     # ΔL = norm([x_range[1], y_range[1]] - [x_range[2], y_range[2]])
 
@@ -58,13 +59,14 @@ function ensemble(
 
     ###################################################################### CONDITIONS
 
-    # ics = initial_conditions(dist, [1], 200, "sorted", ref_itp)
+    ics = initial_conditions(dist, [1], 1000, "sorted", ref_itp)
     # ics = initial_conditions(dist, [1], 1, "uniform", ref_itp)
-    ics = initial_conditions(dist, [1, 2, 3, 4], 1000, "sample", ref_itp)
+    # ics = initial_conditions(dist, [1], 1000, "sample", ref_itp)
 
     # ics = initial_conditions(x_range, y_range)
 
-    icons = form_connections(ics, "nearest", neighbor_parameter = 100)
+    # icons = form_connections(ics, "nearest", neighbor_parameter = 10)
+    icons = form_connections(ics, "radius", neighbor_parameter = k10)
     # icons = form_connections(ics, "full")
     # icons = form_connections(ics, "none")
 
@@ -77,7 +79,7 @@ function ensemble(
         gd_model = gdm
     )
 
-    prob_raft = ODEProblem(Raft!, rp.ics, tspan, rp)
+    prob_raft = ODEProblem(rhs, rp.ics, tspan, rp)
 
     land = Land(verbose = false)
 
@@ -109,7 +111,7 @@ july_plot = SargassumFromAFAI.plot(dists[(2018, 7)], resolution = (1920, 1080), 
 # integrate to August 1, point is that the distribution for July take into account the entirety of 
 # July, not just July 1st.
 # rtrs = [ensemble((2018, t_start), (2018, 8)) for t_start = 4:6]
-# rtrs = [ensemble(Water!, (2018, 4), (2018, 6))]
+# rtrs = [ensemble(WaterWind!, (2018, 4), (2018, 6))]
 # rtrs = [ensemble(Raft!, (2018, 4), (2018, 6))]
 
 # @info "Plotting results."
@@ -157,13 +159,13 @@ cp_water = ClumpParameters(ref_itp, 0.0, 0.0, 0.0, 0.0)
 cp_wind = ClumpParameters(ref_itp, cp_default.α, 0.0, 0.0, 0.0)
 
 seed!(1234)
-rtr_water = ensemble((2018, 4), (2018, 8), cp = cp_water, rtr_dt = 0.1)
+rtr_water = ensemble((2018, 4), (2018, 8), rhs = WaterWind!, cp = cp_water, rtr_dt = 0.1)
 seed!(1234)
-rtr_wind = ensemble((2018, 4), (2018, 8), cp = cp_wind, rtr_dt = 0.1)
+rtr_wind = ensemble((2018, 4), (2018, 8), rhs = WaterWind!, cp = cp_wind, rtr_dt = 0.1)
 seed!(1234)
-rtr_none = ensemble((2018, 4), (2018, 8), cp = cp_default, cb_connections_type = "none", rtr_dt = 0.1)
+rtr_none = ensemble((2018, 4), (2018, 8), rhs = Raft!, cp = cp_default, cb_connections_type = "none", rtr_dt = 0.1)
 seed!(1234)
-rtr_near = ensemble((2018, 4), (2018, 8), cp = cp_default, cb_connections_type = "nearest", rtr_dt = 0.1)
+rtr_near = ensemble((2018, 4), (2018, 8), rhs = Raft!, cp = cp_default, cb_connections_type = "nearest", rtr_dt = 0.1)
 
 fig = default_fig()
 limits = (-100, -50, 5, 35)

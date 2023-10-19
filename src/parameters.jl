@@ -34,7 +34,7 @@ struct ClumpParameters{T<:Real}
 end
 
 """
-    ClumpParameters(;constants...)
+    ClumpParameters(ref; constants...)
 
 Compute the parameters required for the BOM equations from physical constants.
 

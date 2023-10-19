@@ -24,25 +24,25 @@ isdefined(@__MODULE__, :wind_itp) || (const wind_itp = load(joinpath(itp_path, "
 # Du_yDt(x, y, t, α) = (1 - α) * MaterialDerivativeY(water_itp, x, y, t) + α * MaterialDerivativeY(wind_itp, x, y, t) 
 # ω(x, y, t) = Vorticity(water_itp, x, y, t)
 
-v_x(x, y, t) = water_itp.fields[:u](x, y, t)
-v_y(x, y, t) =  water_itp.fields[:v](x, y, t)
-Dv_xDt(x, y, t) = water_itp.fields[:DDt_x](x, y, t)
-Dv_yDt(x, y, t) = water_itp.fields[:DDt_y](x, y, t)
-u_x(x, y, t, α) = (1 - α) * water_itp.fields[:u](x, y, t) + α * wind_itp.fields[:u](x, y, t)
-u_y(x, y, t, α) = (1 - α) * water_itp.fields[:v](x, y, t) + α * wind_itp.fields[:v](x, y, t)
-Du_xDt(x, y, t, α) = (1 - α) * water_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_x](x, y, t) 
-Du_yDt(x, y, t, α) = (1 - α) * water_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_y](x, y, t) 
-ω(x, y, t) = water_itp.fields[:vorticity](x, y, t)
+# v_x(x, y, t) = water_itp.fields[:u](x, y, t)
+# v_y(x, y, t) =  water_itp.fields[:v](x, y, t)
+# Dv_xDt(x, y, t) = water_itp.fields[:DDt_x](x, y, t)
+# Dv_yDt(x, y, t) = water_itp.fields[:DDt_y](x, y, t)
+# u_x(x, y, t, α) = (1 - α) * water_itp.fields[:u](x, y, t) + α * wind_itp.fields[:u](x, y, t)
+# u_y(x, y, t, α) = (1 - α) * water_itp.fields[:v](x, y, t) + α * wind_itp.fields[:v](x, y, t)
+# Du_xDt(x, y, t, α) = (1 - α) * water_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_x](x, y, t) 
+# Du_yDt(x, y, t, α) = (1 - α) * water_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_y](x, y, t) 
+# ω(x, y, t) = water_itp.fields[:vorticity](x, y, t)
 
-# v_x(x, y, t) = rick_itp.fields[:u](x, y, t)
-# v_y(x, y, t) =  rick_itp.fields[:v](x, y, t)
-# Dv_xDt(x, y, t) = rick_itp.fields[:DDt_x](x, y, t)
-# Dv_yDt(x, y, t) = rick_itp.fields[:DDt_y](x, y, t)
-# u_x(x, y, t, α) = (1 - α) * rick_itp.fields[:u](x, y, t) + α * wind_itp.fields[:u](x, y, t)
-# u_y(x, y, t, α) = (1 - α) * rick_itp.fields[:v](x, y, t) + α * wind_itp.fields[:v](x, y, t)
-# Du_xDt(x, y, t, α) = (1 - α) * rick_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_x](x, y, t) 
-# Du_yDt(x, y, t, α) = (1 - α) * rick_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_y](x, y, t) 
-# ω(x, y, t) = rick_itp.fields[:vorticity](x, y, t)
+v_x(x, y, t) = rick_itp.fields[:u](x, y, t)
+v_y(x, y, t) =  rick_itp.fields[:v](x, y, t)
+Dv_xDt(x, y, t) = rick_itp.fields[:DDt_x](x, y, t)
+Dv_yDt(x, y, t) = rick_itp.fields[:DDt_y](x, y, t)
+u_x(x, y, t, α) = (1 - α) * rick_itp.fields[:u](x, y, t) + α * wind_itp.fields[:u](x, y, t)
+u_y(x, y, t, α) = (1 - α) * rick_itp.fields[:v](x, y, t) + α * wind_itp.fields[:v](x, y, t)
+Du_xDt(x, y, t, α) = (1 - α) * rick_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_x](x, y, t) 
+Du_yDt(x, y, t, α) = (1 - α) * rick_itp.fields[:DDt_x](x, y, t) + α * wind_itp.fields[:DDt_y](x, y, t) 
+ω(x, y, t) = rick_itp.fields[:vorticity](x, y, t)
 
 ########################################################################
 ########################################################################
@@ -58,7 +58,7 @@ The solution vector `u` is a vector of length `2n_clumps + 1` such that `u[1]` i
 controls the growth and death of clumps by biophysical effects. Then, `u[2*i:2*i+1]` for `i = 1:n_clumps` gives 
 the `[x, y]` coordinates of the clump in position `i`.
 
-For integrating water or wind particles,[ `WaterWind!`](@ref) should be used.
+For integrating water or wind particles, [`WaterWind!`](@ref) should be used.
 """
 function Raft!(du, u, p::RaftParameters, t)
     du[1] = p.gd_model.dSdt(u, t)
@@ -101,7 +101,7 @@ whose velocities are equal to `u = (1 - α)v_water + α v_wind`.
 
 The parameters `p` are given by [`RaftParameters`](@ref), but only `p.α` and `p.gd_model` are used.
 
-This function is equivalent to [`Raft!`](@ref) in the case where `τ = 0`, but is faster and more stable.
+This function is equivalent to [`Raft!`](@ref) in the case where `τ = 0`, but is slightly faster.
 """
 function WaterWind!(du, u, p::RaftParameters, t)
     du[1] = p.gd_model.dSdt(u, t)

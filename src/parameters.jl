@@ -302,7 +302,7 @@ function initial_conditions(
 
         n_c = 1
         while n_c <= number
-            idx = n_c == length(pts) ? length(pts) : mod(n_c, length(pts))
+            idx = mod(n_c, length(pts)) == 0 ? length(pts) : mod(n_c, length(pts))
             pt = pts[idx]
 
             push!(xy0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))

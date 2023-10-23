@@ -28,7 +28,7 @@ function ensemble(
     @info "Integrating $(tspan)"
 
     # cp = ClumpParameters(ref_itp)
-    # cp = ClumpParameters(ref_itp, a = 1.0e-3)
+    # cp = ClumpParameters(ref_itp, δ = 2.0)
 
     ###################################################################### SPRINGS
     # x_range = range(-65.0, -55.0, step = 0.2)
@@ -59,7 +59,7 @@ function ensemble(
 
     ###################################################################### CONDITIONS
 
-    ics = initial_conditions(dist, [1], 1000, "sorted", ref_itp)
+    ics = initial_conditions(dist, [1], 100, "sorted", ref_itp)
     # ics = initial_conditions(dist, [1], 1, "uniform", ref_itp)
     # ics = initial_conditions(dist, [1], 1000, "sample", ref_itp)
 
@@ -92,7 +92,9 @@ function ensemble(
         
     @time sol_raft = solve(
         prob_raft, 
-        Tsit5(), abstol = 1e-6, reltol = 1e-6,
+        Tsit5(),
+        # Tsit5(), abstol = 1e-6, reltol = 1e-6,
+        # RK4(), dtmin = 0.1, dtmax = 0.1, force_dtmin = true,
         callback = CallbackSet(
             cb_update(showprogress = true), 
             callback(land), 
@@ -154,7 +156,8 @@ july_plot = SargassumFromAFAI.plot(dists[(2018, 7)], resolution = (1920, 1080), 
 
 ###
 
-cp_default = ClumpParameters(ref_itp)
+# cp_default = ClumpParameters(ref_itp)
+cp_default = ClumpParameters(ref_itp, δ = 2.0)
 cp_water = ClumpParameters(ref_itp, 0.0, 0.0, 0.0, 0.0)
 cp_wind = ClumpParameters(ref_itp, cp_default.α, 0.0, 0.0, 0.0)
 
@@ -205,9 +208,32 @@ function change_trh(tspan)
     land!(ax_near)     
 end
 
-# trh_iterator = [(90 + 0.1*i, 90 + 0.1*(i + 1)) for i = 0:1219]
-trh_iterator = [(90 + 0.1*i, 90 + 0.1*(i + 1)) for i = 0:0]
+trh_iterator = [(90 + 0.1*i, 90 + 0.1*(i + 1)) for i = 0:10:1219]
+# trh_iterator = [(90 + 0.1*i, 90 + 0.1*(i + 1)) for i = 0:0]
 
-record(change_trh, fig, joinpath(@__DIR__, "..", "figures", "comparison-test.mp4"), trh_iterator; framerate = 30)
+# @time record(change_trh, fig, joinpath(@__DIR__, "..", "figures", "comparison-test-delta2.mp4"), trh_iterator; framerate = 15)
 
 ###
+
+fig = default_fig()
+limits = (-100, -50, 5, 35)
+
+ax_water = geo_axis(fig[1, 1], limits = limits, title = L"\mathrm{Water}")
+trajectory!(ax_water, rtr_water)
+land!(ax_water)
+
+ax_wind = geo_axis(fig[1, 2], limits = limits, title = L"\mathrm{Water + Wind}")
+trajectory!(ax_wind, rtr_wind)
+land!(ax_wind)    
+
+ax_none = geo_axis(fig[2, 1], limits = limits, title = L"\mathrm{BOM}")
+trajectory!(ax_none, rtr_none)
+land!(ax_none) 
+
+ax_near = geo_axis(fig[2, 2], limits = limits, title = L"\mathrm{eBOM}")
+trajectory!(ax_near, rtr_near)
+land!(ax_near)
+
+supertitle = Label(fig[0, :], L"\delta = 2.0", fontsize = 50)
+
+fig

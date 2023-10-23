@@ -12,7 +12,7 @@ include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
 
 start_date = (2018, 4)
 # end_date = (2018, 7)
-end_date = (2018, 9)
+end_date = (2018, 8)
 
 dists = SargassumDistribution(joinpath(@__DIR__, "..", "..", "SargassumFromAFAI.jl", "data", "dist-2018.nc"))
 dist = dists[start_date]
@@ -86,6 +86,7 @@ cb_c = cb_connections(network_type = "none")
 @time sol_raft = solve(
     prob_raft, 
     Tsit5(), abstol = 1e-6, reltol = 1e-6,
+    # RK4(), dtmin = 0.1, dtmax = 0.1, force_dtmin = true,
     callback = CallbackSet(
         cb_update(showprogress = true), 
         callback(land), 

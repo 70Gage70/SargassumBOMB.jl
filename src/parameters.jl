@@ -288,7 +288,7 @@ function initial_conditions(
     if sample_type == "sample"
         pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
         wts = sarg |> x -> reduce(vcat, x)
-        samples = sample(pts, Weights(wts), number)
+        samples = Distributions.sample(pts, Weights(wts), number)
 
         for samp in samples
             push!(xy0, rand(Uniform(samp[1] - δ_x/2, samp[1] + δ_x/2)))

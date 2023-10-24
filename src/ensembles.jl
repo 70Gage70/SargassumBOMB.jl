@@ -59,9 +59,9 @@ function ensemble(
 
     ###################################################################### CONDITIONS
 
-    ics = initial_conditions(dist, [1], 100, "sorted", ref_itp)
+    # ics = initial_conditions(dist, [1], 100, "sorted", ref_itp)
     # ics = initial_conditions(dist, [1], 1, "uniform", ref_itp)
-    # ics = initial_conditions(dist, [1], 1000, "sample", ref_itp)
+    ics = initial_conditions(dist, [1], 1000, "sample", ref_itp)
 
     # ics = initial_conditions(x_range, y_range)
 

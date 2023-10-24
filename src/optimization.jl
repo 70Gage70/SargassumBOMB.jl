@@ -9,17 +9,16 @@ function integrate_water(
     α::Real, 
     τ::Real;
     initial_time::NTuple{2, Integer} = (2018, 3), 
-    final_time::NTuple{2, Integer} = (2018, 4))
+    final_time::NTuple{2, Integer} = (2018, 4),
+    t_extra::Real = 7)
 
     tstart = Day(DateTime(initial_time...) - DateTime(yearmonth(water_itp.time_start)...)).value |> float
-    tend = tstart + Day(DateTime(final_time...) - DateTime(initial_time...)).value
+    tend = tstart + Day(DateTime(final_time...) - DateTime(initial_time...)).value + t_extra
     tspan = (tstart, tend)
 
     dists = SargassumDistribution(joinpath(@__DIR__, "..", "..", "SargassumFromAFAI.jl", "data", "dist-2018.nc"))
     dist = dists[initial_time]
-    ics = initial_conditions(dist, [1], 100, "sorted", ref_itp)
-
-    tspan = (0.0, 100.0)
+    ics = initial_conditions(dist, [1], 1, "uniform", ref_itp)
 
     cp_default = ClumpParameters(ref_itp) 
     cp = ClumpParameters(ref_itp, α, τ, cp_default.R, cp_default.f)
@@ -54,7 +53,7 @@ function integrate_water(
             cb_connections(network_type = nw_type))
         )
 
-    return RaftTrajectory(sol, rp, ref_itp, dt = 0.1)
+    return RaftTrajectory(sol, rp, ref_itp, dt = 0.1), tstart, tend
 end
 
 function loss_water(
@@ -66,7 +65,8 @@ function loss_water(
     target = dists[final_time].sargassum[:,:,1]
     target = target/sum(target)
 
-    rtr = integrate_water(α, τ, initial_time = initial_time, final_time = final_time)
+    rtr, tstart, tend = integrate_water(α, τ, initial_time = initial_time, final_time = final_time)
+    rtr = time_slice(rtr, (tend - 8, tend))
     data = bins(rtr, dists[final_time])
     data = data/sum(data)
 
@@ -77,7 +77,10 @@ end
 
 u0 = [ClumpParameters(ref_itp).α, ClumpParameters(ref_itp).τ]
 
-fig = default_fig()
+fig = Figure(
+    resolution = (1920, 800), 
+    fontsize = 50,
+    figure_padding = (5, 100, 5, 5));
 
 dist = dists[(2018, 4)]
 lons = dist.lon
@@ -88,8 +91,11 @@ lats = dist.lat
 δy = (lats[2] - lats[1])/2
 y_bins = range(lats[1] - δy, stop = dist.lat[end] + δy, length = length(lats) + 1)  
 
-ax = geo_axis(fig[1, 1], title = "Default")
-trajectory_hist!(ax, integrate_water(u0[1], u0[2]), x_bins, y_bins)
+ax = geo_axis(fig[1, 1], title = "Default", limits = (-90, -38, -5, 22))
+rtr, tstart, tend = integrate_water(u0[1], u0[2])
+rtr = time_slice(rtr, (tend - 8, tend))
+# rtr = time_slice(rtr, (tstart, tstart + 0.1))
+trajectory_hist!(ax, rtr, x_bins, y_bins)
 land!(ax)
 # fig
 

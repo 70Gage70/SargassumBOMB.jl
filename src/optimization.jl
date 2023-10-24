@@ -103,7 +103,7 @@ land!(ax)
 loss_opt(u, p) = -loss_water(u[1], u[2])
 # u0 = [ClumpParameters(ref_itp).α, ClumpParameters(ref_itp).τ]
 lb = [0.0, 0.0]
-ub = [0.1, 0.1]
+ub = [0.05, 0.1]
 
 prob = OptimizationProblem(loss_opt, u0, lb = lb, ub = ub)
 
@@ -114,7 +114,9 @@ prob = OptimizationProblem(loss_opt, u0, lb = lb, ub = ub)
 # @time sol = solve(prob, BBO_dxnes())
 @time sol = solve(prob, NLopt.LN_NELDERMEAD())
 
-ax = geo_axis(fig[1, 2], title = "Opt")
-trajectory_hist!(ax, integrate_water(sol.u[1], sol.u[2]), x_bins, y_bins)
+ax = geo_axis(fig[1, 2], title = "Opt", limits = (-90, -38, -5, 22))
+rtr, tstart, tend = integrate_water(sol.u[1], sol.u[2])
+rtr = time_slice(rtr, (tend - 8, tend))
+trajectory_hist!(ax, rtr, x_bins, y_bins)
 land!(ax)
 fig

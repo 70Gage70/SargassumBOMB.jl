@@ -158,8 +158,8 @@ july_plot = SargassumFromAFAI.plot(dists[(2018, 7)], resolution = (1920, 1080), 
 
 # cp_default = ClumpParameters(ref_itp)
 cp_default = ClumpParameters(ref_itp, δ = 2.0)
-cp_water = ClumpParameters(ref_itp, 0.0, 0.0, 0.0, 0.0)
-cp_wind = ClumpParameters(ref_itp, cp_default.α, 0.0, 0.0, 0.0)
+cp_water = ClumpParameters(ref_itp, 0.0, 0.0, 0.0, 0.0, 0.0)
+cp_wind = ClumpParameters(ref_itp, cp_default.α, 0.0, 0.0, 0.0, 0.0)
 
 seed!(1234)
 rtr_water = ensemble((2018, 4), (2018, 8), rhs = WaterWind!, cp = cp_water, rtr_dt = 0.1)

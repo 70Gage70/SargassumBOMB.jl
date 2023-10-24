@@ -21,7 +21,7 @@ function integrate_water(
     ics = initial_conditions(dist, [1], 1, "uniform", ref_itp)
 
     cp_default = ClumpParameters(ref_itp) 
-    cp = ClumpParameters(ref_itp, α, τ, cp_default.R, cp_default.f)
+    cp = ClumpParameters(ref_itp, α, τ, cp_default.R, cp_default.f, cp_default.β)
 
     sp = SpringParameters(k -> 0.0, 0.0)
 
@@ -112,11 +112,11 @@ prob = OptimizationProblem(loss_opt, u0, lb = lb, ub = ub)
 # @time sol = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited())
 # @time sol = solve(prob, CMAEvolutionStrategyOpt())
 # @time sol = solve(prob, BBO_dxnes())
-@time sol = solve(prob, NLopt.LN_NELDERMEAD())
+# @time sol = solve(prob, NLopt.LN_NELDERMEAD())
 
-ax = geo_axis(fig[1, 2], title = "Opt", limits = (-90, -38, -5, 22))
-rtr, tstart, tend = integrate_water(sol.u[1], sol.u[2])
-rtr = time_slice(rtr, (tend - 8, tend))
-trajectory_hist!(ax, rtr, x_bins, y_bins)
-land!(ax)
-fig
+# ax = geo_axis(fig[1, 2], title = "Opt", limits = (-90, -38, -5, 22))
+# rtr, tstart, tend = integrate_water(sol.u[1], sol.u[2])
+# rtr = time_slice(rtr, (tend - 8, tend))
+# trajectory_hist!(ax, rtr, x_bins, y_bins)
+# land!(ax)
+# fig

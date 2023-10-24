@@ -24,6 +24,7 @@ A container for the high-level parameters of the BOM equations.
 - `τ` [d]: Measures the inertial response time of the medium to the particle
 - `R` []: A geometric parameter.
 - `f` [1/d]: The Coriolis parameter in the β plane.
+- `β` []: The Stokes drift parameter; this applies an additional fraction of the wind to the particle.
 """
 struct ClumpParameters{T<:Real}
     ref::EquirectangularReference{T}
@@ -31,6 +32,7 @@ struct ClumpParameters{T<:Real}
     τ::T
     R::T
     f::T
+    β::T
 end
 
 """
@@ -41,13 +43,14 @@ Compute the parameters required for the BOM equations from physical constants.
 ### Arguments [units]
 
 - `ref`: The `EquirectangularReference` with which the projection is defined.
-- `δ` []: The bouancy of the particle.
-- `a` [km]: The radius of the particle.
-- `ρ` [kg/km^3]: The density of the water.
-- `ρa` [kg/km^3]: The density of the air.
-- `ν` [km^2/d]: The viscosity of the water.
-- `νa` [km^2/d]: The viscosity of the air.
-- `Ω` [rad/d]: The angular velocity of the Earth.
+- `δ` []: The bouancy of the particle. Default: `1.25`.
+- `a` [km]: The radius of the particle. Default: `1.0e-4`.
+- `ρ` [kg/km^3]: The density of the water. Default: `1027.0e9`.
+- `ρa` [kg/km^3]: The density of the air. Default: `1.2e9`.
+- `ν` [km^2/d]: The viscosity of the water. Default: `8.64e-8`.
+- `νa` [km^2/d]: The viscosity of the air. Default: `1.296e-6`.
+- `Ω` [rad/d]: The angular velocity of the Earth. Default: `2π`.
+- β []: The Stokes drift parameter. Default: `0.0`.
 """
 function ClumpParameters(
     ref::EquirectangularReference;
@@ -57,7 +60,8 @@ function ClumpParameters(
     ρa::Real = 1.2e9,
     ν::Real = 8.64e-8,
     νa::Real = 1.296e-6,
-    Ω::Real = 2*π)
+    Ω::Real = 2*π,
+    β::Real = 0.0)
 
     μ = ν * ρ
     μa = νa * ρa
@@ -74,7 +78,7 @@ function ClumpParameters(
     ϑ0 = ref.lat0
     f = 2*Ω*sin(ϑ0*π/180)
 
-    return ClumpParameters(ref, α, τ, R, f)
+    return ClumpParameters(ref, α, τ, R, f, β)
 end
 
 """

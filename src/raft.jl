@@ -48,7 +48,7 @@ gdm = ImmortalModel()
 # gdm = BrooksModel(verbose = true)
 
 ###################################################################### CONDITIONS
-
+seed!(1234)
 # ics = initial_conditions(dist, [1], 1000, "sorted", ref_itp)
 # ics = initial_conditions(dist, [1], 1, "uniform", ref_itp)
 # ics = initial_conditions(dist, [1], 1000, "sample", ref_itp)
@@ -148,7 +148,10 @@ lats = dist.lat
 δy = (lats[2] - lats[1])/2
 lat_bins = range(lats[1] - δy, stop = dist.lat[end] + δy, length = length(lats) + 1)  
 rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
-tr_hist = trajectory_hist!(ax, rtr_dt_initial, lon_bins, lat_bins)
+tr_hist = trajectory_hist!(ax, rtr_dt_initial, lon_bins, lat_bins,
+        opts = (
+        colormap = Reverse(:RdYlGn),
+        colorscale = x -> x == 0.0 ? -1.0 : x))
 
 
 land!(ax)

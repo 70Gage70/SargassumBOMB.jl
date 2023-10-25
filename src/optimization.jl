@@ -11,7 +11,10 @@ function integrate_water(
     β::Real;
     initial_time::NTuple{2, Integer} = (2018, 3), 
     final_time::NTuple{2, Integer} = (2018, 4),
-    t_extra::Real = 7)
+    t_extra::Real = 7,
+    seed::Integer = 1234)
+
+    seed!(seed)
 
     tstart = Day(DateTime(initial_time...) - DateTime(yearmonth(water_itp.time_start)...)).value |> float
     tend = tstart + Day(DateTime(final_time...) - DateTime(initial_time...)).value + t_extra
@@ -19,7 +22,7 @@ function integrate_water(
 
     dists = SargassumDistribution(joinpath(@__DIR__, "..", "..", "SargassumFromAFAI.jl", "data", "dist-2018.nc"))
     dist = dists[initial_time]
-    ics = initial_conditions(dist, [1], 1, "uniform", ref_itp)
+    ics = initial_conditions(dist, [1], 2, "levels", ref_itp)
 
     cp_default = ClumpParameters(ref_itp) 
     cp = ClumpParameters(ref_itp, α, cp_default.τ, cp_default.R, cp_default.f, β)
@@ -111,29 +114,29 @@ prob = OptimizationProblem(loss_opt, u0, lb = lb, ub = ub)
 
 @info "Optimizing optim."
 # @time sol = solve(prob, Optim.ParticleSwarm(lower = prob.lb, upper = prob.ub, n_particles = 100))
-# @time sol = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited())
+@time sol = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited())
 # @time sol = solve(prob, CMAEvolutionStrategyOpt())
 # @time sol = solve(prob, BBO_dxnes())
-@time sol_opt = solve(prob, NLopt.LN_NELDERMEAD())
+# @time sol_opt = solve(prob, NLopt.LN_NELDERMEAD())
 @show sol_opt
 
 ### USING SURROGATES.JL
 
-loss_opt(u) = loss_water(u[1], u[2])
+# loss_opt(u) = loss_water(u[1], u[2])
 
-n_samples = 100
-lower_bound = [0.0, 0.0]
-upper_bound = [0.05, 0.05]
+# n_samples = 100
+# lower_bound = [0.0, 0.0]
+# upper_bound = [0.05, 0.05]
 
-@info "Computing surrogate"
-xys = Surrogates.sample(n_samples, lower_bound, upper_bound, GoldenSample())
-@time zs = loss_opt.(xys)
+# @info "Computing surrogate"
+# xys = Surrogates.sample(n_samples, lower_bound, upper_bound, GoldenSample())
+# @time zs = loss_opt.(xys)
 
-radial_basis = RadialBasis(xys, zs, lower_bound, upper_bound)
+# radial_basis = RadialBasis(xys, zs, lower_bound, upper_bound)
 
-@info "Optimizing surrogate"
-@time sol_sur = surrogate_optimize(loss_opt, SRBF(), lower_bound, upper_bound, radial_basis, UniformSample(), maxiters=50)
-@show sol_sur
+# @info "Optimizing surrogate"
+# @time sol_sur = surrogate_optimize(loss_opt, SRBF(), lower_bound, upper_bound, radial_basis, UniformSample(), maxiters=50)
+# @show sol_sur
 
 ### PLOTTING
 

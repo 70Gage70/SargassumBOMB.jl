@@ -261,8 +261,8 @@ Construct [`RaftParameters`](@ref) from a `SargassumDistribution`.
     - `"sorted"`: Boxes are filled with one clump placed uniformly at random inside them, starting from the box with the highest concentration. If `number` 
                 is greater than the total number of boxes, repeat the loop starting again from the highest concentration box.
     - `"uniform"`: Exactly one clump is placed in the center of each box with nonzero concentration. Note that this ignores `number`.
-    - `"levels"`: Boxes with nonzero Sargassum are divided into `number` levels sorted by Sargassum content and are assigned a number of clumps
-                according to their level index. For example, if `number = 2`, then the smaller half of the boxes (by Sargassum content) 
+    - `"levels"`: Boxes with nonzero Sargassum are divided into `number` levels of size `(minimum(dist.sargassum) - maximum(dist.sargassum))/number`.
+                Each box gets a number of clumps equal to its level index. For example, if `number = 2`, then the smaller half of the boxes (by Sargassum content) 
                 get 1 clump each and the larger half get 2 clumps each.
 - `ref`: An [`EquirectangularReference`](@ref). A `SargassumDistribution` has fields `lon` and `lat`, so this is necessary to 
                 covert these to equirectangular coordinates.
@@ -329,17 +329,15 @@ function initial_conditions(
         pts = pts[idx]
         wts = wts[idx]
 
-        pts = pts[sortperm(wts)]
+        wtsmin, wtsmax = extrema(wts)
 
-        n_c = 1
         for i = 1:length(pts)
             pt = pts[i]
+            n_c = number*(wts[i] - wtsmin)/(wtsmax - wtsmin) |> x -> round(Integer, x, RoundUp)
             for _ = 1:n_c
                 push!(xy0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))
                 push!(xy0, rand(Uniform(pt[2] - δ_y/2, pt[2] + δ_y/2)))       
             end
-
-            n_c = round(Integer, i/(length(pts)/number), RoundUp)
         end           
     end
 

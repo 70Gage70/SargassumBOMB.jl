@@ -255,12 +255,15 @@ Construct [`RaftParameters`](@ref) from a `SargassumDistribution`.
 ### Arguments 
 - `dist`: A `SargassumDistribution`.
 - `weeks`: A `Vector{<:Integer}` giving the weeks of the month to consider. Each entry should be between 1 and 4 and appear only once.
-- `number`: The number of clumps to initialize; interactive with `sample_type`.
+- `number`: The number of clumps to initialize; interactive with `sample_type` and should be at least `1`.
 - `sample_type`: A `String` identifying one of the methods of assigning clump locations based on the distribution.
     - `"sample"`: A number `number` of samples are drawn from `dist`. Each sample is placed uniformly at random inside the corresponding box.
-    - `"sorted"`: Boxed are filled with one clump placed uniformly at random inside them, starting from the box with the highest concentration. If `number` 
+    - `"sorted"`: Boxes are filled with one clump placed uniformly at random inside them, starting from the box with the highest concentration. If `number` 
                 is greater than the total number of boxes, repeat the loop starting again from the highest concentration box.
     - `"uniform"`: Exactly one clump is placed in the center of each box with nonzero concentration. Note that this ignores `number`.
+    - `"levels"`: Boxes with nonzero Sargassum are divided into `number` levels sorted by Sargassum content and are assigned a number of clumps
+                according to their level index. For example, if `number = 2`, then the smaller half of the boxes (by Sargassum content) 
+                get 1 clump each and the larger half get 2 clumps each.
 - `ref`: An [`EquirectangularReference`](@ref). A `SargassumDistribution` has fields `lon` and `lat`, so this is necessary to 
                 covert these to equirectangular coordinates.
 """
@@ -271,7 +274,8 @@ function initial_conditions(
     sample_type::String,
     ref::EquirectangularReference)
 
-    @assert sample_type in ["sample", "sorted", "uniform"] "`sample_type` not recognized."
+    @assert sample_type in ["sample", "sorted", "uniform", "levels"] "`sample_type` not recognized."
+    @assert number > 0 "Must request at least one clump"
     @assert length(weeks) > 0 "At least one week must be selected."
     @assert all(map(x -> 1 <= x <= 4, weeks)) "Each entry of `weeks` must be between 1 and 4."
     @assert allunique(weeks) "Each week should only appear once."
@@ -285,9 +289,10 @@ function initial_conditions(
 
     xy0 = Float64[]
 
+    pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x)) # vector of (lon, lat)
+    wts = sarg |> x -> reduce(vcat, x) # vector of sarg, matched with pts
+
     if sample_type == "sample"
-        pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
-        wts = sarg |> x -> reduce(vcat, x)
         samples = Distributions.sample(pts, Weights(wts), number)
 
         for samp in samples
@@ -295,9 +300,6 @@ function initial_conditions(
             push!(xy0, rand(Uniform(samp[2] - δ_y/2, samp[2] + δ_y/2)))
         end
     elseif sample_type == "sorted"
-        pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
-        wts = sarg |> x -> reduce(vcat, x)
-
         idx = findall(x -> x > 0, wts)
         pts = pts[idx]
         wts = wts[idx]
@@ -315,9 +317,6 @@ function initial_conditions(
             n_c = n_c + 1
         end
     elseif sample_type == "uniform"
-        pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x))
-        wts = sarg |> x -> reduce(vcat, x)
-
         idx = findall(x -> x > 0, wts)
         pts = pts[idx]
 
@@ -325,6 +324,23 @@ function initial_conditions(
             push!(xy0, pt[1])
             push!(xy0, pt[2])  
         end
+    elseif sample_type == "levels"
+        idx = findall(x -> x > 0, wts)
+        pts = pts[idx]
+        wts = wts[idx]
+
+        pts = pts[sortperm(wts)]
+
+        n_c = 1
+        for i = 1:length(pts)
+            pt = pts[i]
+            for _ = 1:n_c
+                push!(xy0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))
+                push!(xy0, rand(Uniform(pt[2] - δ_y/2, pt[2] + δ_y/2)))       
+            end
+
+            n_c = round(Integer, i/(length(pts)/number), RoundUp)
+        end           
     end
 
     xy0 = sph2xy(xy0, ref)

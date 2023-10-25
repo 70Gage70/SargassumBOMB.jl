@@ -1,10 +1,4 @@
-include(joinpath(@__DIR__, "geography.jl"))
-include(joinpath(@__DIR__, "physics.jl"))
-include(joinpath(@__DIR__, "biology.jl"))
-include(joinpath(@__DIR__, "trajectories.jl"))
-include(joinpath(@__DIR__, "control.jl"))
-include(joinpath(@__DIR__, "../../CustomMakie.jl/src/geo-methods.jl"))
-include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
+include(joinpath(@__DIR__, "SargassumBOMB.jl"))
 
 ######################################################################
 
@@ -14,7 +8,6 @@ start_date = (2018, 4)
 # end_date = (2018, 7)
 end_date = (2018, 8)
 
-dists = SargassumDistribution(joinpath(@__DIR__, "..", "..", "SargassumFromAFAI.jl", "data", "dist-2018.nc"))
 dist = dists[start_date]
 
 tstart = Day(DateTime(start_date...) - DateTime(yearmonth(water_itp.time_start)...)).value |> float
@@ -23,19 +16,19 @@ tspan = (tstart, tend)
 
 @info "Integrating $(tspan)"
 
-# cp = ClumpParameters(ref_itp)
-cp = ClumpParameters(ref_itp, δ = 3.0)
+cp = ClumpParameters(ref_itp)
+# cp = ClumpParameters(ref_itp, δ = 3.0)
 
 ###################################################################### SPRINGS
-x_range = range(-65.0, -55.0, step = 0.2)
-y_range = range(8.0, 17.0, step = 0.2)
+# x_range = range(-65.0, -55.0, step = 0.2)
+# y_range = range(8.0, 17.0, step = 0.2)
 # y_range = range(15.0, 17.0, step = 0.2)
-x_range, y_range = sph2xy(x_range, y_range, ref_itp)
-ΔL = norm([x_range[1], y_range[1]] - [x_range[2], y_range[2]])
+# x_range, y_range = sph2xy(x_range, y_range, ref_itp)
+# ΔL = norm([x_range[1], y_range[1]] - [x_range[2], y_range[2]])
 
-# p1 = sph2xy(dist.lon[1], dist.lat[1], ref_itp)
-# p2 = sph2xy(dist.lon[2], dist.lat[2], ref_itp)
-# ΔL = norm(p1 - p2)
+p1 = sph2xy(dist.lon[1], dist.lat[1], ref_itp)
+p2 = sph2xy(dist.lon[2], dist.lat[2], ref_itp)
+ΔL = norm(p1 - p2)
 
 # spring_k_constant = x -> 5
 # sp = SpringParameters(spring_k_constant, ΔL)
@@ -59,8 +52,9 @@ gdm = ImmortalModel()
 # ics = initial_conditions(dist, [1], 1000, "sorted", ref_itp)
 # ics = initial_conditions(dist, [1], 1, "uniform", ref_itp)
 # ics = initial_conditions(dist, [1], 1000, "sample", ref_itp)
+ics = initial_conditions(dist, [1], 10, "levels", ref_itp)
 
-ics = initial_conditions(x_range, y_range)
+# ics = initial_conditions(x_range, y_range)
 
 # icons = form_connections(ics, "nearest", neighbor_parameter = 10)
 # icons = form_connections(ics, "radius", neighbor_parameter = k10)
@@ -85,8 +79,8 @@ cb_c = cb_connections(network_type = "none")
     
 @time sol_raft = solve(
     prob_raft, 
-    Tsit5(), abstol = 1e-6, reltol = 1e-6,
-    # RK4(), dtmin = 0.1, dtmax = 0.1, force_dtmin = true,
+    Tsit5(),
+    # Tsit5(), abstol = 1e-6, reltol = 1e-6,
     callback = CallbackSet(
         cb_update(showprogress = true), 
         callback(land), 
@@ -130,7 +124,7 @@ fig_COM = default_fig()
 ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
 
 ### raft
-trajectory!(ax, rtr)
+# trajectory!(ax, rtr)
 
 ### COM
 # trajectory!(ax, rtr.com, 
@@ -143,18 +137,25 @@ trajectory!(ax, rtr)
 # ) 
 
 ### hist
-# rtr_dt = RaftTrajectory(sol_raft, rp, ref_itp, dt = 1.0)
+rtr_dt = RaftTrajectory(sol_raft, rp, ref_itp, dt = 1.0)
 
-# lon_bins = range(-100, -50, length = 100)
-# lat_bins = range(5, 35, length = 100)
-# tr_hist = trajectory_hist!(ax, rtr_dt, lon_bins, lat_bins)
+dist = dists[(2018, 4)]
+lons = dist.lon
+δx = (lons[2] - lons[1])/2
+lon_bins = range(lons[1] - δx, stop = dist.lon[end] + δx, length = length(lons) + 1)
+
+lats = dist.lat
+δy = (lats[2] - lats[1])/2
+lat_bins = range(lats[1] - δy, stop = dist.lat[end] + δy, length = length(lats) + 1)  
+rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
+tr_hist = trajectory_hist!(ax, rtr_dt_initial, lon_bins, lat_bins)
 
 
 land!(ax)
 
 ### days legend
-tticks = collect(range(start = minimum(rtr.t), stop = maximum(rtr.t), length = 5))
-data_legend!(fig_COM[1,2], L"\mathrm{Days}", ticks = tticks)
+# tticks = collect(range(start = minimum(rtr.t), stop = maximum(rtr.t), length = 5))
+# data_legend!(fig_COM[1,2], L"\mathrm{Days}", ticks = tticks)
 
 ### counts legend
 # min_cts, max_cts = getindex(tr_hist.colorrange)

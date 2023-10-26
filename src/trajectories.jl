@@ -256,14 +256,18 @@ function bins(raft_trajectory::RaftTrajectory, x_bins::StepRangeLen, y_bins::Ste
 end
 
 """
-    bins(raft_trajectory, dist)
+    bins(raft_trajectory, dist; return_xy_bins)
 
 Equivalent to `bins(raft_trajectory, x_bins, y_bins` where `x_bins` and `y_bins` are computed 
 automatically from the `SargassumDistribution`, `dist.lon` and `dist.lat`.
 
 This assumes that `dist.lon` and `dist.lat` give the central locations of the `dist` bins.
+
+### Optional Arguments
+
+- `return_xy_bins`: A `Bool` such that, if `true`, the tuple `(x_bins, y_bins, bins)` is returned instead of just `bins`. Default `false`.
 """
-function bins(raft_trajectory::RaftTrajectory, dist::SargassumDistribution)
+function bins(raft_trajectory::RaftTrajectory, dist::SargassumDistribution; return_xy_bins::Bool = false)
     lons = dist.lon
     δx = (lons[2] - lons[1])/2
     x_bins = range(lons[1] - δx, stop = dist.lon[end] + δx, length = length(lons) + 1)
@@ -272,7 +276,11 @@ function bins(raft_trajectory::RaftTrajectory, dist::SargassumDistribution)
     δy = (lats[2] - lats[1])/2
     y_bins = range(lats[1] - δy, stop = dist.lat[end] + δy, length = length(lats) + 1)  
 
-    return bins(raft_trajectory, x_bins, y_bins)
+    if return_xy_bins
+        return (x_bins, y_bins, bins(raft_trajectory, x_bins, y_bins))
+    else
+        return bins(raft_trajectory, x_bins, y_bins)
+    end
 end
 
 function time_slice(traj::RaftTrajectory, tspan::NTuple{2, Real})

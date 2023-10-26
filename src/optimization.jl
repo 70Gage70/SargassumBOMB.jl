@@ -57,7 +57,7 @@ function integrate_water(
             cb_connections(network_type = nw_type))
         )
 
-    return RaftTrajectory(sol, rp, ref_itp, dt = 0.1), tstart, tend
+    return (RaftTrajectory(sol, rp, ref_itp, dt = 0.1), tstart, tend)
 end
 
 function loss_water(
@@ -78,71 +78,69 @@ function loss_water(
 end
 
 #################################################################
-
-u0 = [ClumpParameters(ref_itp).α, ClumpParameters(ref_itp).β]
-# u0 = [ClumpParameters(ref_itp).α, 0.02]
-
-fig = Figure(
-    resolution = (1920, 800), 
-    fontsize = 50,
-    figure_padding = (5, 100, 5, 5));
-
-dist = dists[(2018, 4)]
-lons = dist.lon
-δx = (lons[2] - lons[1])/2
-x_bins = range(lons[1] - δx, stop = dist.lon[end] + δx, length = length(lons) + 1)
-
-lats = dist.lat
-δy = (lats[2] - lats[1])/2
-y_bins = range(lats[1] - δy, stop = dist.lat[end] + δy, length = length(lats) + 1)  
-
-ax = geo_axis(fig[1, 1], title = "Default", limits = (-90, -38, -5, 22))
-rtr, tstart, tend = integrate_water(u0[1], u0[2])
-rtr = time_slice(rtr, (tend - 8, tend))
-# rtr = time_slice(rtr, (tstart, tstart + 0.1))
-trajectory_hist!(ax, rtr, x_bins, y_bins)
-land!(ax)
-fig
+# OPTIMIZING
 
 ### USING OPTIMIZATION.JL
-loss_opt(u, p) = loss_water(u[1], u[2])
-u0 = [ClumpParameters(ref_itp).α, ClumpParameters(ref_itp).β]
-lb = [0.0, 0.0]
-ub = [0.05, 0.05]
+# loss_opt(u, p) = loss_water(u[1], u[2])
+# u0 = [ClumpParameters(ref_itp).α, ClumpParameters(ref_itp).β]
+# lb = [0.0, 0.0]
+# ub = [0.05, 0.05]
 
-prob = OptimizationProblem(loss_opt, u0, lb = lb, ub = ub)
+# prob = OptimizationProblem(loss_opt, u0, lb = lb, ub = ub)
 
-@info "Optimizing optim."
+# @info "Optimizing optim."
 # @time sol = solve(prob, Optim.ParticleSwarm(lower = prob.lb, upper = prob.ub, n_particles = 100))
-@time sol = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited())
+# @time sol = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited())
 # @time sol = solve(prob, CMAEvolutionStrategyOpt())
 # @time sol = solve(prob, BBO_dxnes())
 # @time sol_opt = solve(prob, NLopt.LN_NELDERMEAD())
-@show sol_opt
+# @show sol_opt
 
 ### USING SURROGATES.JL
+loss_opt(u) = loss_water(u[1], u[2])
 
-# loss_opt(u) = loss_water(u[1], u[2])
+n_samples_sur = 20         # default 100
+maxiters_opt = 5           # default 50
+lower_bound = [0.0, 0.0]    # [α, β] lower
+upper_bound = [0.05, 0.05]  # [α, β] upper
 
-# n_samples = 100
-# lower_bound = [0.0, 0.0]
-# upper_bound = [0.05, 0.05]
+@info "Computing surrogate"
+xys = Surrogates.sample(n_samples_sur, lower_bound, upper_bound, SobolSample())
+println(xys)
+@time zs = loss_opt.(xys)
 
-# @info "Computing surrogate"
-# xys = Surrogates.sample(n_samples, lower_bound, upper_bound, GoldenSample())
-# @time zs = loss_opt.(xys)
+radial_basis = RadialBasis(xys, zs, lower_bound, upper_bound)
 
-# radial_basis = RadialBasis(xys, zs, lower_bound, upper_bound)
+@info "Optimizing surrogate"
+@time sol_sur = surrogate_optimize(loss_opt, DYCORS(), lower_bound, upper_bound, 
+                                    radial_basis, SobolSample(), maxiters = maxiters_opt)
+@show sol_sur
 
-# @info "Optimizing surrogate"
-# @time sol_sur = surrogate_optimize(loss_opt, SRBF(), lower_bound, upper_bound, radial_basis, UniformSample(), maxiters=50)
-# @show sol_sur
-
+#################################################################
 ### PLOTTING
 
-# ax = geo_axis(fig[1, 2], title = "Opt", limits = (-90, -38, -5, 22))
-# rtr, tstart, tend = integrate_water(sol.u[1], sol.u[2])
-# rtr = time_slice(rtr, (tend - 8, tend))
-# trajectory_hist!(ax, rtr, x_bins, y_bins)
-# land!(ax)
-# fig
+fig = Figure(
+    # resolution = (1920, 1080), 
+    resolution = (1920, 1480),
+    fontsize = 50,
+    figure_padding = (5, 100, 5, 5))
+
+limits = (-100, -40, 5, 35)
+
+# initial distribution 
+ax = geo_axis(fig[1, 1], limits = limits, title = "Simulation initial (March week 1)")
+rtr_dt, tstart, tend = integrate_water(ClumpParameters(ref_itp).α, ClumpParameters(ref_itp).β)
+dist = dists[(2018, 3)]
+rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
+trajectory_hist!(ax, rtr_dt_initial, dist)
+land!(ax)
+
+# final distribution
+ax = geo_axis(fig[2, 1], limits = limits, title = "Simulation final (April week 1)")
+rtr_dt, tstart, tend = integrate_water(sol_sur[1][1], sol_sur[1][2])
+dist = dists[(2018, 4)]
+rtr_final = time_slice(rtr_dt, (tend - 8, tend))
+trajectory_hist!(ax, rtr_final, dist)
+land!(ax)
+
+fig

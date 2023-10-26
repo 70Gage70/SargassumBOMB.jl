@@ -117,11 +117,11 @@ rtr = RaftTrajectory(sol_raft, rp, ref_itp, dt = 0.1)
 
 @info "Plotting results."
 
-limits = (-100, -50, 5, 35)
+limits = (-100, -40, 5, 35)
 # limits = (-70, -50, 5, 25)
 
 fig_COM = default_fig()
-ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
+ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft: April Week 1}")
 
 ### raft
 # trajectory!(ax, rtr)
@@ -140,19 +140,8 @@ ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft COM}")
 rtr_dt = RaftTrajectory(sol_raft, rp, ref_itp, dt = 1.0)
 
 dist = dists[(2018, 4)]
-lons = dist.lon
-δx = (lons[2] - lons[1])/2
-lon_bins = range(lons[1] - δx, stop = dist.lon[end] + δx, length = length(lons) + 1)
-
-lats = dist.lat
-δy = (lats[2] - lats[1])/2
-lat_bins = range(lats[1] - δy, stop = dist.lat[end] + δy, length = length(lats) + 1)  
 rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
-tr_hist = trajectory_hist!(ax, rtr_dt_initial, lon_bins, lat_bins,
-        opts = (
-        colormap = Reverse(:RdYlGn),
-        colorscale = x -> x == 0.0 ? -1.0 : x))
-
+trajectory_hist!(ax, rtr_dt_initial, dist)
 
 land!(ax)
 

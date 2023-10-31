@@ -37,7 +37,7 @@ const t_end = DateTime(2018, 12, 31)
 # V = Vek_bar + Vek_a + Vg_bar + Vg_a + Vslip_d (MERIDIONAL - y)
 
 lon_rick = read(rick_raw, "Lon") |> vec .|> Float64
-lon_idx = findall(x -> -101 <= x <= -49, lon_rick)
+lon_idx = findall(x -> -101 <= x <= -39, lon_rick)
 lon_rick = lon_rick[lon_idx]
 
 lat_rick = read(rick_raw, "Lat") |> vec .|> Float64

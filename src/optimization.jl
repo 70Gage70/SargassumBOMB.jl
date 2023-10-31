@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "SargassumBOMB.jl"))
 
-using Optimization 
-using OptimizationOptimJL, OptimizationBBO, OptimizationCMAEvolutionStrategy, OptimizationNLopt
+# using Optimization 
+# using OptimizationOptimJL, OptimizationBBO, OptimizationCMAEvolutionStrategy, OptimizationNLopt
 using Surrogates
 
 ########################################################################
@@ -57,6 +57,7 @@ function integrate_water(
             cb_connections(network_type = nw_type))
         )
 
+    # return (sol, tstart, tend)
     return (RaftTrajectory(sol, rp, ref_itp, dt = 0.1), tstart, tend)
 end
 
@@ -99,14 +100,13 @@ end
 ### USING SURROGATES.JL
 loss_opt(u) = loss_water(u[1], u[2])
 
-n_samples_sur = 20         # default 100
-maxiters_opt = 5           # default 50
+n_samples_sur = 100         # default 100
+maxiters_opt = 50           # default 50
 lower_bound = [0.0, 0.0]    # [α, β] lower
 upper_bound = [0.05, 0.05]  # [α, β] upper
 
 @info "Computing surrogate"
 xys = Surrogates.sample(n_samples_sur, lower_bound, upper_bound, SobolSample())
-println(xys)
 @time zs = loss_opt.(xys)
 
 radial_basis = RadialBasis(xys, zs, lower_bound, upper_bound)
@@ -114,33 +114,66 @@ radial_basis = RadialBasis(xys, zs, lower_bound, upper_bound)
 @info "Optimizing surrogate"
 @time sol_sur = surrogate_optimize(loss_opt, DYCORS(), lower_bound, upper_bound, 
                                     radial_basis, SobolSample(), maxiters = maxiters_opt)
-@show sol_sur
+
+
+default_loss = loss_opt([ClumpParameters(ref_itp).α, ClumpParameters(ref_itp).β])
+optimized_loss = loss_opt([sol_sur[1][1], sol_sur[1][2]])
+
+@info "Default loss: $(default_loss)"
+@info "Optmzed loss: $(optimized_loss)"
 
 #################################################################
 ### PLOTTING
 
 fig = Figure(
     # resolution = (1920, 1080), 
-    resolution = (1920, 1480),
+    resolution = (2220, 1920),
     fontsize = 50,
     figure_padding = (5, 100, 5, 5))
 
 limits = (-100, -40, 5, 35)
 
-# initial distribution 
-ax = geo_axis(fig[1, 1], limits = limits, title = "Simulation initial (March week 1)")
+### AFAI
+# initial distribution (AFAI)
+ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial (March week 1)")
+SFA_plot!(ax, (2018, 3), 1)
+land!(ax)
+
+# final distribution (AFAI)
+ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final (April week 1)")
+SFA_plot!(ax, (2018, 4), 1)
+land!(ax)
+
+### UNOPTIMIZED
+# initial distribution (RAFT, unoptimized)
+ax = geo_axis(fig[2, 1], limits = limits, title = "RAFT initial [default] (March week 1)")
 rtr_dt, tstart, tend = integrate_water(ClumpParameters(ref_itp).α, ClumpParameters(ref_itp).β)
 dist = dists[(2018, 3)]
 rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
 trajectory_hist!(ax, rtr_dt_initial, dist)
 land!(ax)
 
-# final distribution
-ax = geo_axis(fig[2, 1], limits = limits, title = "Simulation final (April week 1)")
-rtr_dt, tstart, tend = integrate_water(sol_sur[1][1], sol_sur[1][2])
-dist = dists[(2018, 4)]
+# final distribution (RAFT, unoptimized)
+ax = geo_axis(fig[2, 2], limits = limits, title = "RAFT final [default] (April week 1)")
 rtr_final = time_slice(rtr_dt, (tend - 8, tend))
 trajectory_hist!(ax, rtr_final, dist)
 land!(ax)
+
+### OPTIMIZED
+# initial distribution (RAFT, unoptimized)
+ax = geo_axis(fig[3, 1], limits = limits, title = "RAFT initial [optim] (March week 1)")
+rtr_dt, tstart, tend = integrate_water(sol_sur[1][1], sol_sur[1][2])
+dist = dists[(2018, 3)]
+rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
+trajectory_hist!(ax, rtr_dt_initial, dist)
+land!(ax)
+
+# final distribution (RAFT, unoptimized)
+ax = geo_axis(fig[3, 2], limits = limits, title = "RAFT final [optim] (April week 1)")
+rtr_final = time_slice(rtr_dt, (tend - 8, tend))
+trajectory_hist!(ax, rtr_final, dist)
+land!(ax)
+
+fig[0,:] = Label(fig, "Default: $(default_loss), Optimized: $(optimized_loss)")
 
 fig

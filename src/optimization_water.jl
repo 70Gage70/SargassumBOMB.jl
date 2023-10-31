@@ -65,12 +65,13 @@ function loss_water(
     α::Real, 
     β::Real;
     initial_time::NTuple{2, Integer} = (2018, 3), 
-    final_time::NTuple{2, Integer} = (2018, 4))
+    final_time::NTuple{2, Integer} = (2018, 4),
+    t_extra::Real = 7)
 
     target = dists[final_time].sargassum[:,:,1]
     target = target/sum(target)
 
-    rtr, tstart, tend = integrate_water(α, β, initial_time = initial_time, final_time = final_time)
+    rtr, tstart, tend = integrate_water(α, β, initial_time = initial_time, final_time = final_time, t_extra = t_extra)
     rtr = time_slice(rtr, (tend - 8, tend))
     data = bins(rtr, dists[final_time])
     data = data/sum(data)
@@ -98,7 +99,10 @@ end
 # @show sol_opt
 
 ### USING SURROGATES.JL
-loss_opt(u) = loss_water(u[1], u[2])
+initial_time = (2018, 3)
+final_time = (2018, 4)
+t_extra = 7
+loss_opt(u) = loss_water(u[1], u[2], initial_time = initial_time, final_time = final_time, t_extra = t_extra)
 
 n_samples_sur = 100         # default 100
 maxiters_opt = 50           # default 50
@@ -127,7 +131,7 @@ optimized_loss = loss_opt([sol_sur[1][1], sol_sur[1][2]])
 
 fig = Figure(
     # resolution = (1920, 1080), 
-    resolution = (2220, 1920),
+    resolution = (2220, 2020),
     fontsize = 50,
     figure_padding = (5, 100, 5, 5))
 
@@ -174,6 +178,7 @@ rtr_final = time_slice(rtr_dt, (tend - 8, tend))
 trajectory_hist!(ax, rtr_final, dist)
 land!(ax)
 
+fig[-1,:] = Label(fig, "WATER")
 fig[0,:] = Label(fig, "Default: $(default_loss), Optimized: $(optimized_loss)")
 
 fig

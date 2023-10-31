@@ -62,7 +62,7 @@ function cb_update(;showprogress::Bool = false)
 end
 
 """
-    cb_connections(;radius, neighbor_parameter)
+    cb_connections(;network_type, neighbor_parameter)
 
 Create a `DiscreteCallback` which updates `integrator.p.connections` at the end of each time step using [`form_connections`](@ref).
 

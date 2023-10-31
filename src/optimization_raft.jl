@@ -143,19 +143,19 @@ limits = (-100, -40, 5, 35)
 ### AFAI
 # initial distribution (AFAI)
 ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial (March week 1)")
-SFA_plot!(ax, (2018, 3), 1)
+SFA_plot!(ax, initial_time, 1)
 land!(ax)
 
 # final distribution (AFAI)
 ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final (April week 1)")
-SFA_plot!(ax, (2018, 4), 1)
+SFA_plot!(ax, final_time, 1)
 land!(ax)
 
 ### UNOPTIMIZED
 # initial distribution (RAFT, unoptimized)
 ax = geo_axis(fig[2, 1], limits = limits, title = "RAFT initial [default] (March week 1)")
 rtr_dt, tstart, tend = integrate_raft(initial_time, final_time, t_extra)
-dist = dists[(2018, 3)]
+dist = dists[initial_time]
 rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
 trajectory_hist!(ax, rtr_dt_initial, dist)
 land!(ax)
@@ -174,7 +174,7 @@ rtr_dt, tstart, tend = integrate_raft(initial_time, final_time, t_extra,
                                         β = sol_sur[1][2], 
                                         τ = sol_sur[1][3], 
                                         A_spring = sol_sur[1][4])
-dist = dists[(2018, 3)]
+dist = dists[initial_time]
 rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
 trajectory_hist!(ax, rtr_dt_initial, dist)
 land!(ax)

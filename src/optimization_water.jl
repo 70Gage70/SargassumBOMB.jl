@@ -102,9 +102,11 @@ radial_basis = RadialBasis(xys, zs, lower_bound, upper_bound)
                                     radial_basis, SobolSample(), maxiters = maxiters_opt)
 
 
+α_opt, β_opt = sol_sur[1]
+optimized_loss = sol_sur[2]
 default_loss = loss_water(initial_time, final_time, t_extra)
-optimized_loss = loss_opt([sol_sur[1][1], sol_sur[1][2]])
 
+@info "Optimal params: α = $(α_opt), β = $(β_opt)"
 @info "Default loss: $(default_loss)"
 @info "Optmzed loss: $(optimized_loss)"
 
@@ -113,7 +115,7 @@ optimized_loss = loss_opt([sol_sur[1][1], sol_sur[1][2]])
 
 fig = Figure(
     # resolution = (1920, 1080), 
-    resolution = (2220, 2020),
+    resolution = (2220, 2120),
     fontsize = 50,
     figure_padding = (5, 100, 5, 5))
 
@@ -149,8 +151,8 @@ land!(ax)
 # initial distribution (WATER, unoptimized)
 ax = geo_axis(fig[3, 1], limits = limits, title = "WATER initial [optim] (March week 1)")
 rtr_dt, tstart, tend = integrate_water(initial_time, final_time, t_extra, 
-                                        α = sol_sur[1][1], 
-                                        β = sol_sur[1][2])
+                                        α = α_opt, 
+                                        β = β_opt)
 dist = dists[initial_time]
 rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
 trajectory_hist!(ax, rtr_dt_initial, dist)
@@ -162,7 +164,16 @@ rtr_final = time_slice(rtr_dt, (tend - 8, tend))
 trajectory_hist!(ax, rtr_final, dist)
 land!(ax)
 
-fig[-1,:] = Label(fig, "WATER")
-fig[0,:] = Label(fig, "Default: $(default_loss), Optimized: $(optimized_loss)")
+# strings
+dl_ltx = latexify(default_loss, fmt = FancyNumberFormatter(4))
+ol_ltx = latexify(optimized_loss, fmt = FancyNumberFormatter(4))
+α_opt_ltx = latexify(α_opt, fmt = FancyNumberFormatter(4))
+β_opt_ltx = latexify(β_opt, fmt = FancyNumberFormatter(4))
+
+fig[-2,:] = Label(fig, L"\text{WATER}")
+fig[-1,:] = Label(fig, L"$\alpha = $ %$(α_opt_ltx), $\beta =$ %$(β_opt_ltx)")
+fig[0,:] = Label(fig, L"L Default = %$(dl_ltx), L Opt =  %$(ol_ltx)")
+
+save(joinpath(@__DIR__, "..", "figures", "water_test.png"), fig)
 
 fig

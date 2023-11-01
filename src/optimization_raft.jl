@@ -123,9 +123,11 @@ radial_basis = RadialBasis(xys, zs, lower_bound, upper_bound)
                                     radial_basis, SobolSample(), maxiters = maxiters_opt)
 
 
+α_opt, β_opt, τ_opt, A_spring_opt = sol_sur[1]
+optimized_loss = sol_sur[2]
 default_loss = loss_raft(initial_time, final_time, t_extra)
-optimized_loss = loss_opt([sol_sur[1][1], sol_sur[1][2], sol_sur[1][3], sol_sur[1][4]])
 
+@info "Optimal params: α = $(α_opt), β = $(β_opt), τ = $(τ_opt), A_spring = $(A_spring_opt)"
 @info "Default loss: $(default_loss)"
 @info "Optmzed loss: $(optimized_loss)"
 
@@ -134,7 +136,7 @@ optimized_loss = loss_opt([sol_sur[1][1], sol_sur[1][2], sol_sur[1][3], sol_sur[
 
 fig = Figure(
     # resolution = (1920, 1080), 
-    resolution = (2220, 2020),
+    resolution = (2220, 2120),
     fontsize = 50,
     figure_padding = (5, 100, 5, 5))
 
@@ -170,10 +172,10 @@ land!(ax)
 # initial distribution (RAFT, unoptimized)
 ax = geo_axis(fig[3, 1], limits = limits, title = "RAFT initial [optim] (March week 1)")
 rtr_dt, tstart, tend = integrate_raft(initial_time, final_time, t_extra, 
-                                        α = sol_sur[1][1], 
-                                        β = sol_sur[1][2], 
-                                        τ = sol_sur[1][3], 
-                                        A_spring = sol_sur[1][4])
+                                        α = α_opt, 
+                                        β = β_opt, 
+                                        τ = τ_opt, 
+                                        A_spring = A_spring_opt)
 dist = dists[initial_time]
 rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
 trajectory_hist!(ax, rtr_dt_initial, dist)
@@ -185,7 +187,18 @@ rtr_final = time_slice(rtr_dt, (tend - 8, tend))
 trajectory_hist!(ax, rtr_final, dist)
 land!(ax)
 
-fig[-1,:] = Label(fig, "RAFT/BOMB")
-fig[0,:] = Label(fig, "Default: $(default_loss), Optimized: $(optimized_loss)")
+# strings
+dl_ltx = latexify(default_loss, fmt = FancyNumberFormatter(4))
+ol_ltx = latexify(optimized_loss, fmt = FancyNumberFormatter(4))
+α_opt_ltx = latexify(α_opt, fmt = FancyNumberFormatter(4))
+β_opt_ltx = latexify(β_opt, fmt = FancyNumberFormatter(4))
+τ_opt_ltx = latexify(τ_opt, fmt = FancyNumberFormatter(4))
+A_spring_opt_ltx = latexify(A_spring_opt, fmt = FancyNumberFormatter(4))
+
+fig[-2,:] = Label(fig, L"\text{BOMB}")
+fig[-1,:] = Label(fig, L"$\alpha = $ %$(α_opt_ltx), $\beta =$ %$(β_opt_ltx), $\tau =$ %$(τ_opt_ltx), $A_\text{spring} =$ %$(A_spring_opt_ltx)")
+fig[0,:] = Label(fig, L"L Default = %$(dl_ltx), L Opt =  %$(ol_ltx)")
+
+save(joinpath(@__DIR__, "..", "figures", "bomb_test.png"), fig)
 
 fig

@@ -82,7 +82,7 @@ end
 #################################################################
 # OPTIMIZING
 initial_time = (2018, 3)
-final_time = (2018, 4)
+final_time = (2018, 6)
 t_extra = 7
 loss_opt(u) = loss_water(initial_time, final_time, t_extra, α = u[1], β = u[2])
 
@@ -123,18 +123,18 @@ limits = (-100, -40, 5, 35)
 
 ### AFAI
 # initial distribution (AFAI)
-ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial (March week 1)")
+ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial $(monthname(initial_time[2])), week 1")
 SFA_plot!(ax, initial_time, 1)
 land!(ax)
 
 # final distribution (AFAI)
-ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final (April week 1)")
+ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final $(monthname(final_time[2])), week 1")
 SFA_plot!(ax, final_time, 1)
 land!(ax)
 
 ### UNOPTIMIZED
 # initial distribution (WATER, unoptimized)
-ax = geo_axis(fig[2, 1], limits = limits, title = "WATER initial [default] (March week 1)")
+ax = geo_axis(fig[2, 1], limits = limits, title = "WATER initial [default] $(monthname(initial_time[2])), week 1")
 rtr_dt, tstart, tend = integrate_water(initial_time, final_time, t_extra)
 dist = dists[initial_time]
 rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
@@ -142,14 +142,14 @@ trajectory_hist!(ax, rtr_dt_initial, dist)
 land!(ax)
 
 # final distribution (WATER, unoptimized)
-ax = geo_axis(fig[2, 2], limits = limits, title = "WATER final [default] (April week 1)")
+ax = geo_axis(fig[2, 2], limits = limits, title = "WATER final [default] $(monthname(final_time[2])), week 1")
 rtr_final = time_slice(rtr_dt, (tend - 8, tend))
 trajectory_hist!(ax, rtr_final, dist)
 land!(ax)
 
 ### OPTIMIZED
 # initial distribution (WATER, unoptimized)
-ax = geo_axis(fig[3, 1], limits = limits, title = "WATER initial [optim] (March week 1)")
+ax = geo_axis(fig[3, 1], limits = limits, title = "WATER initial [optim] $(monthname(initial_time[2])), week 1")
 rtr_dt, tstart, tend = integrate_water(initial_time, final_time, t_extra, 
                                         α = α_opt, 
                                         β = β_opt)
@@ -159,7 +159,7 @@ trajectory_hist!(ax, rtr_dt_initial, dist)
 land!(ax)
 
 # final distribution (WATER, unoptimized)
-ax = geo_axis(fig[3, 2], limits = limits, title = "WATER final [optim] (April week 1)")
+ax = geo_axis(fig[3, 2], limits = limits, title = "WATER final [optim] $(monthname(final_time[2])), week 1")
 rtr_final = time_slice(rtr_dt, (tend - 8, tend))
 trajectory_hist!(ax, rtr_final, dist)
 land!(ax)
@@ -174,6 +174,8 @@ fig[-2,:] = Label(fig, L"\text{WATER}")
 fig[-1,:] = Label(fig, L"$\alpha = $ %$(α_opt_ltx), $\beta =$ %$(β_opt_ltx)")
 fig[0,:] = Label(fig, L"L Default = %$(dl_ltx), L Opt =  %$(ol_ltx)")
 
-save(joinpath(@__DIR__, "..", "figures", "water_test.png"), fig)
+outfile = joinpath(@__DIR__, "..", "figures", "water_test.png")
+rm(outfile, force = true)
+save(outfile, fig)
 
 fig

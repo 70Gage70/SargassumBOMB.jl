@@ -99,7 +99,7 @@ struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real}
         k_N::Real = 0.012,
         T_ref::Real = 18.0,
         z_max::Real = 120.0,
-        clumps_limits::Tuple = (0, 500))
+        clumps_limits::Tuple{Integer, Integer} = (0, 500))
 
         μ_max, m, I_k, a_ref, k_N, T_ref, z_max = promote(μ_max, m, I_k, a_ref, k_N, T_ref, z_max)
     
@@ -160,7 +160,7 @@ default logic:
 
 - When the difference between `u[1]` and the actual number of clumps is at least 1 (call it `δn`), the `δn` clumps with the most 
 extreme values of [`brooks_dSdt_clump`](@ref) are selected. If `δn < 0`, they are killed. If `δn > 0`, then those clumps are chosen 
-as parents in the [`grow!`](@ref) method and are connected to all other clumps.
+as parents in the [`grow!`](@ref) method.
 
 """
 mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, F<:Function} <: AbstractGrowthDeathModel
@@ -221,7 +221,7 @@ function (model::BrooksModel)(integrator)
     end
 
     for i in model.growths
-        grow!(integrator, location = i, connections = "full")
+        grow!(integrator, location = i)
     end
 
     kill!(integrator, model.deaths)

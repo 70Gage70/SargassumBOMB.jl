@@ -40,8 +40,6 @@ This callback is mandatory, and must be the first callback in a `CallbackSet`.
 Create a `DiscreteCallback` which updates `integrator.p.loc2label` at the end of each time step using a `deepcopy` of the previous step.
 
 If `showprogress = true`, then the percentage completion of the integration will be displayed.
-
-
 """
 function cb_update(;showprogress::Bool = false)
     condition!(u, t, integrator) = true   
@@ -85,7 +83,7 @@ end
 """
     kill!(integrator, i)
 
-Remove the clump with index `i` from `integrator.u`. For the [`RaftParameters`](@ref), `rp = integrator.p` update `rp.connections` and `rp.loc2label` appropriately.
+Remove the clump with index `i` (by vector location) from `integrator.u`. For the [`RaftParameters`](@ref), `rp = integrator.p` update `rp.loc2label` appropriately.
 """
 function kill!(integrator::SciMLBase.DEIntegrator, i::Integer)
     # if this is the last clump, terminate the integration
@@ -97,15 +95,6 @@ function kill!(integrator::SciMLBase.DEIntegrator, i::Integer)
     # first remove the appropriate u elements from `integrator`
     deleteat!(integrator, 2*i) # e.g. index i = 2, delete the 4th component (x coord of 2nd clump)
     deleteat!(integrator, 2*i) # now the y coordinate is where the x coordinate was
-
-    # now remap the connections in RaftParameters
-    rp = integrator.p
-    
-    delete!(rp.connections, i) # remove i from keys
-    rp.connections = Dict(a => filter(x -> x != i, b) for (a,b) in rp.connections) # remove i from values
-
-    less_i(x) = x > i ? x - 1 : x
-    rp.connections = Dict(less_i(a) => less_i.(b) for (a,b) in rp.connections) # shift every label >i down by 1
 
     # update rp.loc2label at the current time 
     t = integrator.t
@@ -123,7 +112,7 @@ end
 
 Call [`kill!(integrator, i)`](@ref) on each element of `inds`.    
 
-This removes several clumps "simultaneously" while taking into account the fact that removing a clump shifts the clump to which each element of `inds` references.
+This removes several clumps "simultaneously" while taking into account the fact that removing a clump shifts the clump to which each element of `inds` refers.
 """
 function kill!(integrator::SciMLBase.DEIntegrator, inds::Vector{<:Integer})
     if length(inds) == 0
@@ -151,7 +140,7 @@ Add a clump to the [`RaftParameters`](@ref), `rp = integrator.p` with an index e
 
 ### Location 
 
-`location` can be a pre-defined flag, an integer, or a `[x, y]` vector.
+`location` can be a pre-defined flag, an integer, or a `[x, y]` vector. The default value is the flag `"parent"`.
 
 The possible flags are:
 - `"parent"`: A parent clump is chosen randomly among clumps that already exist, and the new clump is placed a distance `integrator.rp.springs.L` away and at a 
@@ -161,31 +150,17 @@ random angle from it.
 If `location` is an `Integer` with value `i`, then the new clump will be grown with `i`th clump (by vector location) as its parent.
 
 If `location` is a `Vector{<:Real}`, the new clump will be placed at those `[x, y]` coordinates. 
-
-### Connections 
-
-`connections` can be a pre-defined flag, an integer, or a vector of integers.
-
-The possible flags are:
-- `"full"`: The new clump is connected to each other clump.
-- `"none"`: The new clump is not connected to any other clump.
-
-If `connections` is an `Integer` with value `n`, the new clump will be connected to the nearest `n` clumps. If `n` is ≥ the total number of clumps, 
-this is equivalent to `"full"`.
-
-If `connections` is a `Vector{<:Integer}`, the new clump will be connected to clumps with those indices (by vector location).
 """
 function grow!(
     integrator::SciMLBase.DEIntegrator; 
-    location::Union{String, Integer, Vector{<:Real}}, 
-    connections::Union{String, Integer, Vector{<:Integer}})
+    location::Union{String, Integer, Vector{<:Real}} = "parent")
     
     rp = integrator.p
     u = integrator.u
     n_clumps_old = n_clumps(u)
     n_clumps_new = n_clumps_old + 1
 
-    # resize the integrator and add the new components
+    # resize the integrator and add the new (x, y) components
     resize!(integrator, length(u) + 2)
 
     if location isa String 
@@ -207,22 +182,6 @@ function grow!(
         u[end-1:end] .= location
     end
 
-    # update the connections
-    if connections isa String 
-        @assert connections in ["full", "none"] "If `connections` is a string, it must be either $("full") or $("none")."
-        if connections == "full"
-            rp.connections[n_clumps_new] = collect(1:n_clumps_old)
-        elseif connections == "none"
-            rp.connections[n_clumps_new] = valtype(rp.connections)()
-        end
-    elseif connections isa Integer
-        dists = [norm([x, y] - clump_i(u, i)) for i = 1:n_clumps_old-1]
-        closest = partialsortperm(dists, 1:min(connections, n_clumps_old), rev = true) |> collect
-        rp.connections[n_clumps_new] = closest
-    elseif connections isa Vector
-        rp.connections[n_clumps_new] = connections
-    end
-
     # update loc2label and n_clumps_tot
     t = integrator.t
     rp.n_clumps_tot = rp.n_clumps_tot + 1
@@ -234,19 +193,19 @@ function grow!(
     return nothing
 end
 
-function grow_test(t_grow::Vector{<:Real})
-    function condition(u, t, integrator)
-        return any([abs(t - tg) < 1.0 for tg in t_grow])
-    end
+# function grow_test(t_grow::Vector{<:Real})
+#     function condition(u, t, integrator)
+#         return any([abs(t - tg) < 1.0 for tg in t_grow])
+#     end
 
-    function affect!(integrator)
-        grow!(integrator, location = "parent", connections = "full")
+#     function affect!(integrator)
+#         grow!(integrator, location = "parent", connections = "full")
 
-        println("Growing $([integrator.p.n_clumps_tot]) at time $(integrator.t)")
-    end
+#         println("Growing $([integrator.p.n_clumps_tot]) at time $(integrator.t)")
+#     end
 
-    return DiscreteCallback(condition, affect!)
-end
+#     return DiscreteCallback(condition, affect!)
+# end
 
 
 

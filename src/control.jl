@@ -96,7 +96,8 @@ function kill!(integrator::SciMLBase.DEIntegrator, i::Integer)
     deleteat!(integrator, 2*i) # e.g. index i = 2, delete the 4th component (x coord of 2nd clump)
     deleteat!(integrator, 2*i) # now the y coordinate is where the x coordinate was
 
-    # update rp.loc2label at the current time 
+    # update rp.loc2label at the current time
+    rp = integrator.p 
     t = integrator.t
     gtr_i(x) = x >= i ? x + 1 : x
     rp.loc2label[t] = Dict(j => rp.loc2label[t][gtr_i(j)] for j = 1:n_clumps(integrator.u))

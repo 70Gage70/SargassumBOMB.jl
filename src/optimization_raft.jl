@@ -24,8 +24,7 @@ function integrate_raft(
     tspan = (tstart, tend)
 
     # ICS
-    dists = SargassumDistribution(joinpath(@__DIR__, "..", "..", "SargassumFromAFAI.jl", "data", "dist-2018.nc"))
-    dist = dists[initial_time]
+    dist = DISTS_2018[initial_time]
     ics = initial_conditions(dist, [1], 2, "levels", ref_itp)
 
     # CLUMPS
@@ -88,12 +87,12 @@ function loss_raft(
     A_spring::Real = 3.0,
     seed::Integer = 1234)
 
-    target = dists[final_time].sargassum[:,:,1]
+    target = DISTS_2018[final_time].sargassum[:,:,1]
     target = target/sum(target)
 
     rtr, tstart, tend = integrate_raft(initial_time, final_time, t_extra, α = α, β = β, τ = τ, A_spring = A_spring, seed = seed)
     rtr = time_slice(rtr, (tend - 8, tend))
-    data = bins(rtr, dists[final_time])
+    data = bins(rtr, DISTS_2018[final_time])
     data = data/sum(data)
 
     return sum((data - target) .^ 2)
@@ -157,7 +156,7 @@ land!(ax)
 # initial distribution (RAFT, unoptimized)
 ax = geo_axis(fig[2, 1], limits = limits, title = "RAFT initial [default] $(monthname(initial_time[2])), week 1")
 rtr_dt, tstart, tend = integrate_raft(initial_time, final_time, t_extra)
-dist = dists[initial_time]
+dist = DISTS_2018[initial_time]
 rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
 trajectory_hist!(ax, rtr_dt_initial, dist)
 land!(ax)
@@ -176,7 +175,7 @@ rtr_dt, tstart, tend = integrate_raft(initial_time, final_time, t_extra,
                                         β = β_opt, 
                                         τ = τ_opt, 
                                         A_spring = A_spring_opt)
-dist = dists[initial_time]
+dist = DISTS_2018[initial_time]
 rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
 trajectory_hist!(ax, rtr_dt_initial, dist)
 land!(ax)

@@ -8,7 +8,7 @@ start_date = (2018, 4)
 # end_date = (2018, 7)
 end_date = (2018, 8)
 
-dist = dists[start_date]
+dist = DISTS_2018[start_date]
 
 tstart = Day(DateTime(start_date...) - DateTime(yearmonth(water_itp.time_start)...)).value |> float
 tend = tstart + Day(DateTime(end_date...) - DateTime(start_date...)).value
@@ -139,7 +139,7 @@ ax = geo_axis(fig_COM[1, 1], limits = limits, title = L"\mathrm{Raft: April Week
 ### hist
 rtr_dt = RaftTrajectory(sol_raft, rp, ref_itp, dt = 1.0)
 
-dist = dists[(2018, 4)]
+dist = DISTS_2018[(2018, 4)]
 rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
 trajectory_hist!(ax, rtr_dt_initial, dist)
 

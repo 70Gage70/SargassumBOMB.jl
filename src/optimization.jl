@@ -338,13 +338,13 @@ initial_time = (2018, 3)
 final_time = (2018, 4)
 t_extra = 7
 
-δ_param = OptimizationParameter("δ", 1.25, (1.05, 1.5), false)
-a_param = OptimizationParameter("a", 1.0e-4, (1.0e-5, 1.0e-3), false)
-β_param = OptimizationParameter("β", 0.0, (0.0, 0.01), true)
-A_spring_param = OptimizationParameter("A_spring", 3.0, (0.1, 10.0), false)
-μ_max_param = OptimizationParameter("μ_max", 0.1, (0.05, 0.5), false)
-m_param = OptimizationParameter("m", 0.05, (0.0, 0.1), false)
-k_N_param = OptimizationParameter("k_N", 0.012, (0.005, 0.05), false)
+δ_param = OptimizationParameter("δ",                1.25,   (1.05, 1.5),        false)
+a_param = OptimizationParameter("a",                1.0e-4, (1.0e-5, 1.0e-3),   false)
+β_param = OptimizationParameter("β",                0.0,    (0.0, 0.01),        true)
+A_spring_param = OptimizationParameter("A_spring",  3.0,    (0.1, 10.0),        false)
+μ_max_param = OptimizationParameter("μ_max",        0.1,    (0.05, 0.5),        false)
+m_param = OptimizationParameter("m",                0.05,   (0.0, 0.1),         false)
+k_N_param = OptimizationParameter("k_N",            0.012,  (0.005, 0.05),      false)
 
 bop = BOMBOptimizationProblem(
     params = [δ_param, a_param, β_param, A_spring_param, μ_max_param, m_param, k_N_param],

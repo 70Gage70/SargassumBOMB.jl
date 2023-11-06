@@ -1,7 +1,5 @@
 include(joinpath(@__DIR__, "SargassumBOMB.jl"))
 
-# using Optimization 
-# using OptimizationOptimJL, OptimizationBBO, OptimizationCMAEvolutionStrategy, OptimizationNLopt
 using Surrogates
 
 ########################################################################

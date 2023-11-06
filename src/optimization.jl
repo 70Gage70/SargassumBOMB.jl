@@ -214,7 +214,6 @@ function surrogate_bomb(n_samples_sur::Integer, bop::BOMBOptimizationProblem)
     xys = Surrogates.sample(n_samples_sur, lower_bound, upper_bound, SobolSample())
 
     zs = zeros(eltype(xys).parameters[1], length(xys))
-    # zs = [loss_bomb(xysi, bop) for xysi in xys]
 
     Threads.@threads for i = 1:length(xys)
         zs[i] = loss_bomb(xys[i], bop)

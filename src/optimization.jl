@@ -214,9 +214,15 @@ function surrogate_bomb(n_samples_sur::Integer, bop::BOMBOptimizationProblem)
     xys = Surrogates.sample(n_samples_sur, lower_bound, upper_bound, SobolSample())
 
     zs = zeros(eltype(xys).parameters[1], length(xys))
+    monitor = 1
 
     Threads.@threads for i = 1:length(xys)
         zs[i] = loss_bomb(xys[i], bop)
+
+        val = round(100*(monitor/length(xys)), sigdigits = 3)
+        print(WHITE_BG("Surrogates: $(val)%   \r"))
+        flush(stdout)
+        monitor = monitor + 1
     end
 
     rb = RadialBasis(xys, zs, lower_bound, upper_bound)
@@ -344,8 +350,8 @@ initial_time = (2018, 3)
 final_time = (2018, 4)
 t_extra = 7
 
-δ_param = OptimizationParameter("δ",                1.25,   (1.05, 1.5),        false)
-a_param = OptimizationParameter("a",                1.0e-4, (1.0e-5, 1.0e-3),   false)
+δ_param = OptimizationParameter("δ",                1.25,   (1.05, 1.5),        true)
+a_param = OptimizationParameter("a",                1.0e-4, (1.0e-5, 1.0e-3),   true)
 β_param = OptimizationParameter("β",                0.0,    (0.0, 0.01),        true)
 A_spring_param = OptimizationParameter("A_spring",  3.0,    (0.1, 10.0),        false)
 μ_max_param = OptimizationParameter("μ_max",        0.1,    (0.05, 0.5),        false)

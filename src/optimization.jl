@@ -258,7 +258,7 @@ function plot_bop(bop::BOMBOptimizationProblem)
 
     fig = Figure(
         # resolution = (1920, 1080), 
-        resolution = (2220, 2120),
+        resolution = (2420, 2320),
         fontsize = 50,
         figure_padding = (5, 100, 5, 5))
 

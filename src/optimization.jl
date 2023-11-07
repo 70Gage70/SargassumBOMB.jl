@@ -174,7 +174,8 @@ function loss_bomb(u, bop::BOMBOptimizationProblem)
     data = bins(rtr, DISTS_2018[final_time])
     data = data/sum(data)
 
-    return sum((data - target) .^ 2)   
+    # return sum((data - target) .^ 2)  
+    return -cor(vec(data), vec(target)) # minimize -1*correlation => maximize correlation
 end
 
 """
@@ -193,7 +194,8 @@ function loss_bomb(bop::BOMBOptimizationProblem, type::String)
     data = bins(rtr, DISTS_2018[final_time])
     data = data/sum(data)
 
-    return sum((data - target) .^ 2)   
+    # return sum((data - target) .^ 2)  
+    return -cor(vec(data), vec(target)) # minimize -1*correlation => maximize correlation 
 end
 
 """
@@ -353,22 +355,23 @@ t_extra = 7
 δ_param = OptimizationParameter("δ",                1.25,   (1.05, 1.5),        true)
 a_param = OptimizationParameter("a",                1.0e-4, (1.0e-5, 1.0e-3),   true)
 β_param = OptimizationParameter("β",                0.0,    (0.0, 0.01),        true)
-A_spring_param = OptimizationParameter("A_spring",  3.0,    (0.1, 10.0),        false)
+A_spring_param = OptimizationParameter("A_spring",  3.0,    (0.1, 10.0),        true)
 μ_max_param = OptimizationParameter("μ_max",        0.1,    (0.05, 0.5),        false)
 m_param = OptimizationParameter("m",                0.05,   (0.0, 0.1),         false)
 k_N_param = OptimizationParameter("k_N",            0.012,  (0.005, 0.05),      false)
 
 bop = BOMBOptimizationProblem(
     params = [δ_param, a_param, β_param, A_spring_param, μ_max_param, m_param, k_N_param],
-    rhs = WaterWind!,
+    rhs = Raft!,
     immortal = true,
     tspan = (initial_time, final_time),
-    n_levels = 2,
+    n_levels = 10,
     t_extra = 7,
 )
 
-n_sur_samples = 50
-maxiters_opt = 50
+# 10/10: -0.5178
+n_sur_samples = 100
+maxiters_opt = 100
 
 @info "Computing surrogate."
 @time rb = surrogate_bomb(n_sur_samples, bop)

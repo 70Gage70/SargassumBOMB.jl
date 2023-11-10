@@ -16,13 +16,23 @@ mutable struct OptimizationParameter{T<:Real}
     opt::Union{Nothing, T}
     optimizable::Bool
 
-    function OptimizationParameter(name::String, default::Real, bounds::Tuple{Real, Real}, optimizable::Bool)
+    function OptimizationParameter(
+        name::String, 
+        default::Real, 
+        bounds::Tuple{Real, Real},
+        optimizable::Bool;
+        val::Union{Nothing, Real} = nothing,
+        opt::Union{Nothing, Real} = nothing)
+
         @assert name in OPTIMIZATION_PARAMETER_NAMES
         @assert first(bounds) < last(bounds)
 
         def, lb, ub = promote(default, first(bounds), last(bounds))
 
-        return new{typeof(def)}(name, def, (lb, ub), def, nothing, optimizable)
+        op_val = val === nothing ? def : val
+        op_opt = opt === nothing ? nothing : promote(opt, def)[1]
+
+        return new{typeof(def)}(name, def, (lb, ub), op_val, op_opt, optimizable)
     end
 end
 
@@ -47,6 +57,7 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
         tspan::Tuple{Tuple{U, U}, Tuple{U, U}},
         n_levels::U,
         t_extra::U,
+        opt::Union{Nothing, T} = nothing,
         seed::U = 1234) where {T<:Real, U<:Integer}
 
         @assert length(params) > 0 "Must optimize at least one parameter."
@@ -57,7 +68,7 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
 
         params_dict = Dict(param.name => param for param in params)
 
-        return new{T, U}(params_dict, rhs, immortal, tspan, n_levels, t_extra, nothing, seed)
+        return new{T, U}(params_dict, rhs, immortal, tspan, n_levels, t_extra, opt, seed)
     end
 end
 
@@ -157,7 +168,7 @@ end
     loss_bomb(u, bop::BOMBOptimizationProblem)
 """
 function loss_bomb(u, bop::BOMBOptimizationProblem)
-    optimizable = [bop.params[param].name for param in keys(bop.params) if bop.params[param].optimizable]
+    optimizable = [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
 
     for i = 1:length(optimizable)
         bop.params[optimizable[i]].val = u[i]
@@ -205,7 +216,7 @@ function surrogate_bomb(n_samples_sur::Integer, bop::BOMBOptimizationProblem)
     lower_bound = typeof(bop).parameters[1][]
     upper_bound = typeof(bop).parameters[1][]
 
-    optimizable = [bop.params[param].name for param in keys(bop.params) if bop.params[param].optimizable]
+    optimizable = [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
 
     for i = 1:length(optimizable)
         lb, ub = bop.params[optimizable[i]].bounds            
@@ -242,7 +253,7 @@ function optimize_bomb(radial_basis::RadialBasis, bop::BOMBOptimizationProblem; 
                         radial_basis.lb, radial_basis.ub, radial_basis, SobolSample(), 
                         maxiters = maxiters_opt)
 
-    optimizable = [bop.params[param].name for param in keys(bop.params) if bop.params[param].optimizable]
+    optimizable = [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
 
     for i = 1:length(optimizable)
         bop.params[optimizable[i]].opt = opt_vals[1][i]
@@ -342,42 +353,3 @@ function plot_bop(bop::BOMBOptimizationProblem)
 
     return fig
 end
-
-###############################################################################################
-
-# ["δ", "a", "β", "A_spring", "μ_max", "m", "k_N"]
-
-# OPTIMIZING
-initial_time = (2018, 3)
-final_time = (2018, 4)
-t_extra = 7
-
-δ_param = OptimizationParameter("δ",                1.25,   (1.05, 1.5),        true)
-a_param = OptimizationParameter("a",                1.0e-4, (1.0e-5, 1.0e-3),   true)
-β_param = OptimizationParameter("β",                0.0,    (0.0, 0.01),        true)
-A_spring_param = OptimizationParameter("A_spring",  1.0,    (0.1, 3.0),        true)
-μ_max_param = OptimizationParameter("μ_max",        0.1,    (0.05, 0.5),        false)
-m_param = OptimizationParameter("m",                0.05,   (0.0, 0.1),         false)
-k_N_param = OptimizationParameter("k_N",            0.012,  (0.005, 0.05),      false)
-
-bop = BOMBOptimizationProblem(
-    params = [δ_param, a_param, β_param, A_spring_param, μ_max_param, m_param, k_N_param],
-    rhs = Raft!,
-    immortal = true,
-    tspan = (initial_time, final_time),
-    n_levels = 10,
-    t_extra = 7,
-)
-
-# 10/10: -0.5178
-n_sur_samples = 2000
-maxiters_opt = 10
-
-@info "Computing surrogate."
-@time rb = surrogate_bomb(n_sur_samples, bop)
-rm("data.jld2", force = true)
-jldsave("data.jld2"; bop = bop, rb = rb)
-# @info "Optimizing surrogate."
-# @time bop = optimize_bomb(rb, bop, maxiters_opt = maxiters_opt)
-# @info "Plotting."
-# @time plot_bop(bop)

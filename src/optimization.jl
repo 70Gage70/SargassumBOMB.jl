@@ -355,7 +355,7 @@ t_extra = 7
 δ_param = OptimizationParameter("δ",                1.25,   (1.05, 1.5),        true)
 a_param = OptimizationParameter("a",                1.0e-4, (1.0e-5, 1.0e-3),   true)
 β_param = OptimizationParameter("β",                0.0,    (0.0, 0.01),        true)
-A_spring_param = OptimizationParameter("A_spring",  3.0,    (0.1, 10.0),        true)
+A_spring_param = OptimizationParameter("A_spring",  1.0,    (0.1, 3.0),        true)
 μ_max_param = OptimizationParameter("μ_max",        0.1,    (0.05, 0.5),        false)
 m_param = OptimizationParameter("m",                0.05,   (0.0, 0.1),         false)
 k_N_param = OptimizationParameter("k_N",            0.012,  (0.005, 0.05),      false)
@@ -370,12 +370,14 @@ bop = BOMBOptimizationProblem(
 )
 
 # 10/10: -0.5178
-n_sur_samples = 100
-maxiters_opt = 100
+n_sur_samples = 2000
+maxiters_opt = 10
 
 @info "Computing surrogate."
 @time rb = surrogate_bomb(n_sur_samples, bop)
-@info "Optimizing surrogate."
-@time bop = optimize_bomb(rb, bop, maxiters_opt = maxiters_opt)
-@info "Plotting."
-@time plot_bop(bop)
+rm("data.jld2", force = true)
+jldsave("data.jld2"; bop = bop, rb = rb)
+# @info "Optimizing surrogate."
+# @time bop = optimize_bomb(rb, bop, maxiters_opt = maxiters_opt)
+# @info "Plotting."
+# @time plot_bop(bop)

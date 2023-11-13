@@ -81,6 +81,7 @@ Temporary Items
 !nutrients.nc
 !wind.nc
 !afai.nc
+!waves.nc
 
 # workspace
 /src/workspaces.jl

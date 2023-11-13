@@ -131,7 +131,7 @@ function integrate_bomb(bop::BOMBOptimizationProblem; type::String = "val")
     if bop.immortal
         gdm = ImmortalModel()
     else
-        bmp = BrooksModelParameters(temp_itp, no3_itp, clumps_limits = (0, 10000), 
+        bmp = BrooksModelParameters(temp_itp, no3_itp, clumps_limits = (0, 2000), 
             μ_max = μ_max,
             m = m,
             k_N = k_N)

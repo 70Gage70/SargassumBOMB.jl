@@ -115,12 +115,17 @@ function integrate_bomb(bop::BOMBOptimizationProblem; type::String = "val")
     p2 = sph2xy(dist.lon[2], dist.lat[2], ref_itp)
     ΔL = norm(p1 - p2)
     
-    k10 = 2*ΔL
-    L_spring = k10/5
-    function spring_k(x::Real; A::Real = A_spring, k10::Real = k10)
-        return A * (5/k10) * x * exp(1 - (5/k10)*x)
+    # k10 = 2*ΔL
+    # L_spring = k10/5
+    # function spring_k(x::Real; A::Real = A_spring, k10::Real = k10)
+    #     return A * (5/k10) * x * exp(1 - (5/k10)*x)
+    # end
+    # sp = SpringParameters(spring_k, L_spring)
+
+    function spring_k(x::Real; A::Real = A_spring)
+        return A
     end
-    sp = SpringParameters(spring_k, L_spring)
+    sp = SpringParameters(spring_k, ΔL)
 
     # CONNECTIONS
     nw_type = "nearest"

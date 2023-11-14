@@ -5,7 +5,7 @@ include(joinpath(@__DIR__, "optimization.jl"))
 ###############################################################################################
 ### PHYSICS OPT
 
-###
+# ###
 # initial_time = (2018, 3)
 # final_time = (2018, 4)
 # t_extra = 7
@@ -18,7 +18,7 @@ include(joinpath(@__DIR__, "optimization.jl"))
 # m_param = OptimizationParameter("m",                0.05,   (0.0, 0.1),         false)
 # k_N_param = OptimizationParameter("k_N",            0.012,  (0.005, 0.05),      false)
 
-###
+# ###
 # bop = BOMBOptimizationProblem(
 #     params = [δ_param, a_param, β_param, A_spring_param, μ_max_param, m_param, k_N_param],
 #     rhs = Raft!,
@@ -28,20 +28,20 @@ include(joinpath(@__DIR__, "optimization.jl"))
 #     t_extra = 7,
 # )
 
-### 10/10: -0.5178
+# ### 10/10: -0.5178
 # n_sur_samples = 1000
 # maxiters_opt = 10
 
-###
+# ###
 # @info "Computing surrogate."
 # @time rb = surrogate_bomb(n_sur_samples, bop)
-# rm("data_physics.jld2", force = true)
-# jldsave("data_physics.jld2"; bop = bop, rb = rb)
+# rm("data_physics_k.jld2", force = true)
+# jldsave("data_physics_k.jld2"; bop = bop, rb = rb)
 
 ###############################################################################################
 ### BIOLOGY (with physics) OPT
 
-# opt_data = jldopen(joinpath(@__DIR__, "data_physics.jld2"))
+# opt_data = jldopen(joinpath(@__DIR__, "data_physics_k.jld2"))
 # rb_data = opt_data["rb"]
 # sp = sortperm(rb_data.y)
 # x_opt_phys = rb_data.x[sp][1] # δ, a, β, A_spring
@@ -59,7 +59,7 @@ include(joinpath(@__DIR__, "optimization.jl"))
 # m_param = OptimizationParameter("m",                0.05,       (0.0, 0.1),         true)
 # k_N_param = OptimizationParameter("k_N",            0.012,      (0.005, 0.05),      true)
 
-###
+# ###
 # bop = BOMBOptimizationProblem(
 #     params = [δ_param, a_param, β_param, A_spring_param, μ_max_param, m_param, k_N_param],
 #     rhs = Raft!,
@@ -69,15 +69,15 @@ include(joinpath(@__DIR__, "optimization.jl"))
 #     t_extra = 7,
 # )
 
-###
+# ###
 # n_sur_samples = 200
 # maxiters_opt = 10
 
-###
+# ###
 # @info "Computing surrogate."
 # @time rb = surrogate_bomb(n_sur_samples, bop)
-# rm("data_bio.jld2", force = true)
-# jldsave("data_bio.jld2"; bop = bop, rb = rb)
+# rm("data_bio_k.jld2", force = true)
+# jldsave("data_bio_k.jld2"; bop = bop, rb = rb)
 ###
 # @info "Optimizing surrogate."
 # @time bop = optimize_bomb(rb, bop, maxiters_opt = maxiters_opt)
@@ -87,7 +87,7 @@ include(joinpath(@__DIR__, "optimization.jl"))
 ###############################################################################################
 ### PHYSICS PLOT
 
-# opt_data = jldopen(joinpath(@__DIR__, "data_physics.jld2"))
+# opt_data = jldopen(joinpath(@__DIR__, "data_physics_k.jld2"))
 # rb_data = opt_data["rb"]
 # sp = sortperm(rb_data.y)
 # x_opt_phys = rb_data.x[sp][1] # δ, a, β, A_spring
@@ -119,12 +119,12 @@ include(joinpath(@__DIR__, "optimization.jl"))
 ##############################################################################################
 ### PHYSICS + BIO PLOT
 
-opt_data = jldopen(joinpath(@__DIR__, "data_physics.jld2"))
+opt_data = jldopen(joinpath(@__DIR__, "data_physics_k.jld2"))
 rb_data = opt_data["rb"]
 sp = sortperm(rb_data.y)
 x_opt_phys = rb_data.x[sp][1] # δ, a, β, A_spring
 
-opt_data = jldopen(joinpath(@__DIR__, "data_bio.jld2"))
+opt_data = jldopen(joinpath(@__DIR__, "data_bio_k.jld2"))
 rb_data = opt_data["rb"]
 sp = sortperm(rb_data.y)
 x_opt_bio = rb_data.x[sp][1] # μ_max, m, k_N

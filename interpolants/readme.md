@@ -55,6 +55,11 @@ Relevant variables: `u10 [m/s]`, `v10 [m/s]`
 Dataset : [GLOBAL_MULTIYEAR_BGC_001_029](https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_BGC_001_029/download)
 Relevant variables: `no3 [mmol/m^3]`
 
+### Waves and Stokes Drift
+
+Dataset: [ERA5](https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=overview)
+Relevant variables: `Significant height of combined wind waves and swell [m]`, `U-component stokes drift  [m/s]`, `V-component stokes drift  [m/s]`
+
 ## Preprocessing 
 
 The data requires preprossing to extract the relevant variables, ensure the units are correct and scale the time domain appropriately.  This is accomplished 
@@ -72,8 +77,8 @@ are preprocessed, the actual interpolants may be constructed using the `itp-cons
 ## Rick's Data
 
 Data: data are stored in files with the naming convention “merged_YYYY.mat” where YYYY is the year, starting with 1993.  Variables contained within are:
-(The following are identical for each year, and need only be loaded once)
 
+(The following are identical for each year, and need only be loaded once)
 - `Lon`, `Lat`: longitude and latitude grid points
 - `Uek_bar`, `Vek_bar`: time mean zonal and meridional wind-driven velocities (m/s)
 - `Ug_bar`, `Vg_bar`: time mean zonal and meridional geostrophic velocities (m/s)
@@ -87,3 +92,5 @@ Data: data are stored in files with the naming convention “merged_YYYY.mat” 
 - `erH`: errors in sea level anomaly (m)
  
 The total zonal speed of the water at 15m depth is `Uek_bar+Uek_a+Ug_bar+Ug_a`.  If the term `Uslip_d` is also added, then the zonal speed of a drogued drifter is reproduced.  If instead the term `Uslip_ud` is added, this matches as closely as possible the zonal speed of an undrogued drifter.
+
+Here, `Uslip_d` and `Vslip_d` are used.

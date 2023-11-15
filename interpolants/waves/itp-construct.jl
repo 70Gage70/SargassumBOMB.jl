@@ -44,7 +44,7 @@ itp = GriddedField(waves_file, ["lon", "lat", "t"], ["u", "v"],
 itp = itp |> sph2xy |> interpolate
 itp = add_derivatives(itp)
 
-jldsave(outfile, waves_itp = itp)
+jldsave(outfile, stokes_itp = itp)
 
 @info "Stokes interpolant written to $(outfile)."
 

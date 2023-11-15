@@ -184,3 +184,4 @@ matwrite(tempout, Dict("lon" => lon_temp, "lat" => lat_temp, "t" => time_temp, "
 matwrite(no3out, Dict("lon" => lon_nutr, "lat" => lat_nutr, "t" => time_nutr, "no3" => no3))
 
 include(joinpath(@__DIR__, "rick-preprocess.jl"))
+include(joinpath(@__DIR__, "waves-preprocess.jl"))

@@ -6,6 +6,36 @@ using Surrogates
 isdefined(@__MODULE__, :OPTIMIZATION_PARAMETER_NAMES) || (const OPTIMIZATION_PARAMETER_NAMES = ["δ", "a", "β", "A_spring", "μ_max", "m", "k_N"])
 
 """
+    struct LossFunction
+"""
+struct LossFunction
+    f::Function
+    name::String
+
+    function LossFunction(; f::Function, name::String)
+
+        m1_test = rand(4, 4)
+        m2_test = rand(4, 4)
+
+        try 
+            f(m1_test, m2_test)
+        catch e
+            @warn "Could not evaluate `f(::Matrix, ::Matrix)`. Ensure that `f` can accept two
+                    matrix arguments."
+            throw(e)
+        end
+    
+        @assert f(m1_test, m2_test) isa Real "The loss function must evaluate to a real number."
+        @assert f(m1_test, m1_test) <= f(m1_test, m2_test) "`f` doesn't decrease when data are closer together."
+
+        return new(f, name)
+    end
+end
+
+const LOSS_COV = LossFunction(f = (a::Matrix, b::Matrix) -> -cor(vec(a), vec(b)), name = "-COR")
+const LOSS_L1 = LossFunction(f = (a::Matrix, b::Matrix) -> sum((a - b) .^ 2) , name = "L1")
+
+"""
     mutable struct OptimizationParameter{T}
 """
 mutable struct OptimizationParameter{T<:Real} 
@@ -48,6 +78,7 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
     n_levels::U
     t_extra::U
     opt::Union{Nothing, T}
+    loss_func::LossFunction
     seed::U
 
     function BOMBOptimizationProblem(;
@@ -58,6 +89,7 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
         n_levels::U,
         t_extra::U,
         opt::Union{Nothing, T} = nothing,
+        loss_func::LossFunction = LOSS_COV,
         seed::U = 1234) where {T<:Real, U<:Integer}
 
         @assert length(params) > 0 "Must optimize at least one parameter."
@@ -68,7 +100,7 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
 
         params_dict = Dict(param.name => param for param in params)
 
-        return new{T, U}(params_dict, rhs, immortal, tspan, n_levels, t_extra, opt, seed)
+        return new{T, U}(params_dict, rhs, immortal, tspan, n_levels, t_extra, opt, loss_func, seed)
     end
 end
 
@@ -190,8 +222,9 @@ function loss_bomb(u, bop::BOMBOptimizationProblem)
     data = bins(rtr, DISTS_2018[final_time])
     data = data/sum(data)
 
-    return sum((data - target) .^ 2)  
+    # return sum((data - target) .^ 2)  
     # return -cor(vec(data), vec(target)) # minimize -1*correlation => maximize correlation
+    return bop.loss_func.f(data, target)
 end
 
 """
@@ -210,8 +243,9 @@ function loss_bomb(bop::BOMBOptimizationProblem, type::String)
     data = bins(rtr, DISTS_2018[final_time])
     data = data/sum(data)
 
-    return sum((data - target) .^ 2)  
+    # return sum((data - target) .^ 2)  
     # return -cor(vec(data), vec(target)) # minimize -1*correlation => maximize correlation 
+    return bop.loss_func.f(data, target)
 end
 
 """
@@ -346,7 +380,7 @@ function plot_bop(bop::BOMBOptimizationProblem)
         fig[-3,:] = Label(fig, L"\text{BOMB}")
     end
 
-    fig[-2,:] = Label(fig, L"Loss(default) = %$(dl_ltx), Loss(opt) =  %$(ol_ltx)")
+    fig[-2,:] = Label(fig, L"[%$(bop.loss_func.name)] Loss(default) = %$(dl_ltx), Loss(opt) =  %$(ol_ltx)")
 
     fig[-1,:] = Label(fig, L"Defaults: $\delta =$ %$(δ_def), $a =$ %$(a_def), $\beta =$ %$(β_def), $A_\text{spring} =$ %$(A_spring_def), $\mu_\text{max} =$ %$(μ_max_def), $m =$ %$(m_def), $k_N =$ %$(k_N_def)")
     

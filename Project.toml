@@ -35,8 +35,6 @@ SargassumFromAFAI = "db9ac4ac-0b65-4026-8dbd-2bb7cf4c299a"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Surrogates = "6fc51010-71bc-11e9-0e15-a3fcc6593c49"
 TerminalPager = "0c614874-6106-40ed-a7c2-2f1cd0bff883"
-TransitionPathTheory = "8e25bcd3-68d4-49ab-a21a-eececf317700"
-UlamMethod = "4cc20838-1966-48f0-823a-5def0ad5c24d"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]

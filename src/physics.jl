@@ -17,14 +17,24 @@ isdefined(@__MODULE__, :waves_itp) || (const waves_itp = load(joinpath(itp_path,
 isdefined(@__MODULE__, :stokes_itp) || (const stokes_itp = load(joinpath(itp_path, "stokes_itp.jld2"), "stokes_itp"))
 
 
-v_x(x, y, t) = rick_itp.fields[:u](x, y, t)
-v_y(x, y, t) =  rick_itp.fields[:v](x, y, t)
-Dv_xDt(x, y, t) = rick_itp.fields[:DDt_x](x, y, t)
-Dv_yDt(x, y, t) = rick_itp.fields[:DDt_y](x, y, t)
-u_x(x, y, t, α, β) = (1 - α) * rick_itp.fields[:u](x, y, t) + (α + β) * wind_itp.fields[:u](x, y, t)
-u_y(x, y, t, α, β) = (1 - α) * rick_itp.fields[:v](x, y, t) + (α + β) * wind_itp.fields[:v](x, y, t)
-Du_xDt(x, y, t, α, β) = (1 - α) * rick_itp.fields[:DDt_x](x, y, t) + (α + β) * wind_itp.fields[:DDt_x](x, y, t) 
-Du_yDt(x, y, t, α, β) = (1 - α) * rick_itp.fields[:DDt_x](x, y, t) + (α + β) * wind_itp.fields[:DDt_y](x, y, t) 
+# v_x(x, y, t) = rick_itp.fields[:u](x, y, t)
+# v_y(x, y, t) =  rick_itp.fields[:v](x, y, t)
+# Dv_xDt(x, y, t) = rick_itp.fields[:DDt_x](x, y, t)
+# Dv_yDt(x, y, t) = rick_itp.fields[:DDt_y](x, y, t)
+# u_x(x, y, t, α, β) = (1 - α) * rick_itp.fields[:u](x, y, t) + (α + β) * wind_itp.fields[:u](x, y, t)
+# u_y(x, y, t, α, β) = (1 - α) * rick_itp.fields[:v](x, y, t) + (α + β) * wind_itp.fields[:v](x, y, t)
+# Du_xDt(x, y, t, α, β) = (1 - α) * rick_itp.fields[:DDt_x](x, y, t) + (α + β) * wind_itp.fields[:DDt_x](x, y, t) 
+# Du_yDt(x, y, t, α, β) = (1 - α) * rick_itp.fields[:DDt_x](x, y, t) + (α + β) * wind_itp.fields[:DDt_y](x, y, t) 
+# ω(x, y, t) = rick_itp.fields[:vorticity](x, y, t)
+
+v_x(x, y, t, β) = rick_itp.fields[:u](x, y, t) + β * stokes_itp.fields[:u](x, y, t)
+v_y(x, y, t, β) =  rick_itp.fields[:v](x, y, t) + β * stokes_itp.fields[:v](x, y, t)
+Dv_xDt(x, y, t, β) = rick_itp.fields[:DDt_x](x, y, t) + β * stokes_itp.fields[:DDt_x](x, y, t)
+Dv_yDt(x, y, t, β) = rick_itp.fields[:DDt_y](x, y, t) + β * stokes_itp.fields[:DDt_y](x, y, t)
+u_x(x, y, t, α, β) = (1 - α) * v_x(x, y, t, β) + α * wind_itp.fields[:u](x, y, t)
+u_y(x, y, t, α, β) = (1 - α) * v_y(x, y, t, β) + α * wind_itp.fields[:v](x, y, t)
+Du_xDt(x, y, t, α, β) = (1 - α) * Dv_xDt(x, y, t, β) + α * wind_itp.fields[:DDt_x](x, y, t)
+Du_yDt(x, y, t, α, β) = (1 - α) * Dv_yDt(x, y, t, β) + α * wind_itp.fields[:DDt_y](x, y, t)
 ω(x, y, t) = rick_itp.fields[:vorticity](x, y, t)
 
 ########################################################################
@@ -54,16 +64,16 @@ function Raft!(du, u, p::RaftParameters, t)
         du[2*i] = 
             u_x(u[2*i], u[2*i+1], t, α, β) 
             + τ * (
-            R*Dv_xDt(u[2*i], u[2*i+1], t) 
-            - R*(f + ω(u[2*i], u[2*i+1], t)/3)*v_y(u[2*i], u[2*i+1], t) 
+            R*Dv_xDt(u[2*i], u[2*i+1], t, β) 
+            - R*(f + ω(u[2*i], u[2*i+1], t)/3)*v_y(u[2*i], u[2*i+1], t, β) 
             - Du_xDt(u[2*i], u[2*i+1], t, α, β) 
             + (f + R*ω(u[2*i], u[2*i+1], t)/3)*u_y(u[2*i], u[2*i+1], t, α, β)
         )
         du[2*i+1] = 
             u_y(u[2*i], u[2*i+1], t, α, β) 
             + τ * (
-            R*Dv_yDt(u[2*i], u[2*i+1], t) 
-            + R*(f + ω(u[2*i], u[2*i+1], t)/3)*v_x(u[2*i], u[2*i+1], t) 
+            R*Dv_yDt(u[2*i], u[2*i+1], t, β) 
+            + R*(f + ω(u[2*i], u[2*i+1], t)/3)*v_x(u[2*i], u[2*i+1], t, β) 
             - Du_yDt(u[2*i], u[2*i+1], t, α, β) 
             - (f + R*ω(u[2*i], u[2*i+1], t)/3)*u_x(u[2*i], u[2*i+1], t, α, β)
         )

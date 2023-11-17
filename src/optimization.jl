@@ -190,8 +190,8 @@ function loss_bomb(u, bop::BOMBOptimizationProblem)
     data = bins(rtr, DISTS_2018[final_time])
     data = data/sum(data)
 
-    # return sum((data - target) .^ 2)  
-    return -cor(vec(data), vec(target)) # minimize -1*correlation => maximize correlation
+    return sum((data - target) .^ 2)  
+    # return -cor(vec(data), vec(target)) # minimize -1*correlation => maximize correlation
 end
 
 """
@@ -210,8 +210,8 @@ function loss_bomb(bop::BOMBOptimizationProblem, type::String)
     data = bins(rtr, DISTS_2018[final_time])
     data = data/sum(data)
 
-    # return sum((data - target) .^ 2)  
-    return -cor(vec(data), vec(target)) # minimize -1*correlation => maximize correlation 
+    return sum((data - target) .^ 2)  
+    # return -cor(vec(data), vec(target)) # minimize -1*correlation => maximize correlation 
 end
 
 """

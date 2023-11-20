@@ -436,7 +436,7 @@ function form_connections!(con::ConnectionsNearest, u::Vector{<:Real})
 end
 
 """
-    mutable struct RaftParameters{T, U, F, C, G}
+    mutable struct RaftParameters{T, U, F, C, G, L}
 
 A container for the parameters defining a raft. Each clump and spring are identical.
 
@@ -456,13 +456,14 @@ such that `u[1]` is an "amount" parameter which controls the growth and death of
 the `i`th time step. For example, `loc2label[t0][j] = j` since, at the initial time `t0`, the `j`th location contains the `j`th clump. If 
 clump 1 dies at some later time `t`, then `loc2label[t][1] = 2`, `loc2label[t][2] = 3` since every clump is shifted by one to the left.
 - `gd_model`: A subtype of [`AbstractGrowthDeathModel`](@ref). 
+- `land`:: A subtype of [`AbstractLand`](@ref).
 
 ### Constructors 
 
-Use `RaftParameters(; ics, clumps, springs, connections, t0, gd_model)` where `t0` is the initial time of the integration.
+Use `RaftParameters(; ics, clumps, springs, connections, t0, gd_model, land)` where `t0` is the initial time of the integration.
 The quantities `n_clumps_tot` and `loc2label` are computed automatically.
 """
-mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel}
+mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
     ics::InitialConditions{T}
     clumps::ClumpParameters{T}
     springs::SpringParameters{F, T}
@@ -470,6 +471,7 @@ mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConne
     connections::C
     loc2label::Dict{T, Dict{U, U}}
     gd_model::G
+    land::L
 
     function RaftParameters(;
         ics::InitialConditions{T},
@@ -477,13 +479,14 @@ mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConne
         springs::SpringParameters{F, T},
         connections::C,
         t0::T,
-        gd_model::G) where {T<:Real, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel}
+        gd_model::G,
+        land::L) where {T<:Real, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
 
         n_clumps = Int64((length(ics.ics) - 1)/2)
         loc2label = Dict(t0 => Dict(i => i for i = 1:n_clumps))
         form_connections!(connections, ics.ics)
 
-        return new{T, Int64, F, C, G}(ics, clumps, springs, n_clumps, connections, loc2label, gd_model)
+        return new{T, Int64, F, C, G, L}(ics, clumps, springs, n_clumps, connections, loc2label, gd_model, land)
     end
 end
 

@@ -53,6 +53,16 @@ function cb_update(;showprogress::Bool = false)
 end
 
 """
+    cb_land(land::AbstractLand)
+
+Create a `DiscreteCallback` which updates `integrator.p` at the end of each time step using the 
+[`AbstractLand`](@ref) in `land`.
+"""
+function cb_land(land::AbstractLand)
+    return DiscreteCallback(land, land)
+end
+
+"""
     cb_growth_death(model::AbstractGrowthDeathModel)
 
 Create a `DiscreteCallback` which updates `integrator.p` at the end of each time step using the 

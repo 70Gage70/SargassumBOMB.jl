@@ -1,4 +1,29 @@
 """
+    abstract type AbstractLand
+
+A supertype for all land/shore types.
+"""
+abstract type AbstractLand end 
+
+"""
+    struct NoLand
+
+An [`AbstractLand`](@ref) such that the land/shore is completely ignored.
+"""
+struct NoLand <: AbstractLand
+end
+
+# condition 
+function (land::NoLand)(u, t, integrator)
+    return false
+end
+
+# affect!
+function (land::NoLand)(integrator)
+    return nothing
+end
+
+"""
     mutable struct Land{I, U}
 
 A container for data handling death of clumps upon reaching the shore.
@@ -12,13 +37,8 @@ A container for data handling death of clumps upon reaching the shore.
 ### Constructors 
 
 Use `Land(;land_itp::InterpolatedField = land_itp, verbose = false)` to create a new `Land` object.
-
-### Callbacks 
-
-Use `callback(land::Land)` to create a `DiscreteCallback` suitable for use with `OrdinaryDiffEq.solve`. At each time step, the position of 
-each clump is checked and clumps that are currently on land are killed with [`kill!`](@ref).
 """
-mutable struct Land{I<:InterpolatedField, U<:Integer}
+mutable struct Land{I<:InterpolatedField, U<:Integer} <: AbstractLand
     land_itp::I
     deaths::Vector{U}
     verbose::Bool
@@ -42,9 +62,4 @@ function (land::Land)(integrator)
     end
     
     kill!(integrator, land.deaths)
-end
-
-# callback 
-function callback(land::Land)
-    return DiscreteCallback(land, land)
 end

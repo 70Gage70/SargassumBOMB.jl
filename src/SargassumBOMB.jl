@@ -33,6 +33,9 @@ export WATER_ITP, WIND_ITP, WAVES_ITP, STOKES_ITP, LAND_ITP, TEMP_ITP, NO3_ITP
 include(joinpath(@__DIR__, "biology.jl"))
 export AbstractGrowthDeathModel, ImmortalModel, BrooksModelParameters, brooks_dSdt_clump, brooks_dSdt_raft, BrooksModel
 
+include("geography.jl")
+export AbstractLand, NoLand, Land
+
 include("raft-parameters.jl")
 export ClumpParameters
 export SpringParameters, spring_force 
@@ -40,14 +43,11 @@ export InitialConditions
 export AbstractConnections, ConnectionsNone, ConnectionsFull, ConnectionsRadius, ConnectionsNearest, form_connections!
 export RaftParameters
 
-include("geography.jl")
-export Land, callback
-
 include("physics.jl")
 export Raft!, WaterWind!
 
 include("control.jl")
-export n_clumps, clump_i, com, cb_update, cb_growth_death, cb_connections, kill!, grow!
+export n_clumps, clump_i, com, cb_update, cb_land, cb_growth_death, cb_connections, kill!, grow!
 
 include("trajectories.jl")
 export Trajectory, time_slice, RaftTrajectory, uniformize, bins

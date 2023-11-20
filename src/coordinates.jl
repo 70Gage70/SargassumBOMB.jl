@@ -31,6 +31,18 @@ function EquirectangularReference(; lon0::Real, lat0::Real, R::Real = 6371.0)
 end
 
 """
+    const EQR_DEFAULT
+    
+The default [`EquirectangularReference`](@ref) for the tropical Atlantic.
+
+### Fields
+-`lon0`: -75.0 degrees
+-`lat0`: 10.0 degrees
+-`R`: 6731 km (default)
+"""
+const EQR_DEFAULT = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
+
+"""
     sph2xy(lon, lat, ref)
 
 Compute planar coordinates `[x, y]` from spherical coordinates `(lon, lat)` [deg] with reference `ref::EquirectangularReference`.

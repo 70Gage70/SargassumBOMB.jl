@@ -1,11 +1,4 @@
-using MAT
-using Interpolations
-using LinearAlgebra: ⋅
-
-include("itp-coordinates.jl")
 include("itp-helpers.jl")
-include(joinpath(@__DIR__, "..", "src", "coordinates.jl"))
-
 ############################################################################################
 
 """

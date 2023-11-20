@@ -1,7 +1,3 @@
-using Dates
-
-#########################
-
 """
     reduce_vector_to_range(vector)
 

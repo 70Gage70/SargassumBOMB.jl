@@ -1,7 +1,3 @@
-include("coordinates.jl")
-
-#################################
-
 """
     struct Trajectory{T}
 

@@ -1,18 +1,3 @@
-using LinearAlgebra: norm
-using SargassumFromAFAI
-using NearestNeighbors
-
-include("coordinates.jl")
-
-#################################
-
-"""
-    abstract type AbstractGrowthDeathModel
-
-The abstract type for growth and death models.
-"""
-abstract type AbstractGrowthDeathModel end 
-
 """
     struct ClumpParameters{T}
 

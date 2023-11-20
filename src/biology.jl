@@ -1,15 +1,9 @@
-using OrdinaryDiffEq
-using JLD2
+"""
+    abstract type AbstractGrowthDeathModel
 
-include(joinpath(@__DIR__, "parameters.jl"))
-include(joinpath(@__DIR__, "..", "interpolants", "itp-core.jl"))
-
-########################################################################
-
-# loading interpolants
-itp_path = joinpath(@__DIR__, "..", "interpolants", "biology")
-isdefined(@__MODULE__, :temp_itp) || (const temp_itp = load(joinpath(itp_path, "temp_itp.jld2"), "temp_itp"))
-isdefined(@__MODULE__, :no3_itp) || (const no3_itp = load(joinpath(itp_path, "no3_itp.jld2"), "no3_itp"))
+The abstract type for growth and death models.
+"""
+abstract type AbstractGrowthDeathModel end 
 
 """
     mutable struct ImmortalModel{U, F}
@@ -150,7 +144,7 @@ The growth/death model of [Brooks et al. (2018)](https://www.int-res.com/abstrac
 
 ### Constructors
 
-Use `BrooksModel(;params = BrooksModelParameters(temp_itp, no3_itp), verbose = false)`.
+Use `BrooksModel(;params = BrooksModelParameters(TEMP_ITP, NO3_ITP), verbose = false)`.
 
 ### Callbacks
 
@@ -170,7 +164,7 @@ mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, F<:Function} <:
     deaths::Vector{U}
     verbose::Bool
 
-    function BrooksModel(;params::BrooksModelParameters = BrooksModelParameters(temp_itp, no3_itp), verbose = false)
+    function BrooksModel(;params::BrooksModelParameters = BrooksModelParameters(TEMP_ITP.x, NO3_ITP.x), verbose = false)
         return new{typeof(params), Int64, Function}(params, (u, t) -> brooks_dSdt_raft(u, t, params), Int64[], Int64[], verbose)
     end
 end

@@ -14,7 +14,7 @@ function ensemble(
     start_date::NTuple{2, Int64}, 
     end_date::NTuple{2, Int64};
     rhs::Function = Raft!,
-    cp::ClumpParameters = ClumpParameters(ref_itp), 
+    cp::ClumpParameters = ClumpParameters(EQR_DEFAULT), 
     cb_connections_type::String = "nearest", 
     rtr_dt::Real = 1.0)
 
@@ -27,17 +27,17 @@ function ensemble(
 
     @info "Integrating $(tspan)"
 
-    # cp = ClumpParameters(ref_itp)
-    # cp = ClumpParameters(ref_itp, δ = 2.0)
+    # cp = ClumpParameters(EQR_DEFAULT)
+    # cp = ClumpParameters(EQR_DEFAULT, δ = 2.0)
 
     ###################################################################### SPRINGS
     # x_range = range(-65.0, -55.0, step = 0.2)
     # y_range = range(8.0, 17.0, step = 0.2)
-    # x_range, y_range = sph2xy(x_range, y_range, ref_itp)
+    # x_range, y_range = sph2xy(x_range, y_range, EQR_DEFAULT)
     # ΔL = norm([x_range[1], y_range[1]] - [x_range[2], y_range[2]])
 
-    p1 = sph2xy(dist.lon[1], dist.lat[1], ref_itp)
-    p2 = sph2xy(dist.lon[2], dist.lat[2], ref_itp)
+    p1 = sph2xy(dist.lon[1], dist.lat[1], EQR_DEFAULT)
+    p2 = sph2xy(dist.lon[2], dist.lat[2], EQR_DEFAULT)
     ΔL = norm(p1 - p2)
 
     # spring_k_constant = x -> 5
@@ -54,14 +54,14 @@ function ensemble(
     ###################################################################### BIOLOGY
 
     gdm = ImmortalModel()
-    # gdm = BrooksModel(params = BrooksModelParameters(temp_itp, no3_itp, clumps_limits = (0, 1000)), verbose = true)
+    # gdm = BrooksModel(params = BrooksModelParameters(TEMP_ITP.x, NO3_ITP.x, clumps_limits = (0, 1000)), verbose = true)
     # gdm = BrooksModel(verbose = true)
 
     ###################################################################### CONDITIONS
 
-    # ics = initial_conditions(dist, [1], 100, "sorted", ref_itp)
-    # ics = initial_conditions(dist, [1], 1, "uniform", ref_itp)
-    ics = initial_conditions(dist, [1], 1000, "sample", ref_itp)
+    # ics = initial_conditions(dist, [1], 100, "sorted", EQR_DEFAULT)
+    # ics = initial_conditions(dist, [1], 1, "uniform", EQR_DEFAULT)
+    ics = initial_conditions(dist, [1], 1000, "sample", EQR_DEFAULT)
 
     # ics = initial_conditions(x_range, y_range)
 
@@ -102,7 +102,7 @@ function ensemble(
             cb_c)
         )
 
-    return RaftTrajectory(sol_raft, rp, ref_itp, dt = rtr_dt)
+    return RaftTrajectory(sol_raft, rp, EQR_DEFAULT, dt = rtr_dt)
 end
 
 dists = SargassumDistribution(joinpath(@__DIR__, "..", "..", "SargassumFromAFAI.jl", "data", "dist-2018.nc"))
@@ -156,10 +156,10 @@ july_plot = SargassumFromAFAI.plot(dists[(2018, 7)], resolution = (1920, 1080), 
 
 ###
 
-# cp_default = ClumpParameters(ref_itp)
-cp_default = ClumpParameters(ref_itp, δ = 2.0)
-cp_water = ClumpParameters(ref_itp, 0.0, 0.0, 0.0, 0.0, 0.0)
-cp_wind = ClumpParameters(ref_itp, cp_default.α, 0.0, 0.0, 0.0, 0.0)
+# cp_default = ClumpParameters(EQR_DEFAULT)
+cp_default = ClumpParameters(EQR_DEFAULT, δ = 2.0)
+cp_water = ClumpParameters(EQR_DEFAULT, 0.0, 0.0, 0.0, 0.0, 0.0)
+cp_wind = ClumpParameters(EQR_DEFAULT, cp_default.α, 0.0, 0.0, 0.0, 0.0)
 
 seed!(1234)
 rtr_water = ensemble((2018, 4), (2018, 8), rhs = WaterWind!, cp = cp_water, rtr_dt = 0.1)

@@ -134,17 +134,17 @@ function integrate_bomb(bop::BOMBOptimizationProblem; type::String = "val")
 
     # ICS
     dist = DISTS_2018[initial_time]
-    ics = initial_conditions(dist, [1], bop.n_levels, "levels", ref_itp)
+    ics = initial_conditions(dist, [1], bop.n_levels, "levels", EQR_DEFAULT)
 
     # CLUMPS
-    cp = ClumpParameters(ref_itp, 
+    cp = ClumpParameters(EQR_DEFAULT, 
         δ = δ, 
         a = a,
         β = β)
 
     # SPRINGS
-    p1 = sph2xy(dist.lon[1], dist.lat[1], ref_itp)
-    p2 = sph2xy(dist.lon[2], dist.lat[2], ref_itp)
+    p1 = sph2xy(dist.lon[1], dist.lat[1], EQR_DEFAULT)
+    p2 = sph2xy(dist.lon[2], dist.lat[2], EQR_DEFAULT)
     ΔL = norm(p1 - p2)
     
     # k10 = 2*ΔL
@@ -168,7 +168,7 @@ function integrate_bomb(bop::BOMBOptimizationProblem; type::String = "val")
     if bop.immortal
         gdm = ImmortalModel()
     else
-        bmp = BrooksModelParameters(temp_itp, no3_itp, clumps_limits = (0, 2000), 
+        bmp = BrooksModelParameters(TEMP_ITP.x, NO3_ITP.x, clumps_limits = (0, 2000), 
             μ_max = μ_max,
             m = m,
             k_N = k_N)
@@ -198,7 +198,7 @@ function integrate_bomb(bop::BOMBOptimizationProblem; type::String = "val")
             cb_connections(network_type = nw_type, neighbor_parameter = n_conn))
         )
 
-    return (RaftTrajectory(sol, rp, ref_itp, dt = 0.1), tstart, tend)
+    return (RaftTrajectory(sol, rp, EQR_DEFAULT, dt = 0.1), tstart, tend)
 end
 
 """

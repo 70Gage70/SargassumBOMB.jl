@@ -1,13 +1,3 @@
-using JLD2
-
-include(joinpath(@__DIR__, "..", "interpolants", "itp-core.jl"))
-
-########################################################################
-
-# loading land interpolant 
-itp_path = joinpath(@__DIR__, "..", "interpolants", "land")
-isdefined(@__MODULE__, :land_itp) || (const land_itp = load(joinpath(itp_path, "land_itp.jld2"), "land_itp"))
-
 """
     mutable struct Land{I, U}
 
@@ -33,7 +23,7 @@ mutable struct Land{I<:InterpolatedField, U<:Integer}
     deaths::Vector{U}
     verbose::Bool
 
-    function Land(;land_itp::InterpolatedField = land_itp, verbose = false)
+    function Land(;land_itp::InterpolatedField = LAND_ITP.x, verbose = false)
         return new{typeof(land_itp), Int64}(land_itp, Int64[], verbose)
     end
 end

@@ -1,18 +1,72 @@
-include(joinpath(@__DIR__, "geography.jl"))
-include(joinpath(@__DIR__, "physics.jl"))
-include(joinpath(@__DIR__, "biology.jl"))
-include(joinpath(@__DIR__, "trajectories.jl"))
-include(joinpath(@__DIR__, "control.jl"))
-include(joinpath(@__DIR__, "../../CustomMakie.jl/src/geo-methods.jl"))
-include(joinpath(@__DIR__, "../../CustomMakie.jl/src/statistic-methods.jl"))
+module SargassumBOMB
 
-using SargassumFromAFAI
+# core functionality
+using OrdinaryDiffEq, SargassumFromAFAI, NearestNeighbors, Interpolations
+using Unitful, Surrogates, Dates
+using LinearAlgebra: norm, ⋅
 
-isdefined(@__MODULE__, :DISTS_2018) || (const DISTS_2018 = SargassumDistribution(joinpath(@__DIR__, "..", "..", "SargassumFromAFAI.jl", "data", "dist-2018.nc")))
-isdefined(@__MODULE__, :SFA_plot) || (const SFA_plot(time, week) = SargassumFromAFAI.plot(DISTS_2018[time], week, legend = false, resolution = (1920, 1080), limits = (-100, -40, 5, 35)))
-isdefined(@__MODULE__, :SFA_plot!) || (const SFA_plot!(axis, time, week) = SargassumFromAFAI.plot!(axis, DISTS_2018[time], week))
+# i/o
+using MAT, NetCDF, JLD2
 
+# probability/statistics
+using StatsBase, Distributions 
 using Random: seed!
 
-##############################################################################################################
+# plotting/geography
+using Makie, CairoMakie, GeoMakie
+using GeoMakie, GeoMakie.GeoJSON, GeoDatasets, GeoInterface
+
+# printing
+using Crayons.Box
+using Latexify
+
+include("coordinates.jl")
+export EquirectangularReference, EQR_DEFAULT, sph2xy, xy2sph
+
+include(joinpath(@__DIR__, "..", "interpolants", "itp-core.jl"))
+export GriddedField, InterpolatedField, interpolate, add_derivatives, reduce_vector_to_range, rata2datetime_minute
+
+include(joinpath(@__DIR__, "..", "interpolants", "ITPConstruct.jl"))
+export construct_all_itp
+export WATER_ITP, WIND_ITP, WAVES_ITP, STOKES_ITP, LAND_ITP, TEMP_ITP, NO3_ITP
+
+include(joinpath(@__DIR__, "biology.jl"))
+export AbstractGrowthDeathModel, ImmortalModel, BrooksModelParameters, brooks_dSdt_clump, brooks_dSdt_raft, BrooksModel
+
+include("raft_parameters.jl")
+export ClumpParameters, SpringParameters, spring_force, RaftParameters, initial_conditions, form_connections
+
+include("geography.jl")
+export Land
+
+include("physics.jl")
+export Raft!, WaterWind!
+
+include("control.jl")
+export n_clumps, clump_i, com, cb_update, cb_connections, kill!, grow!
+
+include("trajectories.jl")
+export Trajectory, time_slice, RaftTrajectory, uniformize, bins
+
+include(joinpath(@__DIR__, "..", "plotting", "plotting-core.jl"))
+export default_fig, geo_axis, land!, data_legend!, trajectory!, vector_field_t!, scalar_field_t!, trajectory_hist!
+
+include(joinpath(@__DIR__, "..", "plotting", "plotting-itp.jl"))
+export check_land, check_windwater
+
+export callback # constructors for OrdinaryDiffEq.DiscreteCallback, defined in multiple files
+export length, show, iterate # various Base extensions
+
+# initialize interpolants
+function __init__()
+    construct_all_itp()
+end
+
+import PrecompileTools
+
+PrecompileTools.@compile_workload begin
+    construct_all_itp()
+end
+
+end # module
 

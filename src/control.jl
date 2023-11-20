@@ -1,10 +1,3 @@
-using StatsBase
-using Distributions
-using NearestNeighbors
-using Crayons.Box
-
-############################################################
-
 """
     n_clumps(u)
 
@@ -193,21 +186,3 @@ function grow!(
     
     return nothing
 end
-
-# function grow_test(t_grow::Vector{<:Real})
-#     function condition(u, t, integrator)
-#         return any([abs(t - tg) < 1.0 for tg in t_grow])
-#     end
-
-#     function affect!(integrator)
-#         grow!(integrator, location = "parent", connections = "full")
-
-#         println("Growing $([integrator.p.n_clumps_tot]) at time $(integrator.t)")
-#     end
-
-#     return DiscreteCallback(condition, affect!)
-# end
-
-
-
-

@@ -58,6 +58,9 @@ export default_fig, geo_axis, land!, data_legend!, trajectory!, vector_field_t!,
 include(joinpath(@__DIR__, "..", "plotting", "plotting-itp.jl"))
 export check_land, check_windwater
 
+include("main.jl")
+export simulate
+
 export length, show, iterate # various Base extensions
 
 # initialize interpolants
@@ -69,6 +72,27 @@ import PrecompileTools
 
 PrecompileTools.@compile_workload begin
     construct_all_itp()
+end
+
+PrecompileTools.@compile_workload begin
+    ics = InitialConditions(range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5), ref = EQR_DEFAULT)
+    clumps = ClumpParameters(EQR_DEFAULT)
+    springs = SpringParameters(k -> 0.1, 100.0)
+    connections = ConnectionsNearest(10)
+    gd_model = BrooksModel()
+    land = Land()
+    tspan = (0.0, 5.0)
+
+    rp = RaftParameters(;
+    ics = ics,
+    clumps = clumps,
+    springs = springs,
+    connections = connections,
+    t0 = first(tspan),
+    gd_model = gd_model,
+    land = land)
+
+    sol = simulate(rp, tspan, showprogress = false)
 end
 
 end # module

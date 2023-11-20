@@ -97,7 +97,7 @@ function Base.show(io::IO, x::SpringParameters)
     print(io, "SpringParameters[1->")
     show(io, x.k(1))
     print(io, ", ")
-    show(io, length(x.L))
+    show(io, x.L)
     print(io, "]")
 end
 
@@ -167,6 +167,9 @@ function InitialConditions(
     x_range::AbstractRange{T}, 
     y_range::AbstractRange{T}; 
     ref::Union{Nothing, EquirectangularReference} = nothing) where {T<:Real}
+
+    @assert allunique(x_range) "`x_range` can not have repeated entries"
+    @assert allunique(y_range) "`y_range` can not have repeated entries"
 
     if ref !== nothing
         ics_x, ics_y = sph2xy(x_range, y_range, ref)
@@ -492,6 +495,6 @@ end
 
 function Base.show(io::IO, x::RaftParameters)
     print(io, "RaftParameters[")
-    show(io, Integer(x.ics[1]))
+    show(io, Integer(x.ics.ics[1]))
     print(io, " Clumps]")
 end

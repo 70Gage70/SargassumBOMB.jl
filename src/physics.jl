@@ -48,7 +48,7 @@ function Raft!(du, u, p::RaftParameters, t)
         )
 
         # @views combined with .= minimizes allocations by not creating small/temporary arrays
-        @views for j in p.connections[i]
+        @views for j in p.connections.connections[i]
             du[2*i:2*i+1] .= du[2*i:2*i+1] .+ τ*spring_force(u[2*i:2*i+1], u[2*j:2*j+1], p.springs)
         end
     end

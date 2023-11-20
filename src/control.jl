@@ -53,20 +53,17 @@ function cb_update(;showprogress::Bool = false)
 end
 
 """
-    cb_connections(;network_type, neighbor_parameter)
+    cb_connections()
 
 Create a `DiscreteCallback` which updates `integrator.p.connections` at the end of each time step using [`form_connections`](@ref).
 
-The optional arguments are identical to those of [`form_connections`](@ref). THe default behavior is for each clump to 
-establish connections with the 10 closest clumps.
-
 This should be the last callback in a `CallbackSet`.
 """
-function cb_connections(;network_type::String = "nearest", neighbor_parameter::Union{Nothing, Real} = 10)
+function cb_connections()
     condition!(u, t, integrator) = true    
 
     function affect!(integrator)
-        integrator.p.connections = form_connections(integrator.u, network_type, neighbor_parameter = neighbor_parameter)
+        form_connections!(integrator.p.connections, integrator.u)
         return nothing
     end
 
@@ -128,9 +125,9 @@ end
 
 
 """
-    grow!(integrator, location, connections)
+    grow!(integrator, location)
 
-Add a clump to the [`RaftParameters`](@ref), `rp = integrator.p` with an index equal to `rp.n_clumps_tot + 1` and also update `rp.connections` and `rp.loc2label` appropriately.
+Add a clump to the [`RaftParameters`](@ref), `rp = integrator.p` with an index equal to `rp.n_clumps_tot + 1` and also update `rp.loc2label` appropriately.
 
 ### Location 
 
@@ -158,7 +155,7 @@ function grow!(
     resize!(integrator, length(u) + 2)
 
     if location isa String 
-        @assert location in ["parent", "com"] "If `connections` is a string, it must be either $("parent") or $("com")."
+        @assert location in ["parent", "com"] "If `location` is a string, it must be either $("parent") or $("com")."
         if location == "parent"
             parent = rand(1:n_clumps_old)
             r, θ = rp.springs.L, rand(Uniform(0, 2*π))

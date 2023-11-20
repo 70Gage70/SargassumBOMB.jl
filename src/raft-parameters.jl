@@ -9,7 +9,8 @@ A container for the high-level parameters of the BOM equations.
 - `τ` [d]: Measures the inertial response time of the medium to the particle
 - `R` []: A geometric parameter.
 - `f` [1/d]: The Coriolis parameter in the β plane.
-- `β` []: The Stokes drift parameter; this applies an additional fraction of the wind to the particle.
+- `β` []: The Stokes drift parameter; this applies an additional fraction of the Stokes drift to the water velocity 
+    component of the particle.
 """
 struct ClumpParameters{T<:Real}
     ref::EquirectangularReference{T}
@@ -103,7 +104,8 @@ end
 """
     spring_force(xy1, xy2, parameters)
 
-Calculate the x and y components of the force on a point particle with coordinates `xy1` which is attached by a spring defined by `parameters` to another point particle with coordinates `xy2`.
+Calculate the x and y components of the force on a point particle with coordinates `xy1` 
+which is attached by a spring defined by `parameters` to another point particle with coordinates `xy2`.
 """
 function spring_force(xy1::Vector{<:Real}, xy2::Vector{<:Real}, parameters::SpringParameters)
     d = norm(xy1 - xy2)
@@ -119,78 +121,38 @@ function spring_force(
 end
 
 """
-    mutable struct RaftParameters{T, U, F}
+    struct InitialConditions{T}
 
-A container for the parameters defining a raft. Each clump and spring are identical.
-
-### Structure 
-
-`RaftParameters` acts as the parameter container for [`Raft!`](@ref). The solution vector `u` is a vector of length `2n_clumps + 1` 
-such that `u[1]` is an "amount" parameter which controls the growth and death of clumps by biophysical effects. Then, 
-`u[2*i:2*i+1]` for `i = 1:n_clumps` gives the `[x, y]` coordinates of the clump in position `i`.
+A container for the initial conditions for a raft. 
 
 ### Fields
+
 - `ics`: A `Vector` such that `ics[1] = n_clumps` and `ics[2:2*n_clumps+1]` represents the `[x, y]` coordinates of each clump.
-- `clumps`: The [`ClumpParameters`](@ref) shared by each clump in the raft.
-- `springs`: The [`SpringParameters`](@ref) shared by each spring joining the clumps.
-- `n_clumps_tot`: An `Integer` equal to the total number of clumps that have ever existed (i.e. it is at least the number of clumps that exist at any specific time.)
-- `connections`: A `Dict` such that `connections[idx]` is a vector of indices `idx'` where a spring is connected between clumps `idx` and `idx'`. This should be updated in-place as clumps grow and die, i.e. `connections` only shows the current connections and refers to vector indices, not absolute clump labels.
-- `loc2label`: A `Dict` such that `loc2label[t]` is itself a `Dict` mapping vector indices to the absolute label of the clump in that location at
-the `i`th time step. For example, `loc2label[t0][j] = j` since, at the initial time `t0`, the `j`th location contains the `j`th clump. If 
-clump 1 dies at some later time `t`, then `loc2label[t][1] = 2`, `loc2label[t][2] = 3` since every clump is shifted by one to the left.
-- `gd_model`: A subtype of `AbstractGrowthDeathModel`. Must implement `growths`, `deaths` and `dSdt` callable at the solution vector and current time, 
-i.e. it must be a function `dSdt(u, t)`.
 
 ### Constructors 
 
-Use `RaftParameters(; ics, clumps, springs, connections, t0, gd_model)`. The arguments `clumps`, `springs` and 
-`gd_model` are passed directly to the struct.
-
-The [`initial_conditions`](@ref) methods help with the construction of `ics` and the function [`form_connections`](@ref) 
-helps with the construction of `connections`.
+use `InitialConditions(;ics)`.
 """
-mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, G<:AbstractGrowthDeathModel}
+struct InitialConditions{T<:Real}
     ics::Vector{T}
-    clumps::ClumpParameters{T}
-    springs::SpringParameters{F, T}
-    n_clumps_tot::U
-    connections::Dict{U, Vector{U}}
-    loc2label::Dict{T, Dict{U, U}}
-    gd_model::G
 
-    function RaftParameters(;
-        ics::Vector{T},
-        clumps::ClumpParameters{T},
-        springs::SpringParameters{F, T},
-        connections::Dict{U, Vector{U}},
-        t0::T,
-        gd_model::G) where {T<:Real, U<:Integer, F<:Function, G<:AbstractGrowthDeathModel}
-
-        n_clumps = Int64((length(ics) - 1)/2)
-        loc2label = Dict(t0 => Dict(i => i for i = 1:n_clumps))
-
-        return new{T, U, F, G}(ics, clumps, springs, n_clumps, connections, loc2label, gd_model)
+    function InitialConditions(;ics::Vector{<:Real})
+        return new{eltype(ics)}(ics)
     end
 end
 
-function Base.show(io::IO, x::RaftParameters)
-    print(io, "RaftParameters[")
-    show(io, Integer(x.ics[1]))
-    print(io, " Clumps]")
-end
-
 """
-    initial_conditions(xy0; ref = nothing)
+    InitialConditions(xy0; ref = nothing)
 
 Construct initial conditions suitable for use in `RaftParameters.ics` from a list of coordinates of the form 
 `[x1, y1, x2, y2 ..., xN, yN]`. These should be equirectangular coordinates; if `ref` is provided, the coordinates 
 are converted from spherical coordinates.
 
-Can be applied as `initial_conditions(x_range, y_range; ref = nothing)` to generate clumps in a rectangular arrangement.
+Can be applied as `InitialConditions(x_range, y_range; ref = nothing)` to generate clumps in a rectangular arrangement.
 
-Can be applied as `initial_conditions(x0, y0; ref = nothing)` for a single clump with coordinates `(x0, y0)`.
+Can be applied as `InitialConditions(x0, y0; ref = nothing)` for a single clump with coordinates `(x0, y0)`.
 """
-function initial_conditions(xy0::Vector{<:Real}; ref::Union{Nothing, EquirectangularReference} = nothing)
+function InitialConditions(xy0::Vector{<:Real}; ref::Union{Nothing, EquirectangularReference} = nothing)
     if ref !== nothing
         ics = sph2xy(xy0, ref)
     else
@@ -198,10 +160,10 @@ function initial_conditions(xy0::Vector{<:Real}; ref::Union{Nothing, Equirectang
     end
 
     pushfirst!(ics, length(xy0)/2)
-    return ics
+    return InitialConditions(ics = ics)
 end
 
-function initial_conditions(
+function InitialConditions(
     x_range::AbstractRange{T}, 
     y_range::AbstractRange{T}; 
     ref::Union{Nothing, EquirectangularReference} = nothing) where {T<:Real}
@@ -218,10 +180,10 @@ function initial_conditions(
         push!(ics, x, y)
     end
 
-    return ics
+    return InitialConditions(ics = ics)
 end
 
-function initial_conditions(x0::Real, y0::Real; ref::Union{Nothing, EquirectangularReference} = nothing)
+function InitialConditions(x0::Real, y0::Real; ref::Union{Nothing, EquirectangularReference} = nothing)
     if ref !== nothing
         ics = sph2xy(x0, y0, ref)
     else
@@ -229,11 +191,11 @@ function initial_conditions(x0::Real, y0::Real; ref::Union{Nothing, Equirectangu
     end
 
     pushfirst!(ics, 1)
-    return ics
+    return InitialConditions(ics = ics)
 end
 
 """
-    initial_conditions(dist, number, sample_type, ref)
+    InitialConditions(dist, number, sample_type, ref)
 
 Construct [`RaftParameters`](@ref) from a `SargassumDistribution`.
 
@@ -252,7 +214,7 @@ Construct [`RaftParameters`](@ref) from a `SargassumDistribution`.
 - `ref`: An [`EquirectangularReference`](@ref). A `SargassumDistribution` has fields `lon` and `lat`, so this is necessary to 
                 covert these to equirectangular coordinates.
 """
-function initial_conditions(
+function InitialConditions(
     dist::SargassumDistribution, 
     weeks::Vector{<:Integer},
     number::Integer,
@@ -330,78 +292,204 @@ function initial_conditions(
     n_clumps = length(xy0)/2
     pushfirst!(xy0, n_clumps)
     
-    return xy0
+    return InitialConditions(ics = xy0)
 end
 
 """
-    form_connections(ics, network_type; neighbor_parameter = nothing)
+    abstract type AbstractConnections
 
-Construct connections between clumps suitable for use in `RaftParameters.connections`.
+A supertype for all connections between clumps.
 
-### Arguments 
+Every subtype of `AbstractConnections` should be mutable with a field `connections::Dict{U, Vector{U}} where {U<:Integer}` such 
+that `connections[idx]` for an index `idx` is a vector of indices `[i1, i2, ...]` where a spring is connected 
+between clumps `idx` and `[i1, i2, ...]`. This should be updated in-place as clumps grow and die, i.e. `connections` 
+only shows the current connections and refers to vector indices, not absolute clump labels.
 
-- `ics`: A `Vector` of initial conditions as defined by [`RaftParameters`](@ref). Note that a solution vector of a [`Raft!`](@ref) problem 
-    can actually be provided at any time to form connections dynamically as with [`cb_connections`](@ref).
-- `network_type`: A `String` identifying how the connections should be consructed.
-    - `"full"`: Every clump is connected to every other clump.
-    - `"none"`: No clumps are connected.
-    - `"radius"`: Each clump is connected to clumps within a distance `neighbor_parameter`. If `neighbor_parameter` is not provided, 
-                    the distance is taken to be the mean value of all pairwise clump distances in `ics`.
-    - `"nearest"`: Each clump is connected to its `neighbor_parameter` nearest neighbors (not including itself). If `neighbor_parameter` 
-                    is not provided, each clump is connected to its nearest neighbor, i.e. `neighbor_parameter = 1`.
-
-### Optional Arguments
-
-- `neighbor_parameter`: A parameter controlling the connections for the `"radius"` and `"nearest"` options of `network_type`; see above.
+Every subtype of `AbstractConnections` should implement a `form_connections!(con::Connections, u)` method which
+updates `con.connections` in place and returns `nothing`.
 """
-function form_connections(
-    ics::Vector{<:Real}, 
-    network_type::String; 
-    neighbor_parameter::Union{Nothing, Real} = nothing)
-    @assert network_type in ["full", "none", "radius", "nearest"] "`network_type` not recognized."
+abstract type AbstractConnections end
 
-    n_clumps = Int64((length(ics) - 1)/2)
+"""
+    mutable struct ConnectionsNone
 
-    if network_type == "full"
-        connections = Dict(1:n_clumps .=> [[j for j = 1:n_clumps if j != i] for i = 1:n_clumps])
-    elseif network_type == "none"
-        connections = Dict(1:n_clumps .=> [Int64[] for i = 1:n_clumps])
-    elseif network_type == "radius"
-        data = reshape(@view(ics[2:end]), 2, n_clumps)
+A connection type such that no clumps are connected.
 
-        if neighbor_parameter === nothing
-            dists = Float64[]
-            for i = 1:size(data, 2) - 1
-                for j = i+1:size(data, 2)
-                    push!(dists, norm(data[:,i] - data[:, j]))
-                end
-            end
+### Constructors
 
-            radius = mean(dists)
-        else
-            radius = neighbor_parameter
-        end
-        
-        balltree = BallTree(data)
-        idx = inrange(balltree, data, radius, true)
-        idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]
-        connections = Dict(1:n_clumps .=> idx)
-    elseif network_type == "nearest"
-        # each point is considered one of its own nearest neighbors, so have to add 1
-        if neighbor_parameter === nothing
-            k = 2
-        else
-            k = neighbor_parameter + 1
-        end
-        
-        k = min(n_clumps, k)
+`ConnectionsNone()` creates an instance with no connections.
+"""
+mutable struct ConnectionsNone{U<:Integer} <: AbstractConnections
+    connections::Dict{U, Vector{U}}
 
-        data = reshape(@view(ics[2:end]), 2, n_clumps)
-        kdtree = KDTree(data)
-        idx, dists = knn(kdtree, data, k, true)
-        idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]
-        connections = Dict(1:n_clumps .=> idx)
+    function ConnectionsNone()
+        return new{Int64}(Dict(0 => Int64[]))
     end
+end
 
-    return connections
+function form_connections!(con::ConnectionsNone, u::Vector{<:Real})
+    n_clumps = Int64((length(u) - 1)/2)
+
+    con.connections = Dict(1:n_clumps .=> [Int64[] for i = 1:n_clumps])    
+
+    return nothing
+end
+
+"""
+    mutable struct ConnectionsFull
+
+A connection type such that every clump is connected to every other clump.
+
+### Constructors
+
+`ConnectionsFull()` creates an instance with no connections.
+"""
+mutable struct ConnectionsFull{U<:Integer} <: AbstractConnections
+    connections::Dict{U, Vector{U}}  
+    
+    function ConnectionsFull()
+        return new{Int64}(Dict(0 => Int64[]))
+    end
+end
+
+function form_connections!(con::ConnectionsFull, u::Vector{<:Real})
+    n_clumps = Int64((length(u) - 1)/2)
+
+    con.connections = Dict(1:n_clumps .=> [[j for j = 1:n_clumps if j != i] for i = 1:n_clumps])    
+
+    return nothing
+end
+
+"""
+    mutable struct ConnectionsRadius{T}
+
+A connection type such that every clump is connected to every clump within a given radius.
+
+### Fields 
+
+- `radius`: A distance in km such that each clump is connected to every clump whose distance is at most `radius` from it.
+
+### Constructors
+
+`ConnectionsRadius(radius)` creates an instance with no connections.
+"""
+mutable struct ConnectionsRadius{U<:Integer, T<:Real} <: AbstractConnections
+    connections::Dict{U, Vector{U}}  
+    radius::T
+
+    function ConnectionsRadius(radius::Real)
+        @assert radius > 0 "`radius` must be positive"
+
+        return new{Int64, typeof(radius)}(Dict(0 => Int64[]), radius)
+    end
+end
+
+function form_connections!(con::ConnectionsRadius, u::Vector{<:Real})
+    n_clumps = Int64((length(u) - 1)/2)
+    xy = reshape(@view(u[2:end]), 2, n_clumps)
+    
+    balltree = BallTree(xy)
+    idx = inrange(balltree, xy, con.radius, true)
+    idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]
+    con.connections = Dict(1:n_clumps .=> idx) 
+
+    return nothing
+end
+
+"""
+    mutable struct ConnectionsNearest{T}
+
+A connection type such that every clump is connected to a number of its nearest neighbors.
+
+### Fields 
+
+- `neighbors`: The number of nearest neighbors each clump should be connected to.
+
+### Constructors
+
+`ConnectionsNearest(neighbors)` creates an instance with no connections.
+"""
+mutable struct ConnectionsNearest{U<:Integer} <: AbstractConnections
+    connections::Dict{U, Vector{U}}
+    neighbors::U
+
+    function ConnectionsNearest(neighbors::Integer)
+        @assert neighbors >= 0 "`neighbors` must be nonnegative"
+
+        return new{Int64}(Dict(0 => Int64[]), neighbors)
+    end
+end
+
+function form_connections!(con::ConnectionsNearest, u::Vector{<:Real})
+    n_clumps = Int64((length(u) - 1)/2)
+    xy = reshape(@view(u[2:end]), 2, n_clumps)
+
+    k = con.neighbors + 1 # each point is considered one of its own nearest neighbors, so have to add 1     
+    k = min(n_clumps, k) # there can not be more neighbors than there are clumps
+
+    kdtree = KDTree(xy)
+    idx, dists = knn(kdtree, xy, k, true)
+    idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]
+    con.connections = Dict(1:n_clumps .=> idx)
+
+    return nothing
+end
+
+"""
+    mutable struct RaftParameters{T, U, F, C, G}
+
+A container for the parameters defining a raft. Each clump and spring are identical.
+
+### Structure 
+
+`RaftParameters` acts as the parameter container for [`Raft!`](@ref). The solution vector `u` is a vector of length `2n_clumps + 1` 
+such that `u[1]` is an "amount" parameter which controls the growth and death of clumps by biophysical effects. Then, 
+`u[2*i:2*i+1]` for `i = 1:n_clumps` gives the `[x, y]` coordinates of the clump in position `i`.
+
+### Fields
+- `ics`: An [`InitialConditions`](@ref).
+- `clumps`: The [`ClumpParameters`](@ref) shared by each clump in the raft.
+- `springs`: The [`SpringParameters`](@ref) shared by each spring joining the clumps.
+- `n_clumps_tot`: An `Integer` equal to the total number of clumps that have ever existed (i.e. it is at least the number of clumps that exist at any specific time.)
+- `connections`: A subtybe of [`AbstractConnections`](@ref).
+- `loc2label`: A `Dict` such that `loc2label[t]` is itself a `Dict` mapping vector indices to the absolute label of the clump in that location at
+the `i`th time step. For example, `loc2label[t0][j] = j` since, at the initial time `t0`, the `j`th location contains the `j`th clump. If 
+clump 1 dies at some later time `t`, then `loc2label[t][1] = 2`, `loc2label[t][2] = 3` since every clump is shifted by one to the left.
+- `gd_model`: A subtype of [`AbstractGrowthDeathModel`](@ref). Must implement `growths`, `deaths` and `dSdt` callable at the solution vector and current time, 
+i.e. it must be a function `dSdt(u, t)`.
+
+### Constructors 
+
+Use `RaftParameters(; ics, clumps, springs, connections, t0, gd_model)` where `t0` is the initial time of the integration.
+The quantities `n_clumps_tot` and `loc2label` are computed automatically.
+"""
+mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel}
+    ics::InitialConditions{T}
+    clumps::ClumpParameters{T}
+    springs::SpringParameters{F, T}
+    n_clumps_tot::U
+    connections::C
+    loc2label::Dict{T, Dict{U, U}}
+    gd_model::G
+
+    function RaftParameters(;
+        ics::InitialConditions{T},
+        clumps::ClumpParameters{T},
+        springs::SpringParameters{F, T},
+        connections::C,
+        t0::T,
+        gd_model::G) where {T<:Real, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel}
+
+        n_clumps = Int64((length(ics.ics) - 1)/2)
+        loc2label = Dict(t0 => Dict(i => i for i = 1:n_clumps))
+        form_connections!(connections, ics.ics)
+
+        return new{T, Int64, F, C, G}(ics, clumps, springs, n_clumps, connections, loc2label, gd_model)
+    end
+end
+
+function Base.show(io::IO, x::RaftParameters)
+    print(io, "RaftParameters[")
+    show(io, Integer(x.ics[1]))
+    print(io, " Clumps]")
 end

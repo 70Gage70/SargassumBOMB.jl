@@ -34,7 +34,11 @@ include(joinpath(@__DIR__, "biology.jl"))
 export AbstractGrowthDeathModel, ImmortalModel, BrooksModelParameters, brooks_dSdt_clump, brooks_dSdt_raft, BrooksModel
 
 include("raft-parameters.jl")
-export ClumpParameters, SpringParameters, spring_force, RaftParameters, initial_conditions, form_connections
+export ClumpParameters
+export SpringParameters, spring_force 
+export InitialConditions
+export AbstractConnections, ConnectionsNone, ConnectionsFull, ConnectionsRadius, ConnectionsNearest, form_connections!
+export RaftParameters
 
 include("geography.jl")
 export Land

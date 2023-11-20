@@ -41,13 +41,13 @@ export AbstractConnections, ConnectionsNone, ConnectionsFull, ConnectionsRadius,
 export RaftParameters
 
 include("geography.jl")
-export Land
+export Land, callback
 
 include("physics.jl")
 export Raft!, WaterWind!
 
 include("control.jl")
-export n_clumps, clump_i, com, cb_update, cb_connections, kill!, grow!
+export n_clumps, clump_i, com, cb_update, cb_growth_death, cb_connections, kill!, grow!
 
 include("trajectories.jl")
 export Trajectory, time_slice, RaftTrajectory, uniformize, bins
@@ -58,7 +58,6 @@ export default_fig, geo_axis, land!, data_legend!, trajectory!, vector_field_t!,
 include(joinpath(@__DIR__, "..", "plotting", "plotting-itp.jl"))
 export check_land, check_windwater
 
-export callback # constructors for OrdinaryDiffEq.DiscreteCallback, defined in multiple files
 export length, show, iterate # various Base extensions
 
 # initialize interpolants

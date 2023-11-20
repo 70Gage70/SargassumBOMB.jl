@@ -53,6 +53,16 @@ function cb_update(;showprogress::Bool = false)
 end
 
 """
+    cb_growth_death(model::AbstractGrowthDeathModel)
+
+Create a `DiscreteCallback` which updates `integrator.p` at the end of each time step using the 
+[`AbstractGrowthDeathModel`](@ref) in `model`.
+"""
+function cb_growth_death(model::AbstractGrowthDeathModel)
+    return DiscreteCallback(model, model)
+end
+
+"""
     cb_connections()
 
 Create a `DiscreteCallback` which updates `integrator.p.connections` at the end of each time step using [`form_connections`](@ref).

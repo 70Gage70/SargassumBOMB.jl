@@ -33,7 +33,7 @@ export WATER_ITP, WIND_ITP, WAVES_ITP, STOKES_ITP, LAND_ITP, TEMP_ITP, NO3_ITP
 include(joinpath(@__DIR__, "biology.jl"))
 export AbstractGrowthDeathModel, ImmortalModel, BrooksModelParameters, brooks_dSdt_clump, brooks_dSdt_raft, BrooksModel
 
-include("raft_parameters.jl")
+include("raft-parameters.jl")
 export ClumpParameters, SpringParameters, spring_force, RaftParameters, initial_conditions, form_connections
 
 include("geography.jl")

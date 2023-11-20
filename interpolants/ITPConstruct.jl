@@ -106,19 +106,17 @@ function construct_all_itp(;force_preprocess::Bool = false, force_itp::Bool = fa
     end
     STOKES_ITP.x = load(stokes_path, "STOKES_ITP")
 
-
     land_path = joinpath(@__DIR__, "..", "interpolants", "land", "LAND_ITP.jld2")
     if !isfile(land_path) || force_itp
         construct_land_itp()
     end
     LAND_ITP.x = load(land_path, "LAND_ITP")
-        
+
     temp_path = joinpath(@__DIR__, "..", "interpolants", "biology", "TEMP_ITP.jld2")
     if !isfile(temp_path) || force_itp
         construct_temp_itp() 
     end
     TEMP_ITP.x = load(temp_path, "TEMP_ITP")
-
 
     no3_path = joinpath(@__DIR__, "..", "interpolants", "biology", "NO3_ITP.jld2")
     if !isfile(no3_path) || force_itp

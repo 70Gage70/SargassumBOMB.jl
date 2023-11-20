@@ -455,8 +455,7 @@ such that `u[1]` is an "amount" parameter which controls the growth and death of
 - `loc2label`: A `Dict` such that `loc2label[t]` is itself a `Dict` mapping vector indices to the absolute label of the clump in that location at
 the `i`th time step. For example, `loc2label[t0][j] = j` since, at the initial time `t0`, the `j`th location contains the `j`th clump. If 
 clump 1 dies at some later time `t`, then `loc2label[t][1] = 2`, `loc2label[t][2] = 3` since every clump is shifted by one to the left.
-- `gd_model`: A subtype of [`AbstractGrowthDeathModel`](@ref). Must implement `growths`, `deaths` and `dSdt` callable at the solution vector and current time, 
-i.e. it must be a function `dSdt(u, t)`.
+- `gd_model`: A subtype of [`AbstractGrowthDeathModel`](@ref). 
 
 ### Constructors 
 

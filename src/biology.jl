@@ -2,6 +2,13 @@
     abstract type AbstractGrowthDeathModel
 
 The abstract type for growth and death models.
+
+Subtypes must have fields `growths::Vector{<:Integer}`, `deaths::Vector{<:Integer}` and a 
+function `dSdt`. This function must be callable at the solution vector and current time, 
+i.e. it must be a function `dSdt(u, t)` which returns a `Real`.
+
+The first entry in the solution vector is integrated in the sense that `du[1]/dt = dSdt`; 
+this sets the "target" for the number of clumps that are alive or dead.
 """
 abstract type AbstractGrowthDeathModel end 
 
@@ -155,7 +162,6 @@ default logic:
 - When the difference between `u[1]` and the actual number of clumps is at least 1 (call it `δn`), the `δn` clumps with the most 
 extreme values of [`brooks_dSdt_clump`](@ref) are selected. If `δn < 0`, they are killed. If `δn > 0`, then those clumps are chosen 
 as parents in the [`grow!`](@ref) method.
-
 """
 mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, F<:Function} <: AbstractGrowthDeathModel
     params::B

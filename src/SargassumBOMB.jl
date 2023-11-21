@@ -38,7 +38,7 @@ export AbstractLand, NoLand, Land
 
 include("raft-parameters.jl")
 export ClumpParameters
-export SpringParameters, spring_force 
+export SpringParameters, ΔL, spring_force
 export InitialConditions
 export AbstractConnections, ConnectionsNone, ConnectionsFull, ConnectionsRadius, ConnectionsNearest, form_connections!
 export RaftParameters
@@ -83,14 +83,15 @@ PrecompileTools.@compile_workload begin
     land = Land()
     tspan = (0.0, 5.0)
 
-    rp = RaftParameters(;
-    ics = ics,
-    clumps = clumps,
-    springs = springs,
-    connections = connections,
-    t0 = first(tspan),
-    gd_model = gd_model,
-    land = land)
+    rp = RaftParameters(
+        ics = ics,
+        clumps = clumps,
+        springs = springs,
+        connections = connections,
+        t0 = first(tspan),
+        gd_model = gd_model,
+        land = land
+    )
 
     sol = simulate(rp, tspan, showprogress = false)
 end

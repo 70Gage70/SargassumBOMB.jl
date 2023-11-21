@@ -102,6 +102,34 @@ function Base.show(io::IO, x::SpringParameters)
 end
 
 """
+    ΔL(x_range, y_range; ref)
+
+Compute a spring length from a rectangular arrangement of clumps provided by `x_range` and `y_range`. This is the distance between the centers of 
+diagonally-adjacent gridpoints.
+
+If `ref` is provided, the ranges are converted from spherical to equirectangular coordinates. Default `nothing`.
+"""
+function ΔL(x_range::AbstractRange, y_range::AbstractRange; ref::Union{Nothing, EquirectangularReference} = nothing)
+    if ref !== nothing
+        x_range, y_range = sph2xy(x_range, y_range, EQR_DEFAULT)
+    end
+
+    return norm([x_range[1], y_range[1]] - [x_range[2], y_range[2]])
+end
+
+"""
+    ΔL(dist::SargassumDistribution)
+
+Compute a spring length from a `SargassumDistribution`. This is the distance between the centers of 
+diagonally-adjacent gridpoints.
+"""
+function ΔL(dist::SargassumDistribution)
+    p1 = sph2xy(dist.lon[1], dist.lat[1], EQR_DEFAULT)
+    p2 = sph2xy(dist.lon[2], dist.lat[2], EQR_DEFAULT)
+    return norm(p1 - p2)
+end
+
+"""
     spring_force(xy1, xy2, parameters)
 
 Calculate the x and y components of the force on a point particle with coordinates `xy1` 

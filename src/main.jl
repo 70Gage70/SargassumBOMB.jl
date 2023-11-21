@@ -50,3 +50,25 @@ function simulate(
         return RaftTrajectory(sol, rp, EQR_DEFAULT, dt = 0.1)
     end
 end
+
+"""
+    yearmonth2tspan(ym_initial, ym_final; t_extra)
+
+Convert two "yearmonths" (tuples of the form `(year, month)`) into a single tuple `(t_initial, t_final)` suitable for 
+use in [`simulate`](@ref).
+
+The times are meaured with respect to `WATER_ITP.x.time_start`.
+
+### Optional Arguments 
+
+- `t_extra`: An extra number of days added to the initial and final times. Default `(0, 0)`.
+"""
+function yearmonth2tspan(
+    ym_initial::Tuple{Integer, Integer}, 
+    ym_final::Tuple{Integer, Integer}; 
+    t_extra::Tuple{Integer, Integer} = (0, 0))
+    t1 = Day(DateTime(ym_initial...) - WATER_ITP.x.time_start).value |> float
+    t2 = t1 + Day(DateTime(ym_final...) - DateTime(ym_initial...)).value |> float
+
+    return (t1 + t_extra[1], t2 + t_extra[2])
+end

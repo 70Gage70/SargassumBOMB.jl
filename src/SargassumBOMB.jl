@@ -59,7 +59,7 @@ include(joinpath(@__DIR__, "..", "plotting", "plotting-itp.jl"))
 export check_land, check_windwater
 
 include("main.jl")
-export simulate
+export simulate, yearmonth2tspan
 
 export length, show, iterate # various Base extensions
 

@@ -3,6 +3,8 @@
 
 Simulate a Sargassum raft with [`RaftParameters`](@ref) `rp` for a time interval `tspan` and return a [`RaftTrajectory`](@ref).
 
+This function modifies `rp` significantly.x
+
 ### Arguments 
 
 - `rp`: A [`RaftParameters`](@ref) defining the raft.
@@ -15,7 +17,7 @@ Simulate a Sargassum raft with [`RaftParameters`](@ref) `rp` for a time interval
 - `abstol`: The absolute tolerance of integration; default `1e-6`.
 - `reltol`: The relative tolerance of integration; default `1e-6`.
 - `showprogress`: If `true`, print a status indicator of the progress of the integration. Default `true`.
-`return_raw`: If true, return the result of `OrdinaryDiffEq.solve`, rather than a [`RaftTrajectory`](@ref). Use this if you would
+- `return_raw`: If true, return the result of `OrdinaryDiffEq.solve`, rather than a [`RaftTrajectory`](@ref). Use this if you would
     like to manipulate the solution directly. Default `false`.
 """
 function simulate(
@@ -25,7 +27,7 @@ function simulate(
     alg::OrdinaryDiffEq.OrdinaryDiffEqAlgorithm = Tsit5(),
     abstol::Real = 1e-6,
     reltol::Real = 1e-6,
-    showprogress = true,
+    showprogress::Bool = true,
     return_raw::Bool = false)
 
     @assert tspan[1] < tspan[2] "initial time must be less than final time"

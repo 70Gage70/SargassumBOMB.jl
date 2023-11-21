@@ -41,11 +41,6 @@ function (model::ImmortalModel)(integrator)
     return nothing
 end
 
-# callback 
-function callback(model::ImmortalModel)
-    return DiscreteCallback(model, model)
-end
-
 function Base.show(io::IO, x::ImmortalModel)
     print(io, "ImmortalModel")
 end
@@ -108,6 +103,20 @@ struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real}
     end
 end
 
+function Base.show(io::IO, x::BrooksModelParameters)
+    println(io, "BrooksModelParameters")
+    println(io, " temp = TEMP_ITP.x")
+    println(io, " no3 = NO3_ITP.x")
+    println(io, " μ_max = $(x.μ_max)")
+    println(io, " m = $(x.m)")
+    println(io, " I_k = $(x.I_k)")
+    println(io, " a_ref = $(x.a_ref)")
+    println(io, " k_N = $(x.k_N)")
+    println(io, " T_ref = $(x.T_ref)")
+    println(io, " z_max = $(x.z_max)")
+    println(io, " clumps_limits = $(x.clumps_limits)")
+end
+
 """
     brooks_dSdt_clump(x, y, t; params::BrooksModelParameters, n_clumps)
 
@@ -155,7 +164,7 @@ Use `BrooksModel(;params = BrooksModelParameters(TEMP_ITP, NO3_ITP), verbose = f
 
 ### Callbacks
 
-Use `callback(model::BrooksModel)` to create a `DiscreteCallback` suitable for use with `OrdinaryDiffEq.solve`. At each time step, the 
+Use [`cb_growth_death`](@ref) to create a `DiscreteCallback` suitable for use with `OrdinaryDiffEq.solve`. At each time step, the 
 value of `dSdt` is evaluated and clumps are grown with [`grow!`](@ref) and killed with [`kill!`](@ref) according to the following 
 default logic:
 
@@ -229,7 +238,6 @@ function (model::BrooksModel)(integrator)
     return nothing
 end
 
-# callback 
-function callback(brooks::BrooksModel)
-    return DiscreteCallback(brooks, brooks)
+function Base.show(io::IO, x::BrooksModel)
+    print(io, "BrooksModel")
 end

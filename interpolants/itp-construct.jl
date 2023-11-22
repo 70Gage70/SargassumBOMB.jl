@@ -18,49 +18,49 @@ include(joinpath(@__DIR__, "waves", "itp-construct.jl"))
 """
     const WATER_ITP
 
-The interpolant for ocean currents. 
+The interpolant for ocean currents. This is a `Ref`, access or modify the actual interpolant with `WATER_ITP.x`.
 """
 const WATER_ITP = Ref{InterpolatedField}()
 
 """
     const WIND_ITP
 
-The interpolant for wind speed. 
+The interpolant for wind speed. This is a `Ref`, access or modify the actual interpolant with `WIND_ITP.x`.
 """
 const WIND_ITP = Ref{InterpolatedField}()
 
 """
     const WAVES_ITP
 
-The interpolant for wave height. 
+The interpolant for wave height. This is a `Ref`, access or modify the actual interpolant with `WAVES_ITP.x`.
 """
 const WAVES_ITP = Ref{InterpolatedField}()
 
 """
     const STOKES_ITP
 
-The interpolant for Stokes drift velocity.
+The interpolant for Stokes drift velocity. This is a `Ref`, access or modify the actual interpolant with `STOKES_ITP.x`.
 """
 const STOKES_ITP = Ref{InterpolatedField}()
 
 """
     const LAND_ITP
 
-The interpolant for landmass location.
+The interpolant for landmass location. This is a `Ref`, access or modify the actual interpolant with `LAND_ITP.x`.
 """
 const LAND_ITP = Ref{InterpolatedField}()
 
 """
     const TEMP_ITP
 
-The interpolant for ocean temperature.
+The interpolant for ocean temperature. This is a `Ref`, access or modify the actual interpolant with `TEMP_ITP.x`.
 """
 const TEMP_ITP = Ref{InterpolatedField}()
 
 """
     const NO3_ITP
 
-The interpolant for ocean nitrogen content.
+The interpolant for ocean nitrogen content. This is a `Ref`, access or modify the actual interpolant with `NO3_ITP_ITP.x`.
 """
 const NO3_ITP = Ref{InterpolatedField}()
 

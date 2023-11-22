@@ -8,6 +8,10 @@ const T_END_ITP = DateTime(2018, 12, 31)
 
 """
     preprocess_all()
+
+Compute all the preprocessed `.mat` files from raw data. Any preexisting `.mat` files will be replaced.
+
+Generally, [`construct_all_itp`](@ref) should be used instead of this function.
 """
 function preprocess_all()
     raw_path = joinpath(@__DIR__, "..", "raw")

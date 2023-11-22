@@ -64,9 +64,9 @@ A container for the interpolants and parameters of the model of [Brooks et al. (
 - `k_N` [mmol N/m^3]: Sargassum nutrient (N) uptake half saturation. Value: `0.012`
 - `T_ref` [°C]: Minimum temperature for Sargassum growth. Value: `18.0`
 - `z_max` [m]: Maximum depth before Sargassum buoyancy is compromised. Value: `120.0`.
-- `clumps_limits`: A `Tuple` of the form `(n_clumps_min, n_clumps_max)`. These impose hard lower 
-and upper limits on the total number of clumps that can exist at any specific time (the total number 
-of clumps that can have ever existed - i.e. `n_clumps_tot` of [`RaftParameters`](@ref) - may be higher.) Default: `(0, 500)`.
+- `clumps_limits`: A `Tuple` of the form `(n_clumps_min, n_clumps_max)`. These impose hard lower \
+and upper limits on the total number of clumps that can exist at any specific time (the total number \
+of clumps that can have ever existed - i.e. `n_clumps_tot` of [`RaftParameters`](@ref) - may be higher.) Default: `(0, 10000)`.
 
 ### Constructors 
 
@@ -95,7 +95,7 @@ struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real}
         k_N::Real = 0.012,
         T_ref::Real = 18.0,
         z_max::Real = 120.0,
-        clumps_limits::Tuple{Integer, Integer} = (0, 500))
+        clumps_limits::Tuple{Integer, Integer} = (0, 10000))
 
         μ_max, m, I_k, a_ref, k_N, T_ref, z_max = promote(μ_max, m, I_k, a_ref, k_N, T_ref, z_max)
     
@@ -168,8 +168,8 @@ Use [`cb_growth_death`](@ref) to create a `DiscreteCallback` suitable for use wi
 value of `dSdt` is evaluated and clumps are grown with [`grow!`](@ref) and killed with [`kill!`](@ref) according to the following 
 default logic:
 
-- When the difference between `u[1]` and the actual number of clumps is at least 1 (call it `δn`), the `δn` clumps with the most 
-extreme values of [`brooks_dSdt_clump`](@ref) are selected. If `δn < 0`, they are killed. If `δn > 0`, then those clumps are chosen 
+- When the difference between `u[1]` and the actual number of clumps is at least 1 (call it `δn`), the `δn` clumps with the most \
+extreme values of [`brooks_dSdt_clump`](@ref) are selected. If `δn < 0`, they are killed. If `δn > 0`, then those clumps are chosen \
 as parents in the [`grow!`](@ref) method.
 """
 mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, F<:Function} <: AbstractGrowthDeathModel

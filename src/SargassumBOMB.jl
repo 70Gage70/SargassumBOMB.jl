@@ -26,8 +26,8 @@ export EquirectangularReference, EQR_DEFAULT, sph2xy, xy2sph
 include(joinpath(@__DIR__, "..", "interpolants", "itp-core.jl"))
 export GriddedField, InterpolatedField, interpolate, add_derivatives, reduce_vector_to_range, rata2datetime_minute
 
-include(joinpath(@__DIR__, "..", "interpolants", "ITPConstruct.jl"))
-export construct_all_itp
+include(joinpath(@__DIR__, "..", "interpolants", "itp-construct.jl"))
+export preprocess_all, construct_all_itp
 export WATER_ITP, WIND_ITP, WAVES_ITP, STOKES_ITP, LAND_ITP, TEMP_ITP, NO3_ITP
 
 include(joinpath(@__DIR__, "biology.jl"))

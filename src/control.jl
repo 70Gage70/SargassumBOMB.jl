@@ -75,7 +75,7 @@ end
 """
     cb_connections()
 
-Create a `DiscreteCallback` which updates `integrator.p.connections` at the end of each time step using [`form_connections`](@ref).
+Create a `DiscreteCallback` which updates `integrator.p.connections` at the end of each time step using its `form_connections!` method.
 
 This should be the last callback in a `CallbackSet`.
 """

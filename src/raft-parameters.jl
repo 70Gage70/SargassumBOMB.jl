@@ -26,7 +26,7 @@ end
 
 Compute the parameters required for the BOM equations from physical constants.
 
-### Arguments [units]
+### Arguments
 
 - `ref`: The `EquirectangularReference` with which the projection is defined.
 - `δ` []: The bouancy of the particle. Default: `1.25`.
@@ -337,7 +337,7 @@ between clumps `idx` and `[i1, i2, ...]`. This should be updated in-place as clu
 only shows the current connections and refers to vector indices, not absolute clump labels.
 
 Every subtype of `AbstractConnections` should implement a `form_connections!(con::Connections, u)` method which
-updates `con.connections` in place and returns `nothing`.
+updates `con.connections` in place with the solution vector `u` and returns `nothing`.
 """
 abstract type AbstractConnections end
 

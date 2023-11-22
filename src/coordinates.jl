@@ -18,7 +18,8 @@ end
 """
     EquirectangularReference(; lon0, lat0)
 
-Construct an `EquirectangularReference` with longitude `lon0` in degrees (East/West), latitude `lat0` in degrees (North/South) and with the radius of the Earth `R` (default 6371 km.)
+Construct an `EquirectangularReference` with longitude `lon0` in degrees (East/West), 
+latitude `lat0` in degrees (North/South) and with the radius of the Earth `R` (default 6371 km.)
 """
 function EquirectangularReference(; lon0::Real, lat0::Real, R::Real = 6371.0)
     @assert -180.0 <= lon0 <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
@@ -36,9 +37,10 @@ end
 The default [`EquirectangularReference`](@ref) for the tropical Atlantic.
 
 ### Fields
--`lon0`: -75.0 degrees
--`lat0`: 10.0 degrees
--`R`: 6731 km (default)
+
+- `lon0`: -75.0 degrees
+- `lat0`: 10.0 degrees
+- `R`: 6731 km (default)
 """
 const EQR_DEFAULT = EquirectangularReference(lon0 = -75.0, lat0 = 10.0)
 

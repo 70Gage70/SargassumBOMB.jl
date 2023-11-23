@@ -12,6 +12,7 @@ makedocs(
         "Introduction" => "index.md",
         "First Steps" => "first-steps.md",
         "Interpolants" => "interpolants.md",
+        "Theory" => "theory.md",
         "API" => "api.md",
         "Syntax" => "syntax.md"
     ]

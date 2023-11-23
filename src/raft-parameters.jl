@@ -505,16 +505,16 @@ mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConne
     land::L
 
     function RaftParameters(;
+        t0::Real,
         ics::InitialConditions{T},
         clumps::ClumpParameters{T},
         springs::SpringParameters{F, T},
         connections::C,
-        t0::T,
         gd_model::G,
         land::L) where {T<:Real, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
 
         n_clumps = Int64((length(ics.ics) - 1)/2)
-        loc2label = Dict(t0 => Dict(i => i for i = 1:n_clumps))
+        loc2label = Dict(T(t0) => Dict(i => i for i = 1:n_clumps))
         form_connections!(connections, ics.ics)
 
         return new{T, Int64, F, C, G, L}(ics, clumps, springs, n_clumps, connections, loc2label, gd_model, land)

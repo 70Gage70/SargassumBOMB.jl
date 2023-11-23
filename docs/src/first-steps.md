@@ -102,6 +102,36 @@ And run our simulation,
 rtr = simulate(rp)
 ```
 
+The output of `simulate` is, by default, a [`RaftParameters`](@ref) object, which neatly organizes all of the individual clump trajectories including the possibilities that some clumps grow and die at arbitrary times.
+
+Finally, we can quickly visualize our trajectory using the [`geo_axis!`](@ref), [`trajectory!`](@ref) and [`land!`](@ref) functions. These integrate into the `Makie` ecosystem; we'll use `Makie` and `CairoMakie` to quickly examine the trajectories.
+If these packages aren't in your environment, run
+
+```julia
+import Pkg
+Pkg.add(Makie)
+Pkg.add(CairoMakie)
+```
+
+We can then make our plots
+
+```julia
+using Makie, CairoMakie
+
+fig = default_fig()
+
+limits = (-100, -40, 5, 35)
+ax = geo_axis(fig[1, 1], limits = limits, title = L"\mathrm{First Steps}")
+
+trajectory!(ax, rtr)
+
+land!(ax)
+
+fig
+```
+
+### TODO: ADD FIGURE
+
 ## Copy-pastable Code
 
 ```julia
@@ -139,21 +169,18 @@ rp = RaftParameters(
 
 rtr = simulate(rp)
 
-###################################################################### Plotting
+### plotting
 
-# fig = default_fig()
+using Makie, CairoMakie
 
-# limits = (-100, -40, 5, 35)
-# ax = geo_axis(fig[1, 1], limits = limits, title = L"\mathrm{Test}")
+fig = default_fig()
 
-# trajectory!(ax, rtr)
+limits = (-100, -40, 5, 35)
+ax = geo_axis(fig[1, 1], limits = limits, title = L"\mathrm{First Steps}")
 
-# # trajectory_hist!(ax, rtr, dist)
+trajectory!(ax, rtr)
 
-# # rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
-# # trajectory_hist!(ax, rtr_dt_initial, dist)
+land!(ax)
 
-# land!(ax)
-
-# fig
+fig
 ```

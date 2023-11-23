@@ -478,6 +478,7 @@ such that `u[1]` is an "amount" parameter which controls the growth and death of
 `u[2*i:2*i+1]` for `i = 1:n_clumps` gives the `[x, y]` coordinates of the clump in position `i`.
 
 ### Fields
+- `tspan`: A `Tuple{Real, Real}` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is in days.
 - `ics`: An [`InitialConditions`](@ref).
 - `clumps`: The [`ClumpParameters`](@ref) shared by each clump in the raft.
 - `springs`: The [`SpringParameters`](@ref) shared by each spring joining the clumps.
@@ -491,10 +492,11 @@ clump 1 dies at some later time `t`, then `loc2label[t][1] = 2`, `loc2label[t][2
 
 ### Constructors 
 
-Use `RaftParameters(; ics, clumps, springs, connections, t0, gd_model, land)` where `t0` is the initial time of the integration.
+Use `RaftParameters(; tspan, ics, clumps, springs, connections, gd_model, land)`.
 The quantities `n_clumps_tot` and `loc2label` are computed automatically.
 """
 mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
+    tspan::Tuple{T, T}
     ics::InitialConditions{T}
     clumps::ClumpParameters{T}
     springs::SpringParameters{F, T}
@@ -505,7 +507,7 @@ mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConne
     land::L
 
     function RaftParameters(;
-        t0::Real,
+        tspan::Tuple{Real, Real},
         ics::InitialConditions{T},
         clumps::ClumpParameters{T},
         springs::SpringParameters{F, T},
@@ -513,11 +515,14 @@ mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConne
         gd_model::G,
         land::L) where {T<:Real, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
 
+        @assert tspan[1] < tspan[2] "initial time must be less than final time"
+
+        tspan_prom = (T(tspan[1]), T(tspan[2]))
         n_clumps = Int64((length(ics.ics) - 1)/2)
-        loc2label = Dict(T(t0) => Dict(i => i for i = 1:n_clumps))
+        loc2label = Dict(tspan_prom[1] => Dict(i => i for i = 1:n_clumps))
         form_connections!(connections, ics.ics)
 
-        return new{T, Int64, F, C, G, L}(ics, clumps, springs, n_clumps, connections, loc2label, gd_model, land)
+        return new{T, Int64, F, C, G, L}(tspan_prom, ics, clumps, springs, n_clumps, connections, loc2label, gd_model, land)
     end
 end
 

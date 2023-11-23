@@ -1,14 +1,13 @@
 """
-    simulate(rp, tspan; rhs, alg, abstol, reltol, return_raw)
+    simulate(raft_parameters; rhs, alg, abstol, reltol, return_raw)
 
-Simulate a Sargassum raft with [`RaftParameters`](@ref) `rp` for a time interval `tspan` and return a [`RaftTrajectory`](@ref).
+Simulate a Sargassum raft with [`RaftParameters`](@ref) `raft_parameters` for a time interval `tspan` and return a [`RaftTrajectory`](@ref).
 
-This function modifies `rp` significantly.x
+This function modifies `raft_parameters` significantly.
 
 ### Arguments 
 
-- `rp`: A [`RaftParameters`](@ref) defining the raft.
-- `tspan`: A `Tuple{Real, Real}` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is in days.
+- `raft_parameters`: A [`RaftParameters`](@ref) defining the raft.
 
 ### Optional Arguments
 
@@ -21,8 +20,7 @@ This function modifies `rp` significantly.x
     like to manipulate the solution directly. Default `false`.
 """
 function simulate(
-    rp::RaftParameters, 
-    tspan::Tuple{Real, Real}; 
+    rp::RaftParameters; 
     rhs::Function = Raft!,
     alg::OrdinaryDiffEq.OrdinaryDiffEqAlgorithm = Tsit5(),
     abstol::Real = 1e-6,
@@ -30,9 +28,7 @@ function simulate(
     showprogress::Bool = true,
     return_raw::Bool = false)
 
-    @assert tspan[1] < tspan[2] "initial time must be less than final time"
-
-    prob_raft = ODEProblem(rhs, rp.ics.ics, tspan, rp)
+    prob_raft = ODEProblem(rhs, rp.ics.ics, rp.tspan, rp)
 
     sol = solve(
         prob_raft, 

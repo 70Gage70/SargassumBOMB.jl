@@ -84,16 +84,16 @@ PrecompileTools.@compile_workload begin
     tspan = (0.0, 5.0)
 
     rp = RaftParameters(
+        tspan = tspan,
         ics = ics,
         clumps = clumps,
         springs = springs,
         connections = connections,
-        t0 = first(tspan),
         gd_model = gd_model,
         land = land
     )
 
-    sol = simulate(rp, tspan, showprogress = false)
+    sol = simulate(rp, showprogress = false)
 end
 
 end # module

@@ -9,9 +9,11 @@ makedocs(
     checkdocs = :export,
     warnonly = true,
     pages = [
-        "Home" => "index.md",
+        "Introduction" => "index.md",
+        "First Steps" => "first-steps.md",
         "Interpolants" => "interpolants.md",
-        "API" => "api.md"
+        "API" => "api.md",
+        "Syntax" => "syntax.md"
     ]
 )
 

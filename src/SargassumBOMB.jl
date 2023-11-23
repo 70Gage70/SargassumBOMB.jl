@@ -76,7 +76,7 @@ end
 
 PrecompileTools.@compile_workload begin
     ics = InitialConditions(range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5), ref = EQR_DEFAULT)
-    clumps = ClumpParameters(EQR_DEFAULT)
+    clumps = ClumpParameters()
     springs = SpringParameters(k -> 0.1, 100.0)
     connections = ConnectionsNearest(10)
     gd_model = BrooksModel()

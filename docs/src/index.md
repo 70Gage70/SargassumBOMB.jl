@@ -38,6 +38,8 @@ At the highest level, floating *Sargassum* is modeled as a series of atomic "clu
 
 A significant number of [interpolants](interpolants) are required; these are constructed from raw datasets measuring various parameters in the ocean and atmosphere. SargassumBOMB comes with data covering the year 2018 and adding custom interpolants for other quantities and times is possible. 
 
-SargassumBOMB comes with plotting functionality for trajectories and distributions provided by Julia's [Makie](https://docs.makie.org/stable/) ecosystem.
+Plotting functionality for trajectories and distributions is provided by Julia's [Makie](https://docs.makie.org/stable/) ecosystem.
+
+SargassumBOMB integrates with the related Julia package [SargassumFromAFAI](https://github.com/70Gage70/SargassumFromAFAI.jl) to easily simulate trajectories which start from real (observed) *Sargassum* distributions.
 
 

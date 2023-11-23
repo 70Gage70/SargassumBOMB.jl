@@ -22,13 +22,13 @@ struct ClumpParameters{T<:Real}
 end
 
 """
-    ClumpParameters(ref; constants...)
+    ClumpParameters(; constants...)
 
 Compute the parameters required for the BOM equations from physical constants.
 
 ### Arguments
 
-- `ref`: The `EquirectangularReference` with which the projection is defined.
+- `ref`: The `EquirectangularReference` with which the projection is defined. Default [`EQR_DEFAULT`](@ref).
 - `δ` []: The bouancy of the particle. Default: `1.25`.
 - `a` [km]: The radius of the particle. Default: `1.0e-4`.
 - `ρ` [kg/km^3]: The density of the water. Default: `1027.0e9`.
@@ -38,8 +38,8 @@ Compute the parameters required for the BOM equations from physical constants.
 - `Ω` [rad/d]: The angular velocity of the Earth. Default: `2π`.
 - β []: The Stokes drift parameter. Default: `0.0`.
 """
-function ClumpParameters(
-    ref::EquirectangularReference;
+function ClumpParameters(;
+    ref::EquirectangularReference = EQR_DEFAULT,
     δ::Real = 1.25,
     a::Real = 1.0e-4,
     ρ::Real = 1027.0e9,

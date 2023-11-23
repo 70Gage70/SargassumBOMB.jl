@@ -137,7 +137,7 @@ function integrate_bomb(bop::BOMBOptimizationProblem; type::String = "val")
     ics = initial_conditions(dist, [1], bop.n_levels, "levels", EQR_DEFAULT)
 
     # CLUMPS
-    cp = ClumpParameters(EQR_DEFAULT, 
+    cp = ClumpParameters( 
         δ = δ, 
         a = a,
         β = β)

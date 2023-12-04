@@ -16,8 +16,8 @@ This function modifies `raft_parameters` significantly.
 - `abstol`: The absolute tolerance of integration; default `1e-6`.
 - `reltol`: The relative tolerance of integration; default `1e-6`.
 - `showprogress`: If `true`, print a status indicator of the progress of the integration. Default `true`.
-- `return_raw`: If true, return the result of `OrdinaryDiffEq.solve`, rather than a [`RaftTrajectory`](@ref). Use this if you would
-    like to manipulate the solution directly. Default `false`.
+- `return_raw`: If true, return the result of `OrdinaryDiffEq.solve`, rather than a [`RaftTrajectory`](@ref). \
+Use this if you would like to manipulate the solution directly. Default `false`.
 """
 function simulate(
     rp::RaftParameters; 

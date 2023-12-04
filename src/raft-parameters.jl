@@ -228,20 +228,20 @@ end
 """
     InitialConditions(dist, number, sample_type, ref)
 
-Construct [`RaftParameters`](@ref) from a `SargassumDistribution`.
+Construct [`InitialConditions`](@ref) from a `SargassumDistribution`.
 
 ### Arguments 
 - `dist`: A `SargassumDistribution`.
 - `weeks`: A `Vector{<:Integer}` giving the weeks of the month to consider. Each entry should be between 1 and 4 and appear only once.
 - `number`: The number of clumps to initialize; interactive with `sample_type` and should be at least `1`.
 - `sample_type`: A `String` identifying one of the methods of assigning clump locations based on the distribution.
+    - `"levels"`: Boxes with nonzero Sargassum are divided into `number` levels of size `(minimum(dist.sargassum) - maximum(dist.sargassum))/number`.
+    Each box gets a number of clumps equal to its level index. For example, if `number = 2`, then the smaller half of the boxes (by Sargassum content) 
+    get 1 clump each and the larger half get 2 clumps each.
     - `"sample"`: A number `number` of samples are drawn from `dist`. Each sample is placed uniformly at random inside the corresponding box.
     - `"sorted"`: Boxes are filled with one clump placed uniformly at random inside them, starting from the box with the highest concentration. If `number` 
                 is greater than the total number of boxes, repeat the loop starting again from the highest concentration box.
     - `"uniform"`: Exactly one clump is placed in the center of each box with nonzero concentration. Note that this ignores `number`.
-    - `"levels"`: Boxes with nonzero Sargassum are divided into `number` levels of size `(minimum(dist.sargassum) - maximum(dist.sargassum))/number`.
-                Each box gets a number of clumps equal to its level index. For example, if `number = 2`, then the smaller half of the boxes (by Sargassum content) 
-                get 1 clump each and the larger half get 2 clumps each.
 - `ref`: An [`EquirectangularReference`](@ref). A `SargassumDistribution` has fields `lon` and `lat`, so this is necessary to 
                 covert these to equirectangular coordinates.
 """

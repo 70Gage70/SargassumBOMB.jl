@@ -20,6 +20,9 @@ using GeoMakie, GeoMakie.GeoJSON, GeoDatasets, GeoInterface
 using Crayons.Box
 using Latexify
 
+# optimization 
+using Surrogates
+
 include("coordinates.jl")
 export EquirectangularReference, EQR_DEFAULT, sph2xy, xy2sph
 
@@ -60,6 +63,9 @@ export check_land, check_windwater
 
 include("main.jl")
 export simulate, yearmonth2tspan
+
+include("optimization.jl")
+export OPTIMIZATION_PARAMETER_NAMES, LossFunction, LOSS_L1, LOSS_COR, OptimizationParameter, BOMBOptimizationProblem, loss
 
 export length, show, iterate # various Base extensions
 

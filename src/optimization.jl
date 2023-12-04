@@ -1,12 +1,23 @@
-include(joinpath(@__DIR__, "SargassumBOMB.jl"))
+"""
+    const OPTIMIZATION_PARAMETER_NAMES
 
-using Surrogates
-############################
+A `Vector` of `String`s giving the names of all the parameters it is possible to optimize by default.
 
-isdefined(@__MODULE__, :OPTIMIZATION_PARAMETER_NAMES) || (const OPTIMIZATION_PARAMETER_NAMES = ["δ", "a", "σ", "A_spring", "μ_max", "m", "k_N"])
+Equal to `["δ", "a", "σ", "A_spring", "μ_max", "m", "k_N"]`.
+"""
+const OPTIMIZATION_PARAMETER_NAMES = ["δ", "a", "σ", "A_spring", "μ_max", "m", "k_N"]
 
 """
     struct LossFunction
+
+A container for a function used for measuring the distance between two binned histograms for \
+optimization. 
+
+### Fields 
+
+- `f`: A `Function`. This function must be callable as `f(a, b)`, where `a` and `b` are matrices and it \
+must return a `Real` such that `f(a, a) = 0.0`. Example: `(a, b) -> sum((a - b) .^ 2)`.
+- `name`: A `String` giving the name of the loss function, e.g. `"L1"`.
 """
 struct LossFunction
     f::Function
@@ -32,11 +43,39 @@ struct LossFunction
     end
 end
 
-const LOSS_COR = LossFunction(f = (a::Matrix, b::Matrix) -> -cor(vec(a), vec(b)), name = "-COR")
+"""
+    const LOSS_L1
+
+A `LossFunction` for the L1 norm.
+"""
 const LOSS_L1 = LossFunction(f = (a::Matrix, b::Matrix) -> sum((a - b) .^ 2) , name = "L1")
 
 """
+    const LOSS_COR
+
+A `LossFunction` for the negative correlation.
+"""
+const LOSS_COR = LossFunction(f = (a::Matrix, b::Matrix) -> -cor(vec(a), vec(b)), name = "-COR")
+
+"""
     mutable struct OptimizationParameter{T}
+
+A container for the data, values and bounds for a parameter to be optimized.
+
+### Fields 
+
+- `name`: A `String` with the name of the parameter, must be one of [`OPTIMIZATION_PARAMETER_NAMES`](@ref).
+- `default`: The default (starting) value of the parameter.
+- `bounds`: A `Tuple` giving the upper and lower bounds of the parameter.
+- `val`: A current value of the parameter.
+- `opt`: A optimal value of the parameter.
+- `optimizable`: A `Bool` such that, if `false`, the parameter will not be optimized away from its default value.
+
+### Constructor
+
+Use 
+
+`OptimizationParameter(name, default, bounds, optimizable; val = nothing, opt = nothing)`
 """
 mutable struct OptimizationParameter{T<:Real} 
     name::String
@@ -66,9 +105,35 @@ mutable struct OptimizationParameter{T<:Real}
     end
 end
 
-
 """
     mutable struct BOMBOptimizationProblem{T, U}
+
+A container for all the data defining an optimization problem.
+
+### Fields 
+
+- `params`: A `Dict` mapping each element of `[OPTIMIZATION_PARAMETER_NAMES](@ref)` to an [`OptimizationParameter`](@ref) \
+that contains it.
+- `rhs`: The `Function` to integrate, generally should be [`Raft!`](@ref), but [`WaterWind!`] can be used \
+for testing purposes.
+- `immortal`: A `Bool` such that if `true`, the [`ImmortalModel`](@ref) will be used, resulting in no clump \
+growths or deaths.
+- `tspan`: A `Tuple` of the form `((year1, month1), (year2, month2))` giving the integration time span.
+- `n_levels`: The number of levels to be used in the [`InitialConditions`](@ref) for the `SargassumDistribution`. \
+The more levels, the more clumps initially exist.
+- `t_extra`: A number of extra days to add to the integration at the end.
+- `loss_func`: The [`LossFunction`](@ref) used during the optimization.
+- `opt`: The minimal [`LossFunction`](@ref) obtained. If `nothing`, the problem is considered unoptimized.
+- `seed`: A `Random.seed!` used in the integration.
+
+### Constructor
+
+Use 
+
+`BOMBOptimizationProblem(; kwargs...)` where each field has a named kwarg.
+
+If not provided, `loss_func` defaults to [`LOSS_COV`](@ref) and `seed` defaults to `1234`. In general, 
+`opt` should not be provided directly but it can be to bypass certain checks.
 """
 mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
     params::Dict{String, OptimizationParameter{T}}
@@ -77,174 +142,120 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
     tspan::Tuple{Tuple{U, U}, Tuple{U, U}}
     n_levels::U
     t_extra::U
-    opt::Union{Nothing, T}
     loss_func::LossFunction
+    opt::Union{Nothing, T}
     seed::U
 
     function BOMBOptimizationProblem(;
-        params::Vector{<:OptimizationParameter{T}},
+        params::Dict{String, OptimizationParameter{T}},
         rhs::Function,
         immortal::Bool,
         tspan::Tuple{Tuple{U, U}, Tuple{U, U}},
         n_levels::U,
         t_extra::U,
-        opt::Union{Nothing, T} = nothing,
         loss_func::LossFunction = LOSS_COV,
+        opt::Union{Nothing, T} = nothing,
         seed::U = 1234) where {T<:Real, U<:Integer}
 
         @assert length(params) > 0 "Must optimize at least one parameter."
         @assert rhs in [Raft!, WaterWind!]
         @assert DateTime(first(tspan)...) < DateTime(last(tspan)...)
-        @assert allunique([param.name for param in params]) "Each parameter can only appear once."
         @assert n_levels > 0 "Need at least one level"
 
-        params_dict = Dict(param.name => param for param in params)
-
-        return new{T, U}(params_dict, rhs, immortal, tspan, n_levels, t_extra, opt, loss_func, seed)
+        return new{T, U}(params, rhs, immortal, tspan, n_levels, t_extra, loss_func, opt, seed)
     end
 end
 
 """
-    integrate_bomb(bop::BOMBOptimizationProblem; type::String)
+    simulate(bop::BOMBOptimizationProblem)
+
+Integrate `bop` by constructing the [`RaftParameters`](@ref) implied by its fields using [`simulate(::RaftParameters)`](@ref).
 """
-function integrate_bomb(bop::BOMBOptimizationProblem; type::String = "val")
-    seed!(bop.seed)
+function simulate(bop::BOMBOptimizationProblem)
+    δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
 
-    @assert type in ["val", "default", "opt"]
-    if type == "opt"
-        @assert bop.opt !== nothing "BOMBOptimizationProblem must be optimized to use optimal values."
-    end
-
-    initial_time = first(bop.tspan)
-    final_time = last(bop.tspan)
-    if type == "val"
-        δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
-    elseif type == "default"
-        δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
-    elseif type == "opt"
-        δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
-    end
-
-    # TIME
-    tstart = Day(DateTime(initial_time...) - DateTime(yearmonth(water_itp.time_start)...)).value |> float
-    tend = tstart + Day(DateTime(final_time...) - DateTime(initial_time...)).value + bop.t_extra
-    tspan = (tstart, tend)
-
-    @assert tend > tstart "t_extra too negative"
-
-    # ICS
-    dist = DISTS_2018[initial_time]
-    ics = initial_conditions(dist, [1], bop.n_levels, "levels", EQR_DEFAULT)
-
-    # CLUMPS
-    cp = ClumpParameters( 
-        δ = δ, 
-        a = a,
-        σ = σ)
-
-    # SPRINGS
-    p1 = sph2xy(dist.lon[1], dist.lat[1], EQR_DEFAULT)
-    p2 = sph2xy(dist.lon[2], dist.lat[2], EQR_DEFAULT)
-    ΔL = norm(p1 - p2)
+    # time
+    start_date, end_date = bop.tspan
+    dist = SargassumDistribution(SargassumFromAFAI.EXAMPLE_DIST_2018)[start_date]
+    tspan = yearmonth2tspan(start_date, end_date, t_extra = (0, bop.t_extra))
     
-    # k10 = 2*ΔL
-    # L_spring = k10/5
-    # function spring_k(x::Real; A::Real = A_spring, k10::Real = k10)
-    #     return A * (5/k10) * x * exp(1 - (5/k10)*x)
-    # end
-    # sp = SpringParameters(spring_k, L_spring)
-
-    function spring_k(x::Real; A::Real = A_spring)
-        return A
+    # clumps
+    clumps = ClumpParameters(δ = δ, a = a, σ = σ)
+    
+    # springs
+    L_spring = ΔL(dist)
+    function spring_k(x::Real; A::Real = A_spring, L::Real = L_spring)
+        return A_spring * (exp((x - 2*L)/0.2) + 1)^(-1)
     end
-    sp = SpringParameters(spring_k, ΔL)
 
-    # CONNECTIONS
-    nw_type = "nearest"
-    n_conn = 10
-    icons = form_connections(ics, nw_type, neighbor_parameter = n_conn)
-
-    # BIOLOGY
+    springs = SpringParameters(spring_k, L_spring)
+    
+    # growth-death
     if bop.immortal
-        gdm = ImmortalModel()
+        gd_model = ImmortalModel()
     else
-        bmp = BrooksModelParameters(TEMP_ITP.x, NO3_ITP.x, clumps_limits = (0, 2000), 
+        bmp = BrooksModelParameters(TEMP_ITP.x, NO3_ITP.x, 
             μ_max = μ_max,
             m = m,
             k_N = k_N)
-        gdm = BrooksModel(params = bmp)
+        gd_model = BrooksModel(params = bmp)
     end
-
+    
+    # initial conditions
+    ics = InitialConditions(dist, [1], bop.n_levels, "levels", EQR_DEFAULT)
+    
+    # connections
+    connections = ConnectionsNearest(10)
+    
+    # land
     land = Land()
-
+    
+    # integrating
+    
     rp = RaftParameters(
+        tspan = tspan,
         ics = ics,
-        clumps = cp,
-        springs = sp,
-        connections = icons,
-        t0 = first(tspan),
-        gd_model = gdm
+        clumps = clumps,
+        springs = springs,
+        connections = connections,
+        gd_model = gd_model,
+        land = land
     )
-
-    prob = ODEProblem(bop.rhs, rp.ics, tspan, rp)
-
-    sol = solve(
-        prob, 
-        Tsit5(), abstol = 1e-6, reltol = 1e-6,
-        callback = CallbackSet(
-            cb_update(showprogress = false), 
-            callback(land), 
-            callback(gdm), 
-            cb_connections(network_type = nw_type, neighbor_parameter = n_conn))
-        )
-
-    return (RaftTrajectory(sol, rp, EQR_DEFAULT, dt = 0.1), tstart, tend)
+    
+    return simulate(rp, rhs = bop.rhs)
 end
 
+
 """
-    loss_bomb(u, bop::BOMBOptimizationProblem)
+    loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem)
+
+Compute the loss associated with parameter values `u` in `bop`.
+
+The vector `u` should be the same length as the number of `bop.params` which are optimizable. Then, 
+the `bop` is integrated with the values of each parameter set equal to the entries of `u` in the 
+order defined by [`OPTIMIZATION_PARAMETER_NAMES`](@ref).
 """
-function loss_bomb(u, bop::BOMBOptimizationProblem)
+function loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem)
     optimizable = [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
+
+    @assert length(u) == length(optimizable) "The vector u must have the same number of entries as the number of optimizable parameters."
 
     for i = 1:length(optimizable)
         bop.params[optimizable[i]].val = u[i]
     end
 
-    initial_time = first(bop.tspan)
-    final_time = last(bop.tspan)
+    start_date, end_date = bop.tspan
+    tstart, tend = yearmonth2tspan(start_date, end_date, t_extra = (0, bop.t_extra))
 
-    target = DISTS_2018[final_time].sargassum[:,:,1]
+    target_dist = SargassumDistribution(SargassumFromAFAI.EXAMPLE_DIST_2018)[end_date]
+    target = target_dist.sargassum[:,:,1]
     target = target/sum(target)
 
-    rtr, tstart, tend = integrate_bomb(bop)
+    rtr = simulate(bop)
     rtr = time_slice(rtr, (tend - bop.t_extra, tend))
-    data = bins(rtr, DISTS_2018[final_time])
+    data = bins(rtr, target_dist)
     data = data/sum(data)
 
-    # return sum((data - target) .^ 2)  
-    # return -cor(vec(data), vec(target)) # minimize -1*correlation => maximize correlation
-    return bop.loss_func.f(data, target)
-end
-
-"""
-    loss_bomb(bop::BOMBOptimizationProblem, type::String)
-"""
-function loss_bomb(bop::BOMBOptimizationProblem, type::String)
-
-    initial_time = first(bop.tspan)
-    final_time = last(bop.tspan)
-
-    target = DISTS_2018[final_time].sargassum[:,:,1]
-    target = target/sum(target)
-
-    rtr, tstart, tend = integrate_bomb(bop, type = type)
-    rtr = time_slice(rtr, (tend - bop.t_extra, tend))
-    data = bins(rtr, DISTS_2018[final_time])
-    data = data/sum(data)
-
-    # return sum((data - target) .^ 2)  
-    # return -cor(vec(data), vec(target)) # minimize -1*correlation => maximize correlation 
     return bop.loss_func.f(data, target)
 end
 

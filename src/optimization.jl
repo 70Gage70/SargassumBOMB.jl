@@ -222,7 +222,7 @@ function simulate(bop::BOMBOptimizationProblem)
         land = land
     )
     
-    return simulate(rp, rhs = bop.rhs)
+    return simulate(rp, rhs = bop.rhs, showprogress = false)
 end
 
 

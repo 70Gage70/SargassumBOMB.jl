@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "SargassumBOMB.jl"))
 using Surrogates
 ############################
 
-isdefined(@__MODULE__, :OPTIMIZATION_PARAMETER_NAMES) || (const OPTIMIZATION_PARAMETER_NAMES = ["δ", "a", "β", "A_spring", "μ_max", "m", "k_N"])
+isdefined(@__MODULE__, :OPTIMIZATION_PARAMETER_NAMES) || (const OPTIMIZATION_PARAMETER_NAMES = ["δ", "a", "σ", "A_spring", "μ_max", "m", "k_N"])
 
 """
     struct LossFunction
@@ -118,11 +118,11 @@ function integrate_bomb(bop::BOMBOptimizationProblem; type::String = "val")
     initial_time = first(bop.tspan)
     final_time = last(bop.tspan)
     if type == "val"
-        δ, a, β, A_spring, μ_max, m, k_N = [bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
+        δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
     elseif type == "default"
-        δ, a, β, A_spring, μ_max, m, k_N = [bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
+        δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
     elseif type == "opt"
-        δ, a, β, A_spring, μ_max, m, k_N = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
+        δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
     end
 
     # TIME
@@ -140,7 +140,7 @@ function integrate_bomb(bop::BOMBOptimizationProblem; type::String = "val")
     cp = ClumpParameters( 
         δ = δ, 
         a = a,
-        β = β)
+        σ = σ)
 
     # SPRINGS
     p1 = sph2xy(dist.lon[1], dist.lat[1], EQR_DEFAULT)

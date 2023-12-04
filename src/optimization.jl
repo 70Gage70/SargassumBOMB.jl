@@ -32,7 +32,7 @@ struct LossFunction
     end
 end
 
-const LOSS_COV = LossFunction(f = (a::Matrix, b::Matrix) -> -cor(vec(a), vec(b)), name = "-COR")
+const LOSS_COR = LossFunction(f = (a::Matrix, b::Matrix) -> -cor(vec(a), vec(b)), name = "-COR")
 const LOSS_L1 = LossFunction(f = (a::Matrix, b::Matrix) -> sum((a - b) .^ 2) , name = "L1")
 
 """

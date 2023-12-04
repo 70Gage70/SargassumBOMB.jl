@@ -1,5 +1,8 @@
 """
     default_fig()
+
+Create a `Makie.Figure` with a resolution of `(1920, 1080)`, a fontsize of `50` and a padding 
+of `(5, 100, 5, 5)`.
 """
 function default_fig()
     return Figure(
@@ -10,11 +13,25 @@ end
 
 """
     geo_axis(fig_pos; title, limits, xticks, yticks)
+
+Create a `Makie.Axis` suitable for plotting on an equirectangular projection.
+
+### Arguments
+
+- `fig_pos`: A `Makie.GridPosition` where the plot should go. For example if `fig` is a `Makie.Figure`, \
+then `fig_pos[1, 1]` puts the axis in the first row and first column of `fig`.
+
+### Optional Arguments 
+
+- `title`: An `AbstractString`. Default `L"\\mathrm{Title}"`, where `Makie.L"..."` creates a `LaTeXString`.
+- `limits`: `An NTuple{4, <:Real}` of the form `(xmin, xmax, ymin, ymax)`.
+- `xticks`: A list of x tick mark locations.
+- `yticks`: A list of y tick mark locations.
 """
 function geo_axis(
     fig_pos::GridPosition;
     title::AbstractString = L"\mathrm{Title}",
-    limits::Tuple = (-100, -50, 5, 35),
+    limits::NTuple{4, <:Real} = (-100, -50, 5, 35),
     xticks::Vector{<:Real} = [limits[1], limits[2]],
     yticks::Vector{<:Real} = [limits[3], limits[4]]
     )
@@ -50,6 +67,17 @@ end
 
 """
     land!(axis; landpath, color)
+
+Add a land polygon to `axis::Makie.Axis`. This will be placed on top of any graphics that 
+are already on the axis.
+
+### Optional Arguments
+
+- `landpath`: A `String` pointing to the location of the `.geojson` file containing the land features. By \
+default this is provided by a Natural Earth 50 m file \
+"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne\\_50m\\_land.geojson" \
+which is included automatically. 
+- `color`: A `Makie.Colorant` which gives the color of the land. Default is grey via `RGBf(0.5,0.5,0.5)`.
 """
 function land!(
     axis::Axis; 
@@ -62,6 +90,8 @@ end
 
 """
     data_legend!(fig_pos, label; colormap, label_fontsize, tick_fontsize, ticks, barlength, barwidth)
+
+Add a `Makie.Colorbar` with label `label` to the `GridPosion` in `fig_pos.`
 """
 function data_legend!(
     fig_pos::GridPosition,
@@ -157,42 +187,6 @@ function trajectory!(
     end
     
     return nothing
-end
-
-"""
-    vector_field_t!(axis, vf, t; fieldnames)
-"""
-function vector_field_t!(
-    axis::Axis,
-    vf::InterpolatedField,
-    t::Real;
-    fieldnames::Tuple{Symbol, Symbol} = (:u, :v))
-
-    lims = axis.limits.val
-    f(x, y) = Point2f(
-        vf.fields[fieldnames[1]](sph2xy(x, y, vf.ref)..., t), 
-        vf.fields[fieldnames[2]](sph2xy(x, y, vf.ref)..., t))
-    
-    streamplot!(axis, f, lims[1]..lims[2], lims[3]..lims[4])
-end
-
-"""
-    scalar_field_t!(axis, sf, t; fieldnames, n_points)
-"""
-function scalar_field_t!(
-    axis::Axis,
-    sf::InterpolatedField,
-    t::Real;
-    fieldname::Symbol = :u,
-    n_points::Integer = 100)
-
-    lims = axis.limits.val
-
-    xs = range(start = lims[1], stop = lims[2], length = n_points)
-    ys = range(start = lims[3], stop = lims[4], length = n_points)
-    zs = [sf.fields[fieldname](sph2xy(x, y, sf.ref)..., t) for x in xs, y in ys]
-    
-    heatmap!(axis, xs, ys, zs)
 end
 
 """

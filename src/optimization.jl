@@ -167,16 +167,20 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
 end
 
 """
-    simulate(bop::BOMBOptimizationProblem)
+    simulate(bop::BOMBOptimizationProblem; showprogress)
 
 Integrate `bop` by constructing the [`RaftParameters`](@ref) implied by its fields using [`simulate(::RaftParameters)`](@ref).
+
+### Optional Arguments
+
+- `showprogress`: A `Bool` which outputs the ingegration progress when `true`. Default `false`.
 """
-function simulate(bop::BOMBOptimizationProblem)
+function simulate(bop::BOMBOptimizationProblem; showprogress::Bool = false)
     δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
 
     # time
     start_date, end_date = bop.tspan
-    dist = SargassumDistribution(SargassumFromAFAI.EXAMPLE_DIST_2018)[start_date]
+    dist = SargassumFromAFAI.DIST_2018[start_date]
     tspan = yearmonth2tspan(start_date, end_date, t_extra = (0, bop.t_extra))
     
     # clumps
@@ -222,20 +226,24 @@ function simulate(bop::BOMBOptimizationProblem)
         land = land
     )
     
-    return simulate(rp, rhs = bop.rhs, showprogress = false)
+    return simulate(rp, rhs = bop.rhs, showprogress = showprogress)
 end
 
 
 """
-    loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem)
+    loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem; showprogress)
 
 Compute the loss associated with parameter values `u` in `bop`.
 
 The vector `u` should be the same length as the number of `bop.params` which are optimizable. Then, 
 the `bop` is integrated with the values of each parameter set equal to the entries of `u` in the 
 order defined by [`OPTIMIZATION_PARAMETER_NAMES`](@ref).
+
+### Optional Arguments
+
+- `showprogress`: A `Bool` which outputs the ingegration progress when `true`. Default `false`.
 """
-function loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem)
+function loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem; showprogress::Bool = false)
     optimizable = [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
 
     @assert length(u) == length(optimizable) "The vector u must have the same number of entries as the number of optimizable parameters."
@@ -247,71 +255,16 @@ function loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem)
     start_date, end_date = bop.tspan
     tstart, tend = yearmonth2tspan(start_date, end_date, t_extra = (0, bop.t_extra))
 
-    target_dist = SargassumDistribution(SargassumFromAFAI.EXAMPLE_DIST_2018)[end_date]
+    target_dist = SargassumFromAFAI.DIST_2018[end_date]
     target = target_dist.sargassum[:,:,1]
     target = target/sum(target)
 
-    rtr = simulate(bop)
+    rtr = simulate(bop, showprogress = showprogress)
     rtr = time_slice(rtr, (tend - bop.t_extra, tend))
     data = bins(rtr, target_dist)
     data = data/sum(data)
 
     return bop.loss_func.f(data, target)
-end
-
-"""
-    surrogate_bomb(n_samples_sur, bop::BOMBOptimizationProblem)
-"""
-function surrogate_bomb(n_samples_sur::Integer, bop::BOMBOptimizationProblem)
-    lower_bound = typeof(bop).parameters[1][]
-    upper_bound = typeof(bop).parameters[1][]
-
-    optimizable = [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
-
-    for i = 1:length(optimizable)
-        lb, ub = bop.params[optimizable[i]].bounds            
-        push!(lower_bound, lb)
-        push!(upper_bound, ub)
-    end
-
-    xys = Surrogates.sample(n_samples_sur, lower_bound, upper_bound, SobolSample())
-
-    zs = zeros(eltype(xys).parameters[1], length(xys))
-    monitor = 1
-
-    Threads.@threads for i = 1:length(xys)
-        zs[i] = loss_bomb(xys[i], bop)
-
-        val = round(100*(monitor/length(xys)), sigdigits = 3)
-        print(WHITE_BG("Surrogates: $(val)%   \r"))
-        flush(stdout)
-        monitor = monitor + 1
-    end
-
-    rb = RadialBasis(xys, zs, lower_bound, upper_bound)
-
-    return rb
-end
-
-"""
-    optimize_bomb(u; bop::BOMBOptimizationProblem)
-"""
-function optimize_bomb(radial_basis::RadialBasis, bop::BOMBOptimizationProblem; maxiters_opt::Integer = 50)
-
-    opt_vals = surrogate_optimize(u -> loss_bomb(u, bop), 
-                        DYCORS(), 
-                        radial_basis.lb, radial_basis.ub, radial_basis, SobolSample(), 
-                        maxiters = maxiters_opt)
-
-    optimizable = [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
-
-    for i = 1:length(optimizable)
-        bop.params[optimizable[i]].opt = opt_vals[1][i]
-    end
-
-    bop.opt = opt_vals[2]
-
-    return bop
 end
 
 """

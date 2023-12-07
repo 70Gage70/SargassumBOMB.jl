@@ -242,8 +242,14 @@ order defined by [`OPTIMIZATION_PARAMETER_NAMES`](@ref).
 ### Optional Arguments
 
 - `showprogress`: A `Bool` which outputs the ingegration progress when `true`. Default `false`.
+- `target_only`: A `Bool` which restricts the loss function to only act only locations where the \
+target distribution has nonzero Sargassum content. 
 """
-function loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem; showprogress::Bool = false)
+function loss(
+    u::Vector{<:Real}, 
+    bop::BOMBOptimizationProblem;
+    target_only::Bool = false, 
+    showprogress::Bool = false)
     optimizable = [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
 
     @assert length(u) == length(optimizable) "The vector u must have the same number of entries as the number of optimizable parameters."
@@ -262,6 +268,11 @@ function loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem; showprogress::Boo
     rtr = simulate(bop, showprogress = showprogress)
     rtr = time_slice(rtr, (tend - bop.t_extra, tend))
     data = bins(rtr, target_dist)
+    
+    if target_only
+        data[target .== 0.0] .= 0.0
+    end
+
     data = data/sum(data)
 
     return bop.loss_func.f(data, target)

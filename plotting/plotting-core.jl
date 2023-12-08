@@ -132,6 +132,10 @@ end
 
 """
     trajectory!(axis, xy, t; opts...)
+
+Add a `Makie.lines` plot to `axis` from the points `xy` and times `t`. 
+
+`xy` can be a `Vector` of length `n_points` with entries that are vectors of length `2` or an `N x 2` matrix.
 """
 function trajectory!(
     axis::Axis, 
@@ -161,6 +165,12 @@ function trajectory!(
     return lines!(axis, x, y; opts...)
 end
 
+
+"""
+    trajectory!(axis, traj; opts...)
+
+Add a `Makie.lines` plot to `axis` from the [`Trajectory`](@ref) in `traj`.
+"""
 function trajectory!(
     axis::Axis, 
     traj::Trajectory;
@@ -191,6 +201,12 @@ end
 
 """
     trajectory_hist!(axis, traj, lon_bins, lat_bins; opts...)
+
+Create a `Makie.heatmap` on `axis` with bin centers at the coordinates defined by `lon_bins` 
+and `lat_bins` of the data in `traj`.
+
+`traj` can be a single [`RaftTrajectory`](@ref) or a `Vector` of [`RaftTrajectory`](@ref). In the case of 
+a `Vector`, all trajectories are mixed together to make a single plot.
 """
 function trajectory_hist!(
     axis::Axis, 
@@ -234,6 +250,15 @@ function trajectory_hist!(
     trajectory_hist!(axis, [traj], lon_bins, lat_bins; opts = opts)
 end
 
+"""
+    trajectory_hist!(axis, traj, dist; opts...)
+
+Create a `Makie.heatmap` on `axis` with the same bins as the `SargassumFromAFAI.SargassumDistribution` in `dist` 
+` of the data in `traj`.
+
+`traj` can be a single [`RaftTrajectory`](@ref) or a `Vector` of [`RaftTrajectory`](@ref). In the case of 
+a `Vector`, all trajectories are mixed together to make a single plot.
+"""
 function trajectory_hist!(
     axis::Axis, 
     traj::Vector{<:RaftTrajectory},
@@ -269,4 +294,94 @@ function trajectory_hist!(
     )
 
     trajectory_hist!(axis, [traj], dist; opts = opts) 
+end
+
+"""
+    plot(bop::BOMBOptimizationProblem)
+"""
+function plot_bop(bop::BOMBOptimizationProblem)
+    if bop.opt === nothing
+        @warn "BOMBOptimizationProblem is not optimized; showing defaults."
+    end
+
+    initial_time = first(bop.tspan)
+    final_time = last(bop.tspan)
+
+    fig = Figure(
+        # resolution = (1920, 1080), 
+        resolution = (2420, 2320),
+        fontsize = 50,
+        figure_padding = (5, 100, 5, 5))
+
+    limits = (-100, -40, 5, 35)
+
+    ### AFAI
+    # initial distribution (AFAI)
+    ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial $(monthname(initial_time[2])), week 1")
+    SFA_plot!(ax, initial_time, 1)
+    land!(ax)
+
+    # final distribution (AFAI)
+    ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final $(monthname(final_time[2])), week 1")
+    SFA_plot!(ax, final_time, 1)
+    land!(ax)
+
+    ### UNOPTIMIZED
+    # initial distribution (SIMUL, unoptimized)
+    ax = geo_axis(fig[2, 1], limits = limits, title = "SIMUL initial [default] $(monthname(initial_time[2])), week 1")
+    rtr_dt, tstart, tend = integrate_bomb(bop, type = "default")
+    dist = DISTS_2018[initial_time]
+    rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
+    trajectory_hist!(ax, rtr_dt_initial, dist)
+    land!(ax)
+
+    # final distribution (SIMUL, unoptimized)
+    ax = geo_axis(fig[2, 2], limits = limits, title = "SIMUL final [default] $(monthname(final_time[2])), week 1")
+    rtr_final = time_slice(rtr_dt, (tend - 8, tend))
+    trajectory_hist!(ax, rtr_final, dist)
+    land!(ax)
+
+    ### OPTIMIZED
+    # initial distribution (SIMUL, unoptimized)
+    ax = geo_axis(fig[3, 1], limits = limits, title = "SIMUL initial [optim] $(monthname(initial_time[2])), week 1")
+    rtr_dt, tstart, tend = integrate_bomb(bop, type = "opt")
+    dist = DISTS_2018[initial_time]
+    rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
+    trajectory_hist!(ax, rtr_dt_initial, dist)
+    land!(ax)
+
+    # final distribution (SIMUL, unoptimized)
+    ax = geo_axis(fig[3, 2], limits = limits, title = "SIMUL final [optim] $(monthname(final_time[2])), week 1")
+    rtr_final = time_slice(rtr_dt, (tend - 8, tend))
+    trajectory_hist!(ax, rtr_final, dist)
+    land!(ax)
+
+    # strings
+    default_loss = loss_bomb(bop, "default")
+    optimized_loss = loss_bomb(bop, "opt")
+
+    ltx(x) = latexify(x, fmt = FancyNumberFormatter(4))
+
+    dl_ltx, ol_ltx = ltx(default_loss), ltx(optimized_loss)
+    ol_ltx = latexify(optimized_loss, fmt = FancyNumberFormatter(4))
+    δ_def, a_def, β_def, A_spring_def, μ_max_def, m_def, k_N_def = ltx.([bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES])
+    δ_opt, a_opt, β_opt, A_spring_opt, μ_max_opt, m_opt, k_N_opt = ltx.([bop.params[param].opt for param in OPTIMIZATION_PARAMETER_NAMES])
+
+    if bop.rhs == WaterWind!
+        fig[-3,:] = Label(fig, L"\text{WaterWind}")
+    elseif bop.rhs == Raft!
+        fig[-3,:] = Label(fig, L"\text{BOMB}")
+    end
+
+    fig[-2,:] = Label(fig, L"[%$(bop.loss_func.name)] Loss(default) = %$(dl_ltx), Loss(opt) =  %$(ol_ltx)")
+
+    fig[-1,:] = Label(fig, L"Defaults: $\delta =$ %$(δ_def), $a =$ %$(a_def), $\beta =$ %$(β_def), $A_\text{spring} =$ %$(A_spring_def), $\mu_\text{max} =$ %$(μ_max_def), $m =$ %$(m_def), $k_N =$ %$(k_N_def)")
+    
+    fig[0,:] = Label(fig, L"Optimals: $\delta =$ %$(δ_opt), $a =$ %$(a_opt), $\beta =$ %$(β_opt), $A_\text{spring} =$ %$(A_spring_opt), $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
+
+    outfile = joinpath(@__DIR__, "..", "figures", "opt_test.png")
+    rm(outfile, force = true)
+    save(outfile, fig)
+
+    return fig
 end

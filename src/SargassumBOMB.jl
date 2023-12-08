@@ -2,7 +2,7 @@ module SargassumBOMB
 
 # core functionality
 using OrdinaryDiffEq, SargassumFromAFAI, NearestNeighbors, Interpolations
-using Unitful, Surrogates, Dates
+using Unitful, Dates
 using LinearAlgebra: norm, ⋅
 
 # i/o
@@ -21,7 +21,7 @@ using Crayons.Box
 using Latexify
 
 # optimization 
-using Surrogates
+using Metaheuristics
 
 include("coordinates.jl")
 export EquirectangularReference, EQR_DEFAULT, sph2xy, xy2sph
@@ -55,17 +55,17 @@ export n_clumps, clump_i, com, cb_update, cb_land, cb_growth_death, cb_connectio
 include("trajectories.jl")
 export Trajectory, time_slice, RaftTrajectory, uniformize, bins
 
+include("main.jl")
+export simulate, yearmonth2tspan
+
+include("optimization.jl")
+export OPTIMIZATION_PARAMETER_NAMES, LossFunction, LOSS_L1, LOSS_COR, OptimizationParameter, BOMBOptimizationProblem, loss, optimize!
+
 include(joinpath(@__DIR__, "..", "plotting", "plotting-core.jl"))
 export default_fig, geo_axis, land!, data_legend!, trajectory!, vector_field_t!, scalar_field_t!, trajectory_hist!
 
 include(joinpath(@__DIR__, "..", "plotting", "plotting-itp.jl"))
 export check_land, check_windwater
-
-include("main.jl")
-export simulate, yearmonth2tspan
-
-include("optimization.jl")
-export OPTIMIZATION_PARAMETER_NAMES, LossFunction, LOSS_L1, LOSS_COR, OptimizationParameter, BOMBOptimizationProblem, loss
 
 export length, show, iterate # various Base extensions
 

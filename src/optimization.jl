@@ -166,6 +166,30 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
     end
 end
 
+function Base.show(io::IO, bop::BOMBOptimizationProblem)
+    optimizable = [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
+    space = [(name, bop.params[name].default, (bop.params[name].bounds)) for name in optimizable]
+    optimized_q = bop.opt === nothing ? false : true
+    
+    println(io, "BOMBOptimizationProblem")
+
+    println(io, " Optimized?: $(optimized_q)")
+    println(io, " Search space: $(space)")
+
+    if optimized_q
+        opts = Tuple{String, Float64}[]
+        for name in OPTIMIZATION_PARAMETER_NAMES
+            opt = bop.params[name].opt
+            if opt === nothing 
+                opt = bop.params[name].default
+            end
+            push!(opts, (name, round(Float64(opt), sigdigits = 4)))
+        end
+        println(io, " Optimals: $(opts)")
+        println(io, " Loss: $(bop.opt)")
+    end
+end
+
 """
     simulate(bop::BOMBOptimizationProblem; showprogress)
 
@@ -279,91 +303,52 @@ function loss(
 end
 
 """
-    plot_bop(bop::BOMBOptimizationProblem)
+    optimize!(bop; time_limit, target_only, verbose)
+
+Optimize the [`BOMBOptimizationProblem`](@ref) in `bop` using the `Metaheuristics` optimization package and update it
+to include the optimal results. The Evolutionary Centers Algorithm is used via `Metaheuristics.ECA`.
+
+### Arguments 
+
+- `bop`:: An unoptimized [`BOMBOptimizationProblem`](@ref).
+
+### Optional Arguments 
+
+- `time_limit`: A `Float64` giving the upper time limit in seconds on the length of the optimization.
+- `target_only`: A `Bool` which restricts the loss function to only act only locations where the \
+target distribution has nonzero Sargassum content. 
+- `verbose`: Show simplified results each iteration of the optimization.
 """
-function plot_bop(bop::BOMBOptimizationProblem)
-    if bop.opt === nothing
-        @warn "BOMBOptimizationProblem is not optimized; showing defaults."
+function optimize!(
+    bop::BOMBOptimizationProblem; 
+    time_limit::Float64 = 300.0,
+    target_only::Bool = false,
+    verbose = true)
+
+    @assert bop.opt === nothing "`bop` already has an optimal value"
+
+    lb = [bop.params[param].bounds[1] for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
+    ub = [bop.params[param].bounds[2] for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
+    bounds = Metaheuristics.boxconstraints(lb = lb, ub = ub)
+
+    function f_parallel(X)
+        fitness = zeros(size(X,1))
+        Threads.@threads for i in 1:size(X,1)
+            fitness[i] = loss(X[i,:], bop, target_only = target_only)
+        end
+        return fitness
     end
 
-    initial_time = first(bop.tspan)
-    final_time = last(bop.tspan)
+    options = Metaheuristics.Options(time_limit = time_limit, parallel_evaluation = true, verbose = verbose)
+    algorithm = Metaheuristics.ECA(options = options)
+    result = Metaheuristics.optimize(f_parallel, bounds, algorithm)
 
-    fig = Figure(
-        # resolution = (1920, 1080), 
-        resolution = (2420, 2320),
-        fontsize = 50,
-        figure_padding = (5, 100, 5, 5))
-
-    limits = (-100, -40, 5, 35)
-
-    ### AFAI
-    # initial distribution (AFAI)
-    ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial $(monthname(initial_time[2])), week 1")
-    SFA_plot!(ax, initial_time, 1)
-    land!(ax)
-
-    # final distribution (AFAI)
-    ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final $(monthname(final_time[2])), week 1")
-    SFA_plot!(ax, final_time, 1)
-    land!(ax)
-
-    ### UNOPTIMIZED
-    # initial distribution (SIMUL, unoptimized)
-    ax = geo_axis(fig[2, 1], limits = limits, title = "SIMUL initial [default] $(monthname(initial_time[2])), week 1")
-    rtr_dt, tstart, tend = integrate_bomb(bop, type = "default")
-    dist = DISTS_2018[initial_time]
-    rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
-    trajectory_hist!(ax, rtr_dt_initial, dist)
-    land!(ax)
-
-    # final distribution (SIMUL, unoptimized)
-    ax = geo_axis(fig[2, 2], limits = limits, title = "SIMUL final [default] $(monthname(final_time[2])), week 1")
-    rtr_final = time_slice(rtr_dt, (tend - 8, tend))
-    trajectory_hist!(ax, rtr_final, dist)
-    land!(ax)
-
-    ### OPTIMIZED
-    # initial distribution (SIMUL, unoptimized)
-    ax = geo_axis(fig[3, 1], limits = limits, title = "SIMUL initial [optim] $(monthname(initial_time[2])), week 1")
-    rtr_dt, tstart, tend = integrate_bomb(bop, type = "opt")
-    dist = DISTS_2018[initial_time]
-    rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
-    trajectory_hist!(ax, rtr_dt_initial, dist)
-    land!(ax)
-
-    # final distribution (SIMUL, unoptimized)
-    ax = geo_axis(fig[3, 2], limits = limits, title = "SIMUL final [optim] $(monthname(final_time[2])), week 1")
-    rtr_final = time_slice(rtr_dt, (tend - 8, tend))
-    trajectory_hist!(ax, rtr_final, dist)
-    land!(ax)
-
-    # strings
-    default_loss = loss_bomb(bop, "default")
-    optimized_loss = loss_bomb(bop, "opt")
-
-    ltx(x) = latexify(x, fmt = FancyNumberFormatter(4))
-
-    dl_ltx, ol_ltx = ltx(default_loss), ltx(optimized_loss)
-    ol_ltx = latexify(optimized_loss, fmt = FancyNumberFormatter(4))
-    δ_def, a_def, β_def, A_spring_def, μ_max_def, m_def, k_N_def = ltx.([bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES])
-    δ_opt, a_opt, β_opt, A_spring_opt, μ_max_opt, m_opt, k_N_opt = ltx.([bop.params[param].opt for param in OPTIMIZATION_PARAMETER_NAMES])
-
-    if bop.rhs == WaterWind!
-        fig[-3,:] = Label(fig, L"\text{WaterWind}")
-    elseif bop.rhs == Raft!
-        fig[-3,:] = Label(fig, L"\text{BOMB}")
+    bop.opt = result.best_sol.f
+    i = 1
+    for param in [name for name in OPTIMIZATION_PARAMETER_NAMES if bop.params[name].optimizable]
+        bop.params[param].opt = result.best_sol.x[i]
+        i = i + 1
     end
 
-    fig[-2,:] = Label(fig, L"[%$(bop.loss_func.name)] Loss(default) = %$(dl_ltx), Loss(opt) =  %$(ol_ltx)")
-
-    fig[-1,:] = Label(fig, L"Defaults: $\delta =$ %$(δ_def), $a =$ %$(a_def), $\beta =$ %$(β_def), $A_\text{spring} =$ %$(A_spring_def), $\mu_\text{max} =$ %$(μ_max_def), $m =$ %$(m_def), $k_N =$ %$(k_N_def)")
-    
-    fig[0,:] = Label(fig, L"Optimals: $\delta =$ %$(δ_opt), $a =$ %$(a_opt), $\beta =$ %$(β_opt), $A_\text{spring} =$ %$(A_spring_opt), $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
-
-    outfile = joinpath(@__DIR__, "..", "figures", "opt_test.png")
-    rm(outfile, force = true)
-    save(outfile, fig)
-
-    return fig
+    return nothing
 end

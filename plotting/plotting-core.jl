@@ -297,15 +297,29 @@ function trajectory_hist!(
 end
 
 """
-    plot(bop::BOMBOptimizationProblem)
+    plot(bop::BOMBOptimizationProblem; use_optimal_parameters)
+
+Plot the [`BOMBOptimizationProblem`](@ref) in `bop` as well as the `SargassumFromAFAI` distributions for comparison at 
+the initial and final times provided by `bop.tspan`.
+
+### Optional Arguments 
+
+- `use_optimal_parameters`: A `Bool` which, if `true`, runs the integration using `param.opt` instead of \
+`param.val` for each [`OptimizationParameter`](@ref). Default `false`. 
+- `target_only`: A `Bool` which restricts the loss function to only act only locations where the \
+target distribution has nonzero Sargassum content. Applies only in the case \
+where `use_optimal_parameters == false`. Default `false`.
 """
-function plot_bop(bop::BOMBOptimizationProblem)
+function plot(
+    bop::BOMBOptimizationProblem; 
+    use_optimal_parameters::Bool = false,
+    target_only::Bool = false)
     if bop.opt === nothing
         @warn "BOMBOptimizationProblem is not optimized; showing defaults."
     end
 
-    initial_time = first(bop.tspan)
-    final_time = last(bop.tspan)
+    start_date, end_date = bop.tspan
+    tstart, tend = yearmonth2tspan(start_date, end_date, t_extra = (0, bop.t_extra))
 
     fig = Figure(
         # resolution = (1920, 1080), 
@@ -316,68 +330,54 @@ function plot_bop(bop::BOMBOptimizationProblem)
     limits = (-100, -40, 5, 35)
 
     ### AFAI
-    # initial distribution (AFAI)
-    ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial $(monthname(initial_time[2])), week 1")
-    SFA_plot!(ax, initial_time, 1)
+    # initial distribution 
+    dist_initial = SargassumFromAFAI.DIST_2018[start_date]
+    dist_final = SargassumFromAFAI.DIST_2018[end_date]
+    ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial $(monthname(start_date[2])), week 1")
+    SargassumFromAFAI.plot!(ax, dist_initial, 1)
     land!(ax)
 
-    # final distribution (AFAI)
-    ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final $(monthname(final_time[2])), week 1")
-    SFA_plot!(ax, final_time, 1)
-    land!(ax)
-
-    ### UNOPTIMIZED
-    # initial distribution (SIMUL, unoptimized)
-    ax = geo_axis(fig[2, 1], limits = limits, title = "SIMUL initial [default] $(monthname(initial_time[2])), week 1")
-    rtr_dt, tstart, tend = integrate_bomb(bop, type = "default")
-    dist = DISTS_2018[initial_time]
-    rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
-    trajectory_hist!(ax, rtr_dt_initial, dist)
-    land!(ax)
-
-    # final distribution (SIMUL, unoptimized)
-    ax = geo_axis(fig[2, 2], limits = limits, title = "SIMUL final [default] $(monthname(final_time[2])), week 1")
-    rtr_final = time_slice(rtr_dt, (tend - 8, tend))
-    trajectory_hist!(ax, rtr_final, dist)
+    # final distribution
+    ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final $(monthname(end_date[2])), week 1")
+    SargassumFromAFAI.plot!(ax, dist_final, 1)
     land!(ax)
 
     ### OPTIMIZED
-    # initial distribution (SIMUL, unoptimized)
-    ax = geo_axis(fig[3, 1], limits = limits, title = "SIMUL initial [optim] $(monthname(initial_time[2])), week 1")
-    rtr_dt, tstart, tend = integrate_bomb(bop, type = "opt")
-    dist = DISTS_2018[initial_time]
-    rtr_dt_initial = time_slice(rtr_dt, (first(rtr_dt.t), first(rtr_dt.t)))
-    trajectory_hist!(ax, rtr_dt_initial, dist)
+    # initial distribution 
+    ax = geo_axis(fig[2, 1], limits = limits, title = "BOMB initial [optim] $(monthname(start_date[2])), week 1")
+    rtr = simulate(bop, use_optimal_parameters = use_optimal_parameters)
+    
+    rtr_initial = time_slice(rtr, (tstart, tstart))
+    trajectory_hist!(ax, rtr_initial, dist_initial)
     land!(ax)
 
-    # final distribution (SIMUL, unoptimized)
-    ax = geo_axis(fig[3, 2], limits = limits, title = "SIMUL final [optim] $(monthname(final_time[2])), week 1")
-    rtr_final = time_slice(rtr_dt, (tend - 8, tend))
-    trajectory_hist!(ax, rtr_final, dist)
+    # final distribution 
+    ax = geo_axis(fig[2, 2], limits = limits, title = "BOMB final [optim] $(monthname(end_date[2])), week 1")
+    rtr_final = time_slice(rtr, (tend - bop.t_extra, tend))
+    trajectory_hist!(ax, rtr_final, dist_final)
     land!(ax)
 
     # strings
-    default_loss = loss_bomb(bop, "default")
-    optimized_loss = loss_bomb(bop, "opt")
-
     ltx(x) = latexify(x, fmt = FancyNumberFormatter(4))
 
-    dl_ltx, ol_ltx = ltx(default_loss), ltx(optimized_loss)
-    ol_ltx = latexify(optimized_loss, fmt = FancyNumberFormatter(4))
-    δ_def, a_def, β_def, A_spring_def, μ_max_def, m_def, k_N_def = ltx.([bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES])
-    δ_opt, a_opt, β_opt, A_spring_opt, μ_max_opt, m_opt, k_N_opt = ltx.([bop.params[param].opt for param in OPTIMIZATION_PARAMETER_NAMES])
-
-    if bop.rhs == WaterWind!
-        fig[-3,:] = Label(fig, L"\text{WaterWind}")
-    elseif bop.rhs == Raft!
-        fig[-3,:] = Label(fig, L"\text{BOMB}")
+    if use_optimal_parameters
+        loss_ltx = latexify(bop.opt, fmt = FancyNumberFormatter(4))
+    else
+        loss_ltx = latexify(loss(rtr, bop, target_only = target_only), fmt = FancyNumberFormatter(4))
     end
 
-    fig[-2,:] = Label(fig, L"[%$(bop.loss_func.name)] Loss(default) = %$(dl_ltx), Loss(opt) =  %$(ol_ltx)")
+    p_vals = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
+    δ_opt, a_opt, σ_opt, A_spring_opt, μ_max_opt, m_opt, k_N_opt = ltx.(p_vals)
 
-    fig[-1,:] = Label(fig, L"Defaults: $\delta =$ %$(δ_def), $a =$ %$(a_def), $\beta =$ %$(β_def), $A_\text{spring} =$ %$(A_spring_def), $\mu_\text{max} =$ %$(μ_max_def), $m =$ %$(m_def), $k_N =$ %$(k_N_def)")
+    if bop.rhs == WaterWind!
+        fig[-2,:] = Label(fig, L"\text{WaterWind}")
+    elseif bop.rhs == Raft!
+        fig[-2,:] = Label(fig, L"\text{BOMB}")
+    end
+
+    fig[-1,:] = Label(fig, L"[%$(bop.loss_func.name)] Loss(opt) =  %$(loss_ltx)")
     
-    fig[0,:] = Label(fig, L"Optimals: $\delta =$ %$(δ_opt), $a =$ %$(a_opt), $\beta =$ %$(β_opt), $A_\text{spring} =$ %$(A_spring_opt), $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
+    fig[0,:] = Label(fig, L"Optimals: $\delta =$ %$(δ_opt), $a =$ %$(a_opt), $\sigma =$ %$(σ_opt), $A_\text{spring} =$ %$(A_spring_opt), $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
 
     outfile = joinpath(@__DIR__, "..", "figures", "opt_test.png")
     rm(outfile, force = true)

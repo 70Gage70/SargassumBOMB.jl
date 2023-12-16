@@ -191,16 +191,27 @@ function Base.show(io::IO, bop::BOMBOptimizationProblem)
 end
 
 """
-    simulate(bop::BOMBOptimizationProblem; showprogress)
+    simulate(bop::BOMBOptimizationProblem; use_optimal_parameters, showprogress)
 
 Integrate `bop` by constructing the [`RaftParameters`](@ref) implied by its fields using [`simulate(::RaftParameters)`](@ref).
 
 ### Optional Arguments
 
+- `use_optimal_parameters`: A `Bool` which, if `true`, runs the integration using `param.opt` instead of \
+`param.val` for each [`OptimizationParameter`](@ref). Default `false`. 
 - `showprogress`: A `Bool` which outputs the ingegration progress when `true`. Default `false`.
 """
-function simulate(bop::BOMBOptimizationProblem; showprogress::Bool = false)
-    δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
+function simulate(
+    bop::BOMBOptimizationProblem; 
+    use_optimal_parameters::Bool = false, 
+    showprogress::Bool = false)
+
+    if use_optimal_parameters
+        @assert bop.opt !== nothing "`bop` has not been optimized"
+        δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
+    else
+        δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
+    end
 
     # time
     start_date, end_date = bop.tspan
@@ -255,7 +266,7 @@ end
 
 
 """
-    loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem; showprogress)
+    loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem; target_only, showprogress)
 
 Compute the loss associated with parameter values `u` in `bop`.
 
@@ -265,7 +276,7 @@ order defined by [`OPTIMIZATION_PARAMETER_NAMES`](@ref).
 
 ### Optional Arguments
 
-- `showprogress`: A `Bool` which outputs the ingegration progress when `true`. Default `false`.
+- `showprogress`: A `Bool` which outputs the integration progress when `true`. Default `false`.
 - `target_only`: A `Bool` which restricts the loss function to only act only locations where the \
 target distribution has nonzero Sargassum content. 
 """
@@ -303,6 +314,41 @@ function loss(
 end
 
 """
+    loss(rtr::RaftTrajectory, bop::BOMBOptimizationProblem; target_only)
+
+Compute the loss associated with the [`RaftTrajectory`](@ref) `rtr`.
+
+Use this instead of `loss(u::Vector, bop)` when the integration is already done.
+
+### Optional Arguments
+
+- `target_only`: A `Bool` which restricts the loss function to only act only locations where the \
+target distribution has nonzero Sargassum content. Defauly `false`.
+"""
+function loss(
+    rtr::RaftTrajectory, 
+    bop::BOMBOptimizationProblem;
+    target_only::Bool = false)
+
+    start_date, end_date = bop.tspan
+    tstart, tend = yearmonth2tspan(start_date, end_date, t_extra = (0, bop.t_extra))
+
+    target_dist = SargassumFromAFAI.DIST_2018[end_date]
+    target = target_dist.sargassum[:,:,1]
+    target = target/sum(target)
+
+    data = bins(time_slice(rtr, (tend - bop.t_extra, tend)), target_dist)
+    
+    if target_only
+        data[target .== 0.0] .= 0.0
+    end
+
+    data = data/sum(data)
+
+    return bop.loss_func.f(data, target)
+end
+
+"""
     optimize!(bop; time_limit, target_only, verbose)
 
 Optimize the [`BOMBOptimizationProblem`](@ref) in `bop` using the `Metaheuristics` optimization package and update it
@@ -316,8 +362,8 @@ to include the optimal results. The Evolutionary Centers Algorithm is used via `
 
 - `time_limit`: A `Float64` giving the upper time limit in seconds on the length of the optimization.
 - `target_only`: A `Bool` which restricts the loss function to only act only locations where the \
-target distribution has nonzero Sargassum content. 
-- `verbose`: Show simplified results each iteration of the optimization.
+target distribution has nonzero Sargassum content. Default `false`.
+- `verbose`: Show simplified results each iteration of the optimization. Default `true`.
 """
 function optimize!(
     bop::BOMBOptimizationProblem; 

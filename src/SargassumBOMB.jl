@@ -62,7 +62,7 @@ include("optimization.jl")
 export OPTIMIZATION_PARAMETER_NAMES, LossFunction, LOSS_L1, LOSS_COR, OptimizationParameter, BOMBOptimizationProblem, loss, optimize!
 
 include(joinpath(@__DIR__, "..", "plotting", "plotting-core.jl"))
-export default_fig, geo_axis, land!, data_legend!, trajectory!, vector_field_t!, scalar_field_t!, trajectory_hist!
+export default_fig, geo_axis, land!, data_legend!, trajectory!, vector_field_t!, scalar_field_t!, trajectory_hist!, plot
 
 include(joinpath(@__DIR__, "..", "plotting", "plotting-itp.jl"))
 export check_land, check_windwater

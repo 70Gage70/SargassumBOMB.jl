@@ -229,23 +229,24 @@ function simulate(
 
     springs = SpringParameters(spring_k, L_spring)
     
-    # growth-death
-    if bop.immortal
-        gd_model = ImmortalModel()
-    else
-        bmp = BrooksModelParameters(TEMP_ITP.x, NO3_ITP.x, 
-            μ_max = μ_max,
-            m = m,
-            k_N = k_N)
-        gd_model = BrooksModel(params = bmp)
-    end
-    
     # initial conditions
     ics = InitialConditions(dist, [1], bop.n_levels, "levels", EQR_DEFAULT)
     
     # connections
     connections = ConnectionsNearest(10)
     
+    # growth-death
+    if bop.immortal
+        gd_model = ImmortalModel()
+    else
+        bmp = BrooksModelParameters(TEMP_ITP.x, NO3_ITP.x, 
+            clumps_limits = (0, Integer(2*ics.ics[1])), # the number of clumps can at most double
+            μ_max = μ_max,
+            m = m,
+            k_N = k_N)
+        gd_model = BrooksModel(params = bmp)
+    end
+
     # land
     land = Land()
     

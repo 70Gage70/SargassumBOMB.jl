@@ -367,7 +367,7 @@ function plot(
     end
 
     p_vals = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
-    δ_opt, a_opt, σ_opt, A_spring_opt, μ_max_opt, m_opt, k_N_opt = ltx.(p_vals)
+    δ_opt, a_opt, σ_opt, A_spring_opt, λ_opt, μ_max_opt, m_opt, k_N_opt = ltx.(p_vals)
 
     if bop.rhs == WaterWind!
         fig[-2,:] = Label(fig, L"\text{WaterWind}")
@@ -377,7 +377,7 @@ function plot(
 
     fig[-1,:] = Label(fig, L"[%$(bop.loss_func.name)] Loss(opt) =  %$(loss_ltx)")
     
-    fig[0,:] = Label(fig, L"Optimals: $\delta =$ %$(δ_opt), $a =$ %$(a_opt), $\sigma =$ %$(σ_opt), $A_\text{spring} =$ %$(A_spring_opt), $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
+    fig[0,:] = Label(fig, L"Optimals: $\delta =$ %$(δ_opt), $a =$ %$(a_opt), $\sigma =$ %$(σ_opt), $A_\text{spring} =$ %$(A_spring_opt), $λ =$ %$(λ_opt), $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
 
     outfile = joinpath(@__DIR__, "..", "figures", "opt_test.png")
     rm(outfile, force = true)

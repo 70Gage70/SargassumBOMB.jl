@@ -3,9 +3,9 @@
 
 A `Vector` of `String`s giving the names of all the parameters it is possible to optimize by default.
 
-Equal to `["δ", "a", "σ", "A_spring", "μ_max", "m", "k_N"]`.
+Equal to `["δ", "a", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]`.
 """
-const OPTIMIZATION_PARAMETER_NAMES = ["δ", "a", "σ", "A_spring", "μ_max", "m", "k_N"]
+const OPTIMIZATION_PARAMETER_NAMES = ["δ", "a", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]
 
 """
     struct LossFunction
@@ -208,9 +208,9 @@ function simulate(
 
     if use_optimal_parameters
         @assert bop.opt !== nothing "`bop` has not been optimized"
-        δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
+        δ, a, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
     else
-        δ, a, σ, A_spring, μ_max, m, k_N = [bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
+        δ, a, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
     end
 
     # time
@@ -222,9 +222,9 @@ function simulate(
     clumps = ClumpParameters(δ = δ, a = a, σ = σ)
     
     # springs
-    L_spring = ΔL(dist)
+    L_spring = λ*ΔL(dist)
     function spring_k(x::Real; A::Real = A_spring, L::Real = L_spring)
-        return A_spring * (exp((x - 2*L)/0.2) + 1)^(-1)
+        return A * (exp((x - 2*L)/0.2) + 1)^(-1)
     end
 
     springs = SpringParameters(spring_k, L_spring)

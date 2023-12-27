@@ -109,7 +109,7 @@ end
 """
     RaftTrajectory(sol, rp, ref; dt)
 
-Construct a [`RaftTrajectory`](@ref) from a differential equation solution `sol` and [`RaftParameters`](@ref) `rp`.
+Construct a [`RaftTrajectory`](@ref) from the `ODESolution` in `sol` and [`RaftParameters`](@ref) `rp`.
 
 Optionally, uniformize the solution to be on a regular time grid.
 
@@ -123,7 +123,12 @@ Optionally, uniformize the solution to be on a regular time grid.
 
 - `dt`: If provided, the trajectory will be evaluated at uniform times separated by `dt`, not including the end point. Default `nothing`.
 """
-function RaftTrajectory(sol::AbstractMatrix, rp::RaftParameters, ref::EquirectangularReference; dt::Union{Real, Nothing} = nothing)
+function RaftTrajectory(
+    sol::OrdinaryDiffEq.ODESolution, 
+    rp::RaftParameters, 
+    ref::EquirectangularReference; 
+    dt::Union{Real, Nothing} = nothing)
+
     if dt !== nothing
         sol_u, sol_t, rp_l2l = uniformize(sol, rp, dt)
     else
@@ -195,9 +200,9 @@ end
 """
     uniformize(sol, raft_parameters::RaftParameters, dt)
 
-Uniformize the solution `sol` with to be on a regular time grid separated by `dt`.
+Uniformize the `ODESolution` in `sol` with `RaftParameters` in `rp` to be on a regular time grid separated by `dt`.
 """
-function uniformize(sol::AbstractMatrix, raft_parameters::RaftParameters, dt::Real)
+function uniformize(sol::OrdinaryDiffEq.ODESolution, raft_parameters::RaftParameters, dt::Real)
     times = range(first(sol.t), last(sol.t), step = dt) |> collect
     time_keys = sort(collect(keys(raft_parameters.loc2label)))
     

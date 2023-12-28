@@ -197,12 +197,14 @@ Integrate `bop` by constructing the [`RaftParameters`](@ref) implied by its fiel
 
 ### Optional Arguments
 
+- `high_accuracy`: A `Bool` which, if `true`, uses lower tolerances in the integration. Default `true`.
 - `use_optimal_parameters`: A `Bool` which, if `true`, runs the integration using `param.opt` instead of \
 `param.val` for each [`OptimizationParameter`](@ref). Default `false`. 
 - `showprogress`: A `Bool` which outputs the ingegration progress when `true`. Default `false`.
 """
 function simulate(
-    bop::BOMBOptimizationProblem; 
+    bop::BOMBOptimizationProblem;
+    high_accuracy::Bool = true, 
     use_optimal_parameters::Bool = false, 
     showprogress::Bool = false)
 
@@ -262,7 +264,10 @@ function simulate(
         land = land
     )
     
-    return simulate(rp, rhs = bop.rhs, showprogress = showprogress)
+    abstol = high_accuracy ? 1.0e-6 : nothing
+    reltol = high_accuracy ? 1.0e-6 : nothing
+
+    return simulate(rp, rhs = bop.rhs, abstol = abstol, reltol = reltol, showprogress = showprogress)
 end
 
 
@@ -277,6 +282,7 @@ order defined by [`OPTIMIZATION_PARAMETER_NAMES`](@ref).
 
 ### Optional Arguments
 
+- `high_accuracy`: A `Bool` which, if `true`, uses lower tolerances in the integration. Default `true`.
 - `showprogress`: A `Bool` which outputs the integration progress when `true`. Default `false`.
 - `target_only`: A `Bool` which restricts the loss function to only act only locations where the \
 target distribution has nonzero Sargassum content. 
@@ -284,6 +290,7 @@ target distribution has nonzero Sargassum content.
 function loss(
     u::Vector{<:Real}, 
     bop::BOMBOptimizationProblem;
+    high_accuracy::Bool = true,
     target_only::Bool = false, 
     showprogress::Bool = false)
     optimizable = [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
@@ -301,7 +308,7 @@ function loss(
     target = target_dist.sargassum[:,:,1]
     target = target/sum(target)
 
-    rtr = simulate(bop, showprogress = showprogress)
+    rtr = simulate(bop, high_accuracy = high_accuracy, showprogress = showprogress)
     rtr = time_slice(rtr, (tend - bop.t_extra, tend))
     data = bins(rtr, target_dist)
     
@@ -364,11 +371,13 @@ to include the optimal results. The Evolutionary Centers Algorithm is used via `
 - `time_limit`: A `Float64` giving the upper time limit in seconds on the length of the optimization.
 - `target_only`: A `Bool` which restricts the loss function to only act only locations where the \
 target distribution has nonzero Sargassum content. Default `false`.
+- `high_accuracy`: A `Bool` which, if `true`, uses lower tolerances in the integration. Default `true`.
 - `verbose`: Show simplified results each iteration of the optimization. Default `true`.
 """
 function optimize!(
     bop::BOMBOptimizationProblem; 
     time_limit::Float64 = 300.0,
+    high_accuracy::Bool = true,
     target_only::Bool = false,
     verbose = true)
 
@@ -381,7 +390,7 @@ function optimize!(
     function f_parallel(X)
         fitness = zeros(size(X,1))
         Threads.@threads for i in 1:size(X,1)
-            fitness[i] = loss(X[i,:], bop, target_only = target_only)
+            fitness[i] = loss(X[i,:], bop, high_accuracy = high_accuracy, target_only = target_only)
         end
         return fitness
     end

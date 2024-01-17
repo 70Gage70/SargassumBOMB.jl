@@ -16,7 +16,9 @@ optimization.
 ### Fields 
 
 - `f`: A `Function`. This function must be callable as `f(a, b)`, where `a` and `b` are matrices and it \
-must return a `Real` such that `f(a, a) = 0.0`. Example: `(a, b) -> sum((a - b) .^ 2)`.
+must return a `Real` such that `f(a, a) = 0.0`. Example: `(a, b) -> sum((a - b) .^ 2)`. If the loss function 
+needs to depend on the exact form of `a` and `b`, it is assumed that `a` is the target distribution and `b` is the
+distribution being tested. 
 - `name`: A `String` giving the name of the loss function, e.g. `"L1"`.
 """
 struct LossFunction
@@ -48,7 +50,7 @@ end
 
 A `LossFunction` for the L1 norm.
 """
-const LOSS_L1 = LossFunction(f = (a::Matrix, b::Matrix) -> sum((a - b) .^ 2) , name = "L1")
+const LOSS_L1 = LossFunction(f = (a::Matrix, b::Matrix) -> sqrt(sum((a - b) .^ 2)) , name = "L1")
 
 """
     const LOSS_COR
@@ -56,6 +58,20 @@ const LOSS_L1 = LossFunction(f = (a::Matrix, b::Matrix) -> sum((a - b) .^ 2) , n
 A `LossFunction` for the negative correlation.
 """
 const LOSS_COR = LossFunction(f = (a::Matrix, b::Matrix) -> -cor(vec(a), vec(b)), name = "-COR")
+
+function l1_shape(a::Matrix, b::Matrix)
+    idx = findall(iszero, a) # a is target, b is data
+    va, vb = a[idx], b[idx]
+    return sqrt(sum((a - b) .^ 2))
+end
+
+"""
+    const LOSS_L1_SHAPE
+
+A `LossFunction` for the L1 norm, calculated only at those locations where the target is zero. In other words, 
+the loss is minimized when the data does not show up where it shouldn't (but doesn't necessarily show up where it should).
+"""
+const LOSS_L1_SHAPE = LossFunction(f = l1_shape, name = "L1_SHAPE")
 
 """
     mutable struct OptimizationParameter{T}
@@ -191,28 +207,40 @@ function Base.show(io::IO, bop::BOMBOptimizationProblem)
 end
 
 """
-    simulate(bop::BOMBOptimizationProblem; use_optimal_parameters, showprogress)
+    simulate(bop::BOMBOptimizationProblem; high_accuracy, type, showprogress)
 
 Integrate `bop` by constructing the [`RaftParameters`](@ref) implied by its fields using [`simulate(::RaftParameters)`](@ref).
 
 ### Optional Arguments
 
-- `high_accuracy`: A `Bool` which, if `true`, uses lower tolerances in the integration. Default `true`.
-- `use_optimal_parameters`: A `Bool` which, if `true`, runs the integration using `param.opt` instead of \
-`param.val` for each [`OptimizationParameter`](@ref). Default `false`. 
-- `showprogress`: A `Bool` which outputs the ingegration progress when `true`. Default `false`.
+- `high_accuracy`: A `Bool` which, if `true`, uses higher tolerances in the integration. Default `true`.
+- `type`: A `String` identifying the [`OptimizationParameter`](@ref) values to be used during the simulation.
+    - `"val"`: The default case, each parameter is equal to its `val`; used during optimization.
+    - `"default"`: Each parameter is set equal to its `default`.
+    - `"opt`: Each parameter is set equal to its optimal value, if it is both optimizable and optimized. Otherwise, `default` is used.
+- `showprogress`: A `Bool` which outputs the integration progress when `true`. Default `false`.
 """
 function simulate(
     bop::BOMBOptimizationProblem;
     high_accuracy::Bool = true, 
-    use_optimal_parameters::Bool = false, 
+    type::String = "val",
     showprogress::Bool = false)
 
-    if use_optimal_parameters
-        @assert bop.opt !== nothing "`bop` has not been optimized"
-        δ, a, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
-    else
+    seed!(bop.seed)
+
+    @assert type in ["val", "default", "opt"]
+
+    if type == "val"
         δ, a, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
+    elseif type == "default"
+        δ, a, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
+    elseif type == "opt"
+        if bop.opt === nothing
+            @warn "The `opt` parameter value has been selected, but `bop` has not been optimized. The default parameters will be used."
+            δ, a, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
+        else
+            δ, a, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
+        end
     end
 
     # time
@@ -272,7 +300,7 @@ end
 
 
 """
-    loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem; target_only, showprogress)
+    loss(u::Vector{<:Real}, bop::BOMBOptimizationProblem; high_accuracy, type, showprogress)
 
 Compute the loss associated with parameter values `u` in `bop`.
 
@@ -282,16 +310,20 @@ order defined by [`OPTIMIZATION_PARAMETER_NAMES`](@ref).
 
 ### Optional Arguments
 
-- `high_accuracy`: A `Bool` which, if `true`, uses lower tolerances in the integration. Default `true`.
+The following arguments are passed directly to `simulate`.
+
+- `high_accuracy`: A `Bool` which, if `true`, uses higher tolerances in the integration. Default `true`.
+- `type`: A `String` identifying the [`OptimizationParameter`](@ref) values to be used during the simulation.
+    - `"val"`: The default case, each parameter is equal to its `val`; used during optimization.
+    - `"default"`: Each parameter is set equal to its `default`.
+    - `"opt`: Each parameter is set equal to its optimal value, if it is both optimizable and optimized. Otherwise, `default` is used.
 - `showprogress`: A `Bool` which outputs the integration progress when `true`. Default `false`.
-- `target_only`: A `Bool` which restricts the loss function to only act only locations where the \
-target distribution has nonzero Sargassum content. 
 """
 function loss(
     u::Vector{<:Real}, 
     bop::BOMBOptimizationProblem;
     high_accuracy::Bool = true,
-    target_only::Bool = false, 
+    type::String = "val",
     showprogress::Bool = false)
     optimizable = [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
 
@@ -308,21 +340,16 @@ function loss(
     target = target_dist.sargassum[:,:,1]
     target = target/sum(target)
 
-    rtr = simulate(bop, high_accuracy = high_accuracy, showprogress = showprogress)
+    rtr = simulate(bop, high_accuracy = high_accuracy, type = type, showprogress = showprogress)
     rtr = time_slice(rtr, (tend - bop.t_extra, tend))
     data = bins(rtr, target_dist)
-    
-    if target_only
-        data[target .== 0.0] .= 0.0
-    end
-
     data = data/sum(data)
 
-    return bop.loss_func.f(data, target)
+    return bop.loss_func.f(target, data)
 end
 
 """
-    loss(rtr::RaftTrajectory, bop::BOMBOptimizationProblem; target_only)
+    loss(rtr::RaftTrajectory, bop::BOMBOptimizationProblem)
 
 Compute the loss associated with the [`RaftTrajectory`](@ref) `rtr`.
 
@@ -330,13 +357,11 @@ Use this instead of `loss(u::Vector, bop)` when the integration is already done.
 
 ### Optional Arguments
 
-- `target_only`: A `Bool` which restricts the loss function to only act only locations where the \
-target distribution has nonzero Sargassum content. Defauly `false`.
+None.
 """
 function loss(
     rtr::RaftTrajectory, 
-    bop::BOMBOptimizationProblem;
-    target_only::Bool = false)
+    bop::BOMBOptimizationProblem)
 
     start_date, end_date = bop.tspan
     tstart, tend = yearmonth2tspan(start_date, end_date, t_extra = (0, bop.t_extra))
@@ -346,18 +371,13 @@ function loss(
     target = target/sum(target)
 
     data = bins(time_slice(rtr, (tend - bop.t_extra, tend)), target_dist)
-    
-    if target_only
-        data[target .== 0.0] .= 0.0
-    end
-
     data = data/sum(data)
 
-    return bop.loss_func.f(data, target)
+    return bop.loss_func.f(target, data)
 end
 
 """
-    optimize!(bop; time_limit, target_only, verbose)
+    optimize!(bop; time_limit, high_accuracy, verbose)
 
 Optimize the [`BOMBOptimizationProblem`](@ref) in `bop` using the `Metaheuristics` optimization package and update it
 to include the optimal results. The Evolutionary Centers Algorithm is used via `Metaheuristics.ECA`.
@@ -369,8 +389,6 @@ to include the optimal results. The Evolutionary Centers Algorithm is used via `
 ### Optional Arguments 
 
 - `time_limit`: A `Float64` giving the upper time limit in seconds on the length of the optimization.
-- `target_only`: A `Bool` which restricts the loss function to only act only locations where the \
-target distribution has nonzero Sargassum content. Default `false`.
 - `high_accuracy`: A `Bool` which, if `true`, uses lower tolerances in the integration. Default `true`.
 - `verbose`: Show simplified results each iteration of the optimization. Default `true`.
 """
@@ -378,7 +396,6 @@ function optimize!(
     bop::BOMBOptimizationProblem; 
     time_limit::Float64 = 300.0,
     high_accuracy::Bool = true,
-    target_only::Bool = false,
     verbose = true)
 
     @assert bop.opt === nothing "`bop` already has an optimal value"
@@ -390,7 +407,7 @@ function optimize!(
     function f_parallel(X)
         fitness = zeros(size(X,1))
         Threads.@threads for i in 1:size(X,1)
-            fitness[i] = loss(X[i,:], bop, high_accuracy = high_accuracy, target_only = target_only)
+            fitness[i] = loss(X[i,:], bop, high_accuracy = high_accuracy)
         end
         return fitness
     end

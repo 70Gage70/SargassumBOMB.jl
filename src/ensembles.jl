@@ -107,8 +107,8 @@ end
 
 dists = SargassumDistribution(joinpath(@__DIR__, "..", "..", "SargassumFromAFAI.jl", "data", "dist-2018.nc"))
 
-april_plot = SargassumFromAFAI.plot(dists[(2018, 4)], resolution = (1920, 1080), legend = false, limits = (-100, -50, 5, 35))
-july_plot = SargassumFromAFAI.plot(dists[(2018, 7)], resolution = (1920, 1080), legend = false, limits = (-100, -50, 5, 35))
+april_plot = SargassumFromAFAI.plot(dists[(2018, 4)], size = (1920, 1080), legend = false, limits = (-100, -50, 5, 35))
+july_plot = SargassumFromAFAI.plot(dists[(2018, 7)], size = (1920, 1080), legend = false, limits = (-100, -50, 5, 35))
 
 # integrate to August 1, point is that the distribution for July take into account the entirety of 
 # July, not just July 1st.

@@ -59,7 +59,7 @@ include("main.jl")
 export simulate, yearmonth2tspan
 
 include("optimization.jl")
-export OPTIMIZATION_PARAMETER_NAMES, LossFunction, LOSS_L1, LOSS_COR, OptimizationParameter, BOMBOptimizationProblem, loss, optimize!
+export OPTIMIZATION_PARAMETER_NAMES, LossFunction, LOSS_L1, LOSS_COR, LOSS_L1_SHAPE, OptimizationParameter, BOMBOptimizationProblem, loss, optimize!
 
 include(joinpath(@__DIR__, "..", "plotting", "plotting-core.jl"))
 export default_fig, geo_axis, land!, data_legend!, trajectory!, vector_field_t!, scalar_field_t!, trajectory_hist!, plot

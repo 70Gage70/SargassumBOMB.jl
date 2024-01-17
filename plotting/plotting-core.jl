@@ -6,7 +6,7 @@ of `(5, 100, 5, 5)`.
 """
 function default_fig()
     return Figure(
-    resolution = (1920, 1080), 
+    size = (1920, 1080), 
     fontsize = 50,
     figure_padding = (5, 100, 5, 5));
 end
@@ -297,33 +297,35 @@ function trajectory_hist!(
 end
 
 """
-    plot(bop::BOMBOptimizationProblem; use_optimal_parameters)
+    plot(bop::BOMBOptimizationProblem; high_accuracy, type, showprogress)
 
 Plot the [`BOMBOptimizationProblem`](@ref) in `bop` as well as the `SargassumFromAFAI` distributions for comparison at 
 the initial and final times provided by `bop.tspan`.
 
 ### Optional Arguments 
 
-- `use_optimal_parameters`: A `Bool` which, if `true`, runs the integration using `param.opt` instead of \
-`param.val` for each [`OptimizationParameter`](@ref). Default `false`. 
-- `target_only`: A `Bool` which restricts the loss function to only act only locations where the \
-target distribution has nonzero Sargassum content. Applies only in the case \
-where `use_optimal_parameters == false`. Default `false`.
+The following arguments are passed directly to `simulate`, the result of which is used to make the plot.
+
+- `high_accuracy`: A `Bool` which, if `true`, uses higher tolerances in the integration. Default `true`.
+- `type`: A `String` identifying the [`OptimizationParameter`](@ref) values to be used during the simulation.
+    - `"default"`: The default value, each parameter is set equal to its `default`.
+    - `"opt`: Each parameter is set equal to its optimal value, if it is both optimizable and optimized. Otherwise, `default` is used.
+- `showprogress`: A `Bool` which outputs the integration progress when `true`. Default `false`.
 """
 function plot(
     bop::BOMBOptimizationProblem; 
-    use_optimal_parameters::Bool = false,
-    target_only::Bool = false)
-    if bop.opt === nothing
-        @warn "BOMBOptimizationProblem is not optimized; showing defaults."
-    end
+    high_accuracy::Bool = true, 
+    type::String = "default",
+    showprogress::Bool = false)
+
+    @assert type in ["default", "opt"]
 
     start_date, end_date = bop.tspan
     tstart, tend = yearmonth2tspan(start_date, end_date, t_extra = (0, bop.t_extra))
 
     fig = Figure(
-        # resolution = (1920, 1080), 
-        resolution = (2420, 2320),
+        # size = (1920, 1080), 
+        size = (2420, 2320),
         fontsize = 50,
         figure_padding = (5, 100, 5, 5))
 
@@ -343,10 +345,10 @@ function plot(
     land!(ax)
 
     ### OPTIMIZED
+    rtr = simulate(bop, high_accuracy = high_accuracy, type = type, showprogress = showprogress)
+
     # initial distribution 
     ax = geo_axis(fig[2, 1], limits = limits, title = "BOMB initial [optim] $(monthname(start_date[2])), week 1")
-    rtr = simulate(bop, use_optimal_parameters = use_optimal_parameters)
-    
     rtr_initial = time_slice(rtr, (tstart, tstart))
     trajectory_hist!(ax, rtr_initial, dist_initial)
     land!(ax)
@@ -360,13 +362,14 @@ function plot(
     # strings
     ltx(x) = latexify(x, fmt = FancyNumberFormatter(4))
 
-    if use_optimal_parameters
+    if type == "opt"
         loss_ltx = latexify(bop.opt, fmt = FancyNumberFormatter(4))
-    else
-        loss_ltx = latexify(loss(rtr, bop, target_only = target_only), fmt = FancyNumberFormatter(4))
+        p_vals = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
+    elseif type == "default"
+        loss_ltx = latexify(loss(rtr, bop), fmt = FancyNumberFormatter(4))
+        p_vals = [bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
     end
 
-    p_vals = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
     δ_opt, a_opt, σ_opt, A_spring_opt, λ_opt, μ_max_opt, m_opt, k_N_opt = ltx.(p_vals)
 
     if bop.rhs == WaterWind!

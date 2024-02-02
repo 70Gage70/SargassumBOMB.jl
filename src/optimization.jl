@@ -388,7 +388,7 @@ to include the optimal results. The Evolutionary Centers Algorithm is used via `
 
 ### Optional Arguments 
 
-- `time_limit`: A `Float64` giving the upper time limit in seconds on the length of the optimization.
+- `time_limit`: A `Float64` giving the upper time limit in seconds on the length of the optimization. Default `300.0`.
 - `high_accuracy`: A `Bool` which, if `true`, uses lower tolerances in the integration. Default `true`.
 - `verbose`: Show simplified results each iteration of the optimization. Default `true`.
 """
@@ -424,4 +424,77 @@ function optimize!(
     end
 
     return nothing
+end
+
+"""
+    sample!(bop, n_samples; sampling_algorithm, time_limit, high_accuracy, verbose)
+
+Optimize the [`BOMBOptimizationProblem`](@ref) in `bop` using the `QuasiMonteCarlo` package. Specifically, 
+take `n_samples` using `QuasiMonteCarlo.SobolSample()` over all optimizable parameters so that the optimal 
+value is just the sample with the lowest loss function.
+
+### Arguments 
+
+- `bop`: An unoptimized [`BOMBOptimizationProblem`](@ref).
+- `n_samples`: The number of samples to take.
+
+### Optional Arguments 
+
+- `sampling_algorithm`: A `QuasiMonteCarlo.SamplingAlgorithm`. Default `SobolSample()`.
+- `time_limit`: A `Float64` giving the upper time limit in seconds on the length of the optimization. Default `300.0`.
+- `high_accuracy`: A `Bool` which, if `true`, uses lower tolerances in the integration. Default `true`.
+- `verbose`: Show the progress of the sampling. Default `true`.
+"""
+function sample!(
+    bop::BOMBOptimizationProblem,
+    n_samples::Integer;
+    sampling_algorithm::QuasiMonteCarlo.SamplingAlgorithm = SobolSample(),
+    time_limit::Float64 = 300.0,
+    high_accuracy::Bool = true,
+    verbose = true)
+
+    lb = [bop.params[p].bounds[1] for p in OPTIMIZATION_PARAMETER_NAMES if bop.params[p].optimizable]
+    ub = [bop.params[p].bounds[2] for p in OPTIMIZATION_PARAMETER_NAMES if bop.params[p].optimizable]
+    samps = QuasiMonteCarlo.sample(n_samples, lb, ub, sampling_algorithm)
+
+    fitness = zeros(n_samples)
+    timedout = false
+    tstart = time()
+
+    j = 0
+    Threads.@threads for i in 1:n_samples
+        j = j + 1
+        if time() - tstart > time_limit
+            timedout = true
+            break
+        end
+
+        fitness[i] = loss(samps[:,i], bop, high_accuracy = high_accuracy)
+
+        if verbose
+            val = 100*j/n_samples
+            print(WHITE_BG("Sampling: $(val)%   \r"))
+            flush(stdout)
+        end
+    end
+
+    if timedout
+        @info "Exceeded time limit of $(round(time_limit, sigdigits = 3)) seconds."
+    end
+
+    idx = findall(x -> x != 0.0, fitness)
+    fitness = fitness[idx]
+    samps = samps[:,idx]
+
+    best_loss, idx = findmin(fitness)
+    best_params = samps[:,idx]
+
+    bop.opt = best_loss
+    i = 1
+    for param in [name for name in OPTIMIZATION_PARAMETER_NAMES if bop.params[name].optimizable]
+        bop.params[param].opt = best_params[i]
+        i = i + 1
+    end
+
+    return nothing 
 end

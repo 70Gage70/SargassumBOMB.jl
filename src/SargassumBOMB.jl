@@ -14,6 +14,7 @@ using Random: seed!
 
 # plotting/geography
 using Makie, CairoMakie, GeoMakie
+using SargassumColors
 using GeoMakie, GeoMakie.GeoJSON, GeoDatasets, GeoInterface
 
 # printing

@@ -214,7 +214,8 @@ function trajectory_hist!(
     lon_bins::StepRangeLen,
     lat_bins::StepRangeLen;
     opts::NamedTuple = (
-        colormap = Reverse(:RdYlGn),
+        # colormap = Reverse(:RdYlGn),
+        colormap = SHADDEN,
         colorscale = x -> x == 0.0 ? -1.0 : log10(x))
     )
 
@@ -243,7 +244,8 @@ function trajectory_hist!(
     lon_bins::StepRangeLen,
     lat_bins::StepRangeLen;
     opts::NamedTuple = (
-        colormap = Reverse(:RdYlGn),
+        # colormap = Reverse(:RdYlGn),
+        colormap = SHADDEN,
         colorscale = x -> x == 0.0 ? -1.0 : log10(x))
     )
 
@@ -264,7 +266,8 @@ function trajectory_hist!(
     traj::Vector{<:RaftTrajectory},
     dist::SargassumDistribution;
     opts::NamedTuple = (
-        colormap = Reverse(:RdYlGn),
+        # colormap = Reverse(:RdYlGn),
+        colormap = SHADDEN,
         colorscale = x -> x == 0.0 ? -1.0 : x)
     )
 
@@ -289,7 +292,8 @@ function trajectory_hist!(
     traj::RaftTrajectory,
     dist::SargassumDistribution;
     opts::NamedTuple = (
-        colormap = Reverse(:RdYlGn),
+        # colormap = Reverse(:RdYlGn),
+        colormap = SHADDEN,
         colorscale = x -> x == 0.0 ? -1.0 : x)
     )
 

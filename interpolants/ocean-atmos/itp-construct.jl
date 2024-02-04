@@ -31,11 +31,11 @@ end
 function construct_water_itp()
     @info "Constructing water interpolant."
 
-    rick_file = joinpath(@__DIR__, "..", "..", "data", "preprocessed", "rick-2018.mat")
+    water_file = joinpath(@__DIR__, "..", "..", "data", "preprocessed", "water-2018.mat")
     outfile = joinpath(@__DIR__, "WATER_ITP.jld2")
     rm(outfile, force = true)
 
-    itp = GriddedField(rick_file, ["lon", "lat", "t"], ["u", "v"], 
+    itp = GriddedField(water_file, ["lon", "lat", "t"], ["u", "v"], 
         time_index = 3, 
         time2datetime = rata2datetime_minute, 
         NaN_replacement = 0.0, 

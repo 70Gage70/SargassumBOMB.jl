@@ -82,6 +82,7 @@ Temporary Items
 !wind.nc
 !afai.nc
 !waves.nc
+!water.nc
 
 # workspace
 /src/workspaces.jl

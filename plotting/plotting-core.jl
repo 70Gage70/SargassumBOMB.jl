@@ -338,7 +338,8 @@ function plot(
 
     fig = Figure(
         # size = (1920, 1080), 
-        size = (2420, 2320),
+        # size = (2420, 2320),
+        size = (2920, 2320),
         fontsize = 50,
         figure_padding = (5, 100, 5, 5))
 
@@ -368,6 +369,42 @@ function plot(
 
     # final distribution 
     ax = geo_axis(fig[2, 2], limits = limits, title = "BOMB final [optim] $(monthname(end_date[2])), week 1")
+    rtr_final = time_slice(rtr, (tend - bop.t_extra, tend))
+    trajectory_hist!(ax, rtr_final, dist_final)
+    land!(ax)
+
+    ### COMPARISON
+    δ_param = OptimizationParameter("δ",                1.25,   (1.05, 1.5),        false)
+    a_param = OptimizationParameter("a",                1.0e-4, (1.0e-5, 1.0e-3),   false)
+    σ_param = OptimizationParameter("σ",                1.0,    (0.9, 1.1),         false)
+    A_spring_param = OptimizationParameter("A_spring",  1.0,    (0.1, 3.0),         false)
+    λ_param = OptimizationParameter("λ",                1.0,    (0.5, 1.5),         false)
+    μ_max_param = OptimizationParameter("μ_max",        0.1,    (0.05, 0.5),        false)
+    m_param = OptimizationParameter("m",                0.05,   (0.0, 0.1),         false)
+    k_N_param = OptimizationParameter("k_N",            0.012,  (0.005, 0.05),      false)
+    
+    params_waterwind = Dict(param.name => param for param in [δ_param, a_param, σ_param, A_spring_param, λ_param, μ_max_param, m_param, k_N_param])
+    
+    bop_waterwind = BOMBOptimizationProblem(
+        params = params_waterwind,
+        rhs = WaterWind!,
+        immortal = true,
+        tspan = bop.tspan,
+        n_levels = bop.n_levels,
+        t_extra = bop.t_extra,
+        loss_func = bop.loss_func
+    )
+
+    rtr = simulate(bop_waterwind, high_accuracy = high_accuracy, type = "default", showprogress = false)
+
+    # initial distribution 
+    ax = geo_axis(fig[3, 1], limits = limits, title = "WATER+WIND initial [optim] $(monthname(start_date[2])), week 1")
+    rtr_initial = time_slice(rtr, (tstart, tstart))
+    trajectory_hist!(ax, rtr_initial, dist_initial)
+    land!(ax)
+
+    # final distribution 
+    ax = geo_axis(fig[3, 2], limits = limits, title = "WATER+WIND final [optim] $(monthname(end_date[2])), week 1")
     rtr_final = time_slice(rtr, (tend - bop.t_extra, tend))
     trajectory_hist!(ax, rtr_final, dist_final)
     land!(ax)

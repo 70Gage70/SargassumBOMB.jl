@@ -386,14 +386,17 @@ function plot(
     δ_opt, a_opt, σ_opt, A_spring_opt, λ_opt, μ_max_opt, m_opt, k_N_opt = ltx.(p_vals)
 
     if bop.rhs == WaterWind!
-        fig[-2,:] = Label(fig, L"\text{WaterWind}")
+        fig[-4,:] = Label(fig, L"\text{WaterWind}")
     elseif bop.rhs == Raft!
-        fig[-2,:] = Label(fig, L"\text{BOMB}")
+        fig[-4,:] = Label(fig, L"\text{BOMB}")
     end
 
-    fig[-1,:] = Label(fig, L"[%$(bop.loss_func.name)] Loss(opt) =  %$(loss_ltx)")
+    fig[-3,:] = Label(fig, L"[%$(bop.loss_func.name)] Loss(opt) =  %$(loss_ltx)")
     
-    fig[0,:] = Label(fig, L"Optimals: $\delta =$ %$(δ_opt), $a =$ %$(a_opt), $\sigma =$ %$(σ_opt), $A_\text{spring} =$ %$(A_spring_opt), $λ =$ %$(λ_opt), $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
+    fig[-2,:] = Label(fig, L"Optimals (clumps): $\delta =$ %$(δ_opt), $a =$ %$(a_opt), $\sigma =$ %$(σ_opt)")
+    fig[-1,:] = Label(fig, L"Optimals (springs): $A_\text{spring} =$ %$(A_spring_opt), $λ =$ %$(λ_opt), $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
+    fig[0,:] = Label(fig, L"Optimals (biology): $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
+
 
     return fig
 end

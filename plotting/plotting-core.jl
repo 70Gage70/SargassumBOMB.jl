@@ -1,7 +1,7 @@
 """
     default_fig()
 
-Create a `Makie.Figure` with a resolution of `(1920, 1080)`, a fontsize of `50` and a padding 
+Create a `Makie.Figure` with a size of `(1920, 1080)`, a fontsize of `50` and a padding 
 of `(5, 100, 5, 5)`.
 """
 function default_fig()
@@ -92,6 +92,15 @@ end
     data_legend!(fig_pos, label; colormap, label_fontsize, tick_fontsize, ticks, barlength, barwidth)
 
 Add a `Makie.Colorbar` with label `label` to the `GridPosion` in `fig_pos.`
+
+### Optional Arguments
+
+- `colormap`: The colormap used in the colorbar. Default `SargassumColors.SHADDEN`.
+- `label_fontsize`: The font size of the label. Default 40.
+- `tick_fontsize`: The font size of the label ticks. Default 40.
+- `ticks`: A `Vector` of tick values. Default `[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]`.
+- `barlength`: The length of the colorbar as a `Relative` size of the grid. Default `Relative(9/10).`
+- `barwidth`: The width of the colorbar as a `Relative` size of the grid. Default `Relative(3/10).`
 """
 function data_legend!(
     fig_pos::GridPosition,

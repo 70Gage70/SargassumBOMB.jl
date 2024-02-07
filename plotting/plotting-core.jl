@@ -386,9 +386,5 @@ function plot(
     
     fig[0,:] = Label(fig, L"Optimals: $\delta =$ %$(δ_opt), $a =$ %$(a_opt), $\sigma =$ %$(σ_opt), $A_\text{spring} =$ %$(A_spring_opt), $λ =$ %$(λ_opt), $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
 
-    outfile = joinpath(@__DIR__, "..", "figures", "opt_test.png")
-    rm(outfile, force = true)
-    save(outfile, fig)
-
     return fig
 end

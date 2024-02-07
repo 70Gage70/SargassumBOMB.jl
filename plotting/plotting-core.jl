@@ -216,7 +216,7 @@ function trajectory_hist!(
     opts::NamedTuple = (
         # colormap = Reverse(:RdYlGn),
         colormap = SHADDEN,
-        colorscale = x -> x == 0.0 ? -1.0 : log10(x))
+        colorscale = x -> x == 0.0 ? -1.0 : x)
     )
 
     δ_lon = step(lon_bins)
@@ -246,7 +246,7 @@ function trajectory_hist!(
     opts::NamedTuple = (
         # colormap = Reverse(:RdYlGn),
         colormap = SHADDEN,
-        colorscale = x -> x == 0.0 ? -1.0 : log10(x))
+        colorscale = x -> x == 0.0 ? -1.0 : x)
     )
 
     trajectory_hist!(axis, [traj], lon_bins, lat_bins; opts = opts)

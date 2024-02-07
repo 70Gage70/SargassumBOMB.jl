@@ -25,6 +25,8 @@ using Latexify
 using Metaheuristics
 using QuasiMonteCarlo
 
+###############################################################
+
 include("coordinates.jl")
 export EquirectangularReference, EQR_DEFAULT, sph2xy, xy2sph
 

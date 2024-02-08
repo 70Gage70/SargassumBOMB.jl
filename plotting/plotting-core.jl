@@ -95,7 +95,7 @@ Add a `Makie.Colorbar` with label `label` to the `GridPosion` in `fig_pos.`
 
 ### Optional Arguments
 
-- `colormap`: The colormap used in the colorbar. Default `SargassumColors.SHADDEN`.
+- `colormap`: The colormap used in the colorbar. Default `SargassumColors.EUREKA`.
 - `label_fontsize`: The font size of the label. Default 40.
 - `tick_fontsize`: The font size of the label ticks. Default 40.
 - `ticks`: A `Vector` of tick values. Default `[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]`.
@@ -224,8 +224,8 @@ function trajectory_hist!(
     lat_bins::StepRangeLen;
     opts::NamedTuple = (
         # colormap = Reverse(:RdYlGn),
-        colormap = SHADDEN,
-        colorscale = x -> x == 0.0 ? -1.0 : x)
+        colormap = EUREKA,
+        colorscale = log10)
     )
 
     δ_lon = step(lon_bins)
@@ -254,18 +254,18 @@ function trajectory_hist!(
     lat_bins::StepRangeLen;
     opts::NamedTuple = (
         # colormap = Reverse(:RdYlGn),
-        colormap = SHADDEN,
-        colorscale = x -> x == 0.0 ? -1.0 : x)
+        colormap = EUREKA,
+        colorscale = log10)
     )
 
     trajectory_hist!(axis, [traj], lon_bins, lat_bins; opts = opts)
 end
 
 """
-    trajectory_hist!(axis, traj, dist; opts...)
+    trajectory_hist!(axis, traj, dist, week; opts...)
 
 Create a `Makie.heatmap` on `axis` with the same bins as the `SargassumFromAFAI.SargassumDistribution` in `dist` 
-` of the data in `traj`.
+` of the data in `traj` scaled according to the sargassum content at week `week`.
 
 `traj` can be a single [`RaftTrajectory`](@ref) or a `Vector` of [`RaftTrajectory`](@ref). In the case of 
 a `Vector`, all trajectories are mixed together to make a single plot.
@@ -273,12 +273,15 @@ a `Vector`, all trajectories are mixed together to make a single plot.
 function trajectory_hist!(
     axis::Axis, 
     traj::Vector{<:RaftTrajectory},
-    dist::SargassumDistribution;
+    dist::SargassumDistribution,
+    week::Integer;
     opts::NamedTuple = (
         # colormap = Reverse(:RdYlGn),
-        colormap = SHADDEN,
-        colorscale = x -> x == 0.0 ? -1.0 : x)
+        colormap = EUREKA,
+        colorscale = log10)
     )
+
+    @assert week in [1, 2, 3, 4]
 
     lon_centers = dist.lon
     lat_centers = dist.lat
@@ -288,7 +291,12 @@ function trajectory_hist!(
         binned = binned + bins(tr, dist)
     end
 
-    range_opts = (lowclip = :white, colorrange = (1.0, maximum(binned)))
+    # rescale the trajectory data to be on the same scale as the distribution
+    sarg = dist.sargassum[:,:,week]
+    binned = binned*sum(sarg)/sum(binned)
+    sarg_limits = (minimum(filter(x -> x > 0, sarg)), maximum(sarg))
+
+    range_opts = (lowclip = :white, colorrange = sarg_limits)
 
     return heatmap!(axis, 
         lon_centers, 
@@ -299,14 +307,15 @@ end
 function trajectory_hist!(
     axis::Axis, 
     traj::RaftTrajectory,
-    dist::SargassumDistribution;
+    dist::SargassumDistribution,
+    week::Integer;
     opts::NamedTuple = (
         # colormap = Reverse(:RdYlGn),
-        colormap = SHADDEN,
-        colorscale = x -> x == 0.0 ? -1.0 : x)
+        colormap = EUREKA,
+        colorscale = log10)
     )
 
-    trajectory_hist!(axis, [traj], dist; opts = opts) 
+    trajectory_hist!(axis, [traj], dist, week; opts = opts) 
 end
 
 """
@@ -358,19 +367,23 @@ function plot(
     SargassumFromAFAI.plot!(ax, dist_final, 1)
     land!(ax)
 
-    ### OPTIMIZED
-    rtr = simulate(bop, high_accuracy = high_accuracy, type = type, showprogress = showprogress)
+    ### BOMB
+    if type == "opt"
+        rtr = bop.opt_rtr
+    elseif type == "default"
+        rtr = simulate(bop, high_accuracy = high_accuracy, type = type, showprogress = showprogress)
+    end
 
     # initial distribution 
     ax = geo_axis(fig[2, 1], limits = limits, title = "BOMB initial [optim] $(monthname(start_date[2])), week 1")
     rtr_initial = time_slice(rtr, (tstart, tstart))
-    trajectory_hist!(ax, rtr_initial, dist_initial)
+    trajectory_hist!(ax, rtr_initial, dist_initial, 1)
     land!(ax)
 
     # final distribution 
     ax = geo_axis(fig[2, 2], limits = limits, title = "BOMB final [optim] $(monthname(end_date[2])), week 1")
     rtr_final = time_slice(rtr, (tend - bop.t_extra, tend))
-    trajectory_hist!(ax, rtr_final, dist_final)
+    trajectory_hist!(ax, rtr_final, dist_final, 1)
     land!(ax)
 
     ### COMPARISON
@@ -404,13 +417,13 @@ function plot(
     # initial distribution 
     ax = geo_axis(fig[3, 1], limits = limits, title = "WATER+WIND 3% initial [optim] $(monthname(start_date[2])), week 1")
     rtr_initial = time_slice(rtr, (tstart, tstart))
-    trajectory_hist!(ax, rtr_initial, dist_initial)
+    trajectory_hist!(ax, rtr_initial, dist_initial, 1)
     land!(ax)
 
     # final distribution 
     ax = geo_axis(fig[3, 2], limits = limits, title = "WATER+WIND 3% final [optim] $(monthname(end_date[2])), week 1")
     rtr_final = time_slice(rtr, (tend - bop.t_extra, tend))
-    trajectory_hist!(ax, rtr_final, dist_final)
+    trajectory_hist!(ax, rtr_final, dist_final, 1)
     land!(ax)
 
     # strings

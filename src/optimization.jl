@@ -50,7 +50,14 @@ end
 
 A `LossFunction` for the L1 norm.
 """
-const LOSS_L1 = LossFunction(f = (a::Matrix, b::Matrix) -> sqrt(sum((a - b) .^ 2)) , name = "L1")
+const LOSS_L1 = LossFunction(f = (a::Matrix, b::Matrix) -> sum(abs.(a - b)) , name = "L1")
+
+"""
+    const LOSS_L2
+
+A `LossFunction` for the L2 norm.
+"""
+const LOSS_L2 = LossFunction(f = (a::Matrix, b::Matrix) -> sqrt(sum((a - b) .^ 2)) , name = "L2")
 
 """
     const LOSS_COR
@@ -59,19 +66,20 @@ A `LossFunction` for the negative correlation.
 """
 const LOSS_COR = LossFunction(f = (a::Matrix, b::Matrix) -> -cor(vec(a), vec(b)), name = "-COR")
 
-function l1_shape(a::Matrix, b::Matrix)
-    idx = findall(iszero, a) # a is target, b is data
+function l2_shape(a::Matrix, b::Matrix)
+    # a is target, b is data
+    idx = findall(iszero, a) 
     va, vb = a[idx], b[idx]
-    return sqrt(sum((a - b) .^ 2))
+    return sqrt(sum((va - vb) .^ 2))
 end
 
 """
-    const LOSS_L1_SHAPE
+    const LOSS_L2_SHAPE
 
-A `LossFunction` for the L1 norm, calculated only at those locations where the target is zero. In other words, 
+A `LossFunction` for the L2 norm, calculated only at those locations where the target is zero. In other words, 
 the loss is minimized when the data does not show up where it shouldn't (but doesn't necessarily show up where it should).
 """
-const LOSS_L1_SHAPE = LossFunction(f = l1_shape, name = "L1_SHAPE")
+const LOSS_L2_SHAPE = LossFunction(f = l2_shape, name = "L2_SHAPE")
 
 """
     mutable struct OptimizationParameter{T}
@@ -140,6 +148,7 @@ The more levels, the more clumps initially exist.
 - `t_extra`: A number of extra days to add to the integration at the end.
 - `loss_func`: The [`LossFunction`](@ref) used during the optimization.
 - `opt`: The minimal [`LossFunction`](@ref) obtained. If `nothing`, the problem is considered unoptimized.
+- `opt_rtr`: When optimized, the [`RaftTrajectory`](@ref) that attained the optimal loss.
 - `seed`: A `Random.seed!` used in the integration.
 
 ### Constructor
@@ -160,6 +169,7 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
     t_extra::U
     loss_func::LossFunction
     opt::Union{Nothing, T}
+    opt_rtr::Union{Nothing, RaftTrajectory{U, T}}
     seed::U
 
     function BOMBOptimizationProblem(;
@@ -171,6 +181,7 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
         t_extra::U,
         loss_func::LossFunction = LOSS_COV,
         opt::Union{Nothing, T} = nothing,
+        opt_rtr::Union{Nothing, RaftTrajectory{U, T}} = nothing,
         seed::U = 1234) where {T<:Real, U<:Integer}
 
         @assert length(params) > 0 "Must optimize at least one parameter."
@@ -178,7 +189,7 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
         @assert DateTime(first(tspan)...) < DateTime(last(tspan)...)
         @assert n_levels > 0 "Need at least one level"
 
-        return new{T, U}(params, rhs, immortal, tspan, n_levels, t_extra, loss_func, opt, seed)
+        return new{T, U}(params, rhs, immortal, tspan, n_levels, t_extra, loss_func, opt, opt_rtr, seed)
     end
 end
 
@@ -341,11 +352,19 @@ function loss(
     target = target/sum(target)
 
     rtr = simulate(bop, high_accuracy = high_accuracy, type = type, showprogress = showprogress)
-    rtr = time_slice(rtr, (tend - bop.t_extra, tend))
-    data = bins(rtr, target_dist)
+    rtr_final = time_slice(rtr, (tend - bop.t_extra, tend))
+    data = bins(rtr_final, target_dist)
     data = data/sum(data)
+    loss_val = bop.loss_func.f(target, data)
 
-    return bop.loss_func.f(target, data)
+    if (type == "val") 
+        if (bop.opt === nothing) || (loss_val < bop.opt)
+            bop.opt = loss_val
+            bop.opt_rtr = rtr
+        end
+    end
+        
+    return loss_val
 end
 
 """
@@ -458,6 +477,7 @@ function sample!(
     samps = QuasiMonteCarlo.sample(n_samples, lb, ub, sampling_algorithm)
 
     fitness = zeros(n_samples)
+    cur_best = Inf
     timedout = false
     tstart = time()
 
@@ -469,11 +489,17 @@ function sample!(
             break
         end
 
-        fitness[i] = loss(samps[:,i], bop, high_accuracy = high_accuracy)
+        cur_loss = loss(samps[:,i], bop, high_accuracy = high_accuracy)
+        fitness[i] = cur_loss
+
+        if cur_loss < cur_best
+            cur_best = cur_loss
+        end
 
         if verbose
             val = 100*j/n_samples
             print(WHITE_BG("Sampling: $(val)%   \r"))
+            print(WHITE_BG("Best: $(cur_best)%   \r"))
             flush(stdout)
         end
     end

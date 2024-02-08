@@ -498,8 +498,7 @@ function sample!(
 
         if verbose
             val = 100*j/n_samples
-            print(WHITE_BG("Sampling: $(val)%   \r"))
-            print(WHITE_BG("Best: $(cur_best)%   \r"))
+            print(WHITE_BG("Sampling: $(val)%, Best: $(cur_best) \r"))
             flush(stdout)
         end
     end

@@ -359,12 +359,12 @@ function plot(
     dist_initial = SargassumFromAFAI.DIST_2018[start_date]
     dist_final = SargassumFromAFAI.DIST_2018[end_date]
     ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial $(monthname(start_date[2])), week 1")
-    SargassumFromAFAI.plot!(ax, dist_initial, 1)
+    SargassumFromAFAI.plot!(ax, dist_initial, 1, log_scale = true)
     land!(ax)
 
     # final distribution
     ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final $(monthname(end_date[2])), week 1")
-    SargassumFromAFAI.plot!(ax, dist_final, 1)
+    SargassumFromAFAI.plot!(ax, dist_final, 1, log_scale = true)
     land!(ax)
 
     ### BOMB

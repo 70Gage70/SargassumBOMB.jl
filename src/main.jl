@@ -47,17 +47,3 @@ function simulate(
     end
 end
 
-"""
-    ymw2time(y, m, w)
-
-Convert the time corresponding to the year `y`, month `m` and week `w` indicated into a single time measured in
-days since `WATER_ITP.x.time_start`.
-
-The days of the four weeks per month are defined as the 8th, 15th, 22nd and 29th.
-"""
-function ymw2time(year::Integer, month::Integer, week::Integer)
-
-    @assert week in [1, 2, 3, 4]
-
-    return Day(DateTime(year, month, 7*week + 1) - WATER_ITP.x.time_start).value |> float
-end

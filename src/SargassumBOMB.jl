@@ -60,7 +60,10 @@ include("trajectories.jl")
 export Trajectory, time_slice, RaftTrajectory, uniformize, bins
 
 include("main.jl")
-export simulate, ymw2time
+export simulate
+
+include("time.jl")
+export ymw2time, ymwspan2weekspan
 
 include("optimization.jl")
 export OPTIMIZATION_PARAMETER_NAMES, LossFunction, LOSS_L1, LOSS_L2, LOSS_COR, LOSS_L2_SHAPE, OptimizationParameter, BOMBOptimizationProblem, loss, optimize!, sample!

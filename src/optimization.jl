@@ -8,19 +8,14 @@ Equal to `["δ", "a", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]`.
 const OPTIMIZATION_PARAMETER_NAMES = ["δ", "a", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]
 
 
-
 """
     struct LossFunction
 
-A container for a function used for measuring the distance between two binned histograms for \
-optimization. 
+A container for the function used for measuring the loss of a simulation.
 
 ### Fields 
 
-- `f`: A `Function`. This function must be callable as `f(a, b)`, where `a` and `b` are matrices and it \
-must return a `Real` such that `f(a, a) = 0.0`. Example: `(a, b) -> sum((a - b) .^ 2)`. If the loss function 
-needs to depend on the exact form of `a` and `b`, it is assumed that `a` is the target distribution and `b` is the
-distribution being tested. 
+- `f`: A `Function`. This function must be callable as `f(rtr::RaftTrajectory)` and return a `Real`.
 - `name`: A `String` giving the name of the loss function, e.g. `"L1"`.
 """
 struct LossFunction
@@ -28,7 +23,6 @@ struct LossFunction
     name::String
 
     function LossFunction(; f::Function, name::String)
-        @assert hasmethod(f, Tuple{BOMBOptimizationProblem, RaftTrajectory}) "Could not evaluate `f(::BOMBOptimizationProblem, ::RaftTrajectory)`."
 
         m1_test = rand(4, 4)
         m2_test = rand(4, 4)

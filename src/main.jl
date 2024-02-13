@@ -28,7 +28,7 @@ function simulate(
     showprogress::Bool = true,
     return_raw::Bool = false)
 
-    prob_raft = ODEProblem(rhs, rp.ics.ics, rp.tspan, rp)
+    prob_raft = ODEProblem(rhs, rp.ics.ics, rp.ics.tspan, rp)
 
     sol = solve(
         prob_raft, 
@@ -48,23 +48,27 @@ function simulate(
 end
 
 """
-    yearmonth2tspan(ym_initial, ym_final; t_extra)
+    ymw2tspan(ymw_initial, ymw_final)
 
-Convert two "yearmonths" (tuples of the form `(year, month)`) into a single tuple `(t_initial, t_final)` suitable for 
-use in [`simulate`](@ref).
+Convert two "ymw" (tuples of the form `(year, month, week)`) into a single tuple `(t_initial, t_final)` suitable for 
+use in [`InitialConditions`](@ref).
 
 The times are meaured with respect to `WATER_ITP.x.time_start`.
 
-### Optional Arguments 
-
-- `t_extra`: An extra number of days added to the initial and final times. Default `(0, 0)`.
+The days of the four weeks per month are defined as the 8th, 15th, 22nd and 29th.
 """
-function yearmonth2tspan(
-    ym_initial::Tuple{Integer, Integer}, 
-    ym_final::Tuple{Integer, Integer}; 
-    t_extra::Tuple{Integer, Integer} = (0, 0))
-    t1 = Day(DateTime(ym_initial...) - WATER_ITP.x.time_start).value |> float
-    t2 = t1 + Day(DateTime(ym_final...) - DateTime(ym_initial...)).value |> float
+function ymw2tspan(
+    ymw_initial::Tuple{Integer, Integer, Integer}, 
+    ymw_final::Tuple{Integer, Integer, Integer})
 
-    return (t1 + t_extra[1], t2 + t_extra[2])
+    @assert ymw_initial[3] in [1, 2, 3, 4]
+    @assert ymw_final[3] in [1, 2, 3, 4]
+
+    y1, m1, d1 = ymw_initial[1], ymw_initial[2], 7*ymw_initial[3] + 1
+    y2, m2, d2 = ymw_final[1], ymw_final[2], 7*ymw_final[3] + 1
+
+    t1 = Day(DateTime(y1, m1, d1) - WATER_ITP.x.time_start).value |> float
+    t2 = t1 + Day(DateTime(y2, m2, d2) - DateTime(y1, m1, d1)).value |> float
+
+    return (t1, t2)
 end

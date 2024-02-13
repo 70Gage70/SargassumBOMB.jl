@@ -130,7 +130,7 @@ mutable struct OptimizationParameter{T<:Real}
 end
 
 """
-    mutable struct BOMBOptimizationProblem{T, U}
+    mutable struct BOMBOptimizationProblem{T, R, U}
 
 A container for all the data defining an optimization problem.
 
@@ -142,10 +142,9 @@ that contains it.
 for testing purposes.
 - `immortal`: A `Bool` such that if `true`, the [`ImmortalModel`](@ref) will be used, resulting in no clump \
 growths or deaths.
-- `tspan`: A `Tuple` of the form `((year1, month1), (year2, month2))` giving the integration time span.
-- `n_levels`: The number of levels to be used in the [`InitialConditions`](@ref) for the `SargassumDistribution`. \
-The more levels, the more clumps initially exist.
-- `t_extra`: A number of extra days to add to the integration at the end.
+- `ics`: The [`InitialConditions`](@ref) for the integration.
+- `target`: A tuple of the form `(SargassumDistribution, week)` such that the integration is performed up to and including \
+the year and month defined by the distribution and the particular week defined by `week`.
 - `loss_func`: The [`LossFunction`](@ref) used during the optimization.
 - `opt`: The minimal [`LossFunction`](@ref) obtained. If `nothing`, the problem is considered unoptimized.
 - `opt_rtr`: When optimized, the [`RaftTrajectory`](@ref) that attained the optimal loss.
@@ -160,13 +159,12 @@ Use
 If not provided, `loss_func` defaults to [`LOSS_COV`](@ref) and `seed` defaults to `1234`. In general, 
 `opt` should not be provided directly but it can be to bypass certain checks.
 """
-mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
+mutable struct BOMBOptimizationProblem{T<:Real, R<:Real, U<:Integer}
     params::Dict{String, OptimizationParameter{T}}
     rhs::Function
     immortal::Bool
-    tspan::Tuple{Tuple{U, U}, Tuple{U, U}}
-    n_levels::U
-    t_extra::U
+    ics::InitialConditions{T}
+    target::Tuple{SargassumDistribution{T, R}, U}
     loss_func::LossFunction
     opt::Union{Nothing, T}
     opt_rtr::Union{Nothing, RaftTrajectory{U, T}}
@@ -176,20 +174,17 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer}
         params::Dict{String, OptimizationParameter{T}},
         rhs::Function,
         immortal::Bool,
-        tspan::Tuple{Tuple{U, U}, Tuple{U, U}},
-        n_levels::U,
-        t_extra::U,
+        ics::InitialConditions{T},
+        target::Tuple{SargassumDistribution{T, R}, U},
         loss_func::LossFunction = LOSS_COV,
         opt::Union{Nothing, T} = nothing,
         opt_rtr::Union{Nothing, RaftTrajectory{U, T}} = nothing,
-        seed::U = 1234) where {T<:Real, U<:Integer}
+        seed::U = 1234) where {T<:Real, R<:Real, U<:Integer}
 
         @assert length(params) > 0 "Must optimize at least one parameter."
         @assert rhs in [Raft!, WaterWind!]
-        @assert DateTime(first(tspan)...) < DateTime(last(tspan)...)
-        @assert n_levels > 0 "Need at least one level"
 
-        return new{T, U}(params, rhs, immortal, tspan, n_levels, t_extra, loss_func, opt, opt_rtr, seed)
+        return new{T, R, U}(params, rhs, immortal, ics, target, loss_func, opt, opt_rtr, seed)
     end
 end
 
@@ -253,25 +248,20 @@ function simulate(
             δ, a, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
         end
     end
-
-    # time
-    start_date, end_date = bop.tspan
-    dist = SargassumFromAFAI.DIST_2018[start_date]
-    tspan = yearmonth2tspan(start_date, end_date, t_extra = (0, bop.t_extra))
     
+    # ics
+    ics = bop.ics
+
     # clumps
     clumps = ClumpParameters(δ = δ, a = a, σ = σ)
     
     # springs
-    L_spring = λ*ΔL(dist)
+    L_spring = λ*ΔL(bop.target[1])
     function spring_k(x::Real; A::Real = A_spring, L::Real = L_spring)
         return A * (exp((x - 2*L)/0.2) + 1)^(-1)
     end
 
     springs = SpringParameters(spring_k, L_spring)
-    
-    # initial conditions
-    ics = InitialConditions(dist, [1], bop.n_levels, "levels", EQR_DEFAULT)
     
     # connections
     connections = ConnectionsNearest(10)
@@ -294,7 +284,6 @@ function simulate(
     # integrating
     
     rp = RaftParameters(
-        tspan = tspan,
         ics = ics,
         clumps = clumps,
         springs = springs,
@@ -344,15 +333,14 @@ function loss(
         bop.params[optimizable[i]].val = u[i]
     end
 
-    start_date, end_date = bop.tspan
-    tstart, tend = yearmonth2tspan(start_date, end_date, t_extra = (0, bop.t_extra))
-
-    target_dist = SargassumFromAFAI.DIST_2018[end_date]
-    target = target_dist.sargassum[:,:,1]
+    target_dist = bop.target[1]
+    target = target_dist.sargassum[:,:,bop.target[2]]
     target = target/sum(target)
 
     rtr = simulate(bop, high_accuracy = high_accuracy, type = type, showprogress = showprogress)
-    rtr_final = time_slice(rtr, (tend - bop.t_extra, tend))
+
+    tend = bop.ics.tspan[2]
+    rtr_final = time_slice(rtr, (tend - 7, tend))
     data = bins(rtr_final, target_dist)
     data = data/sum(data)
     loss_val = bop.loss_func.f(target, data)
@@ -382,17 +370,16 @@ function loss(
     rtr::RaftTrajectory, 
     bop::BOMBOptimizationProblem)
 
-    start_date, end_date = bop.tspan
-    tstart, tend = yearmonth2tspan(start_date, end_date, t_extra = (0, bop.t_extra))
-
-    target_dist = SargassumFromAFAI.DIST_2018[end_date]
-    target = target_dist.sargassum[:,:,1]
+    target_dist = bop.target[1]
+    target = target_dist.sargassum[:,:,bop.target[2]]
     target = target/sum(target)
 
-    data = bins(time_slice(rtr, (tend - bop.t_extra, tend)), target_dist)
+    tend = bop.ics.tspan[2]
+    rtr_final = time_slice(rtr, (tend - 7, tend))
+    data = bins(rtr_final, target_dist)
     data = data/sum(data)
 
-    return bop.loss_func.f(target, data)
+    return bop.loss_func.f(target_data, data)
 end
 
 """

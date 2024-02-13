@@ -328,6 +328,8 @@ the initial and final times provided by `bop.tspan`.
 
 The following arguments are passed directly to `simulate`, the result of which is used to make the plot.
 
+- `initial_final`: If provided, a `Tuple` of the form `(initial, final)` of `SargassumDistribution`s which \
+will be added to the plot for comparison.
 - `high_accuracy`: A `Bool` which, if `true`, uses higher tolerances in the integration. Default `true`.
 - `type`: A `String` identifying the [`OptimizationParameter`](@ref) values to be used during the simulation.
     - `"default"`: The default value, each parameter is set equal to its `default`.
@@ -335,15 +337,15 @@ The following arguments are passed directly to `simulate`, the result of which i
 - `showprogress`: A `Bool` which outputs the integration progress when `true`. Default `false`.
 """
 function plot(
-    bop::BOMBOptimizationProblem; 
+    bop::BOMBOptimizationProblem;
+    initial_final::Union{Nothing, Tuple{SargassumDistribution, SargassumDistribution}} = nothing,
     high_accuracy::Bool = true, 
     type::String = "default",
     showprogress::Bool = false)
 
     @assert type in ["default", "opt"]
 
-    start_date, end_date = bop.tspan
-    tstart, tend = yearmonth2tspan(start_date, end_date, t_extra = (0, bop.t_extra))
+    tstart, tend = bop.ics.tspan
 
     fig = Figure(
         # size = (1920, 1080), 
@@ -356,16 +358,18 @@ function plot(
 
     ### AFAI
     # initial distribution 
-    dist_initial = SargassumFromAFAI.DIST_2018[start_date]
-    dist_final = SargassumFromAFAI.DIST_2018[end_date]
-    ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial $(monthname(start_date[2])), week 1")
-    SargassumFromAFAI.plot!(ax, dist_initial, 1, log_scale = true)
-    land!(ax)
+    if initial_final !== nothing
+        dist_initial = initial_final[1]
+        dist_final = initial_final[2]
+        ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial $(monthname(start_date[2])), week 1")
+        SargassumFromAFAI.plot!(ax, dist_initial, 1, log_scale = true)
+        land!(ax)
 
-    # final distribution
-    ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final $(monthname(end_date[2])), week 1")
-    SargassumFromAFAI.plot!(ax, dist_final, 1, log_scale = true)
-    land!(ax)
+        # final distribution
+        ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final $(monthname(end_date[2])), week 1")
+        SargassumFromAFAI.plot!(ax, dist_final, 1, log_scale = true)
+        land!(ax)
+    end
 
     ### BOMB
     if type == "opt"
@@ -377,13 +381,13 @@ function plot(
     # initial distribution 
     ax = geo_axis(fig[2, 1], limits = limits, title = "BOMB initial [optim] $(monthname(start_date[2])), week 1")
     rtr_initial = time_slice(rtr, (tstart, tstart))
-    trajectory_hist!(ax, rtr_initial, dist_initial, 1)
+    trajectory_hist!(ax, rtr_initial, bop.target[1], 1)
     land!(ax)
 
     # final distribution 
     ax = geo_axis(fig[2, 2], limits = limits, title = "BOMB final [optim] $(monthname(end_date[2])), week 1")
     rtr_final = time_slice(rtr, (tend - bop.t_extra, tend))
-    trajectory_hist!(ax, rtr_final, dist_final, 1)
+    trajectory_hist!(ax, rtr_final, bop.target[2], 1)
     land!(ax)
 
     ### COMPARISON

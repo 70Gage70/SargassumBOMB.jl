@@ -155,32 +155,39 @@ A container for the initial conditions for a raft.
 
 ### Fields
 
+- `tspan`: A `Tuple{Real, Real}` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is \
+in days since `WATER_ITP.x.time_start`.
 - `ics`: A `Vector` such that `ics[1] = n_clumps` and `ics[2:2*n_clumps+1]` represents the `[x, y]` coordinates of each clump.
 
 ### Constructors 
 
-use `InitialConditions(;ics)`.
+use `InitialConditions(;tspan, ics)`.
 """
 struct InitialConditions{T<:Real}
+    tspan::Tuple{T,T}
     ics::Vector{T}
 
-    function InitialConditions(;ics::Vector{<:Real})
-        return new{eltype(ics)}(ics)
+    function InitialConditions(;tspan::Tuple{Real, Real}, ics::Vector{T}) where {T<:Real}
+        @assert tspan[1] < tspan[2] "initial time must be less than final time"
+
+        tspan_prom = (T(tspan[1]), T(tspan[2]))
+
+        return new{eltype(ics)}(tspan_prom, ics)
     end
 end
 
 """
-    InitialConditions(xy0; ref = nothing)
+    InitialConditions(tspan, xy0; ref = nothing)
 
-Construct initial conditions suitable for use in `RaftParameters.ics` from a list of coordinates of the form 
+Construct initial conditions suitable for use in `RaftParameters.ics` from a list of coordinates `xy0` of the form 
 `[x1, y1, x2, y2 ..., xN, yN]`. These should be equirectangular coordinates; if `ref` is provided, the coordinates 
 are converted from spherical coordinates.
 
-Can be applied as `InitialConditions(x_range, y_range; ref = nothing)` to generate clumps in a rectangular arrangement.
+Can be applied as `InitialConditions(tspan, x_range, y_range; ref = nothing)` to generate clumps in a rectangular arrangement.
 
-Can be applied as `InitialConditions(x0, y0; ref = nothing)` for a single clump with coordinates `(x0, y0)`.
+Can be applied as `InitialConditions(tspan, x0, y0; ref = nothing)` for a single clump with coordinates `(x0, y0)`.
 """
-function InitialConditions(xy0::Vector{<:Real}; ref::Union{Nothing, EquirectangularReference} = nothing)
+function InitialConditions(tspan::Tuple{Real, Real}, xy0::Vector{<:Real}; ref::Union{Nothing, EquirectangularReference} = nothing)
     if ref !== nothing
         ics = sph2xy(xy0, ref)
     else
@@ -188,10 +195,11 @@ function InitialConditions(xy0::Vector{<:Real}; ref::Union{Nothing, Equirectangu
     end
 
     pushfirst!(ics, length(xy0)/2)
-    return InitialConditions(ics = ics)
+    return InitialConditions(tspan = tspan, ics = ics)
 end
 
 function InitialConditions(
+    tspan::Tuple{Real, Real},
     x_range::AbstractRange{T}, 
     y_range::AbstractRange{T}; 
     ref::Union{Nothing, EquirectangularReference} = nothing) where {T<:Real}
@@ -211,10 +219,10 @@ function InitialConditions(
         push!(ics, x, y)
     end
 
-    return InitialConditions(ics = ics)
+    return InitialConditions(tspan = tspan, ics = ics)
 end
 
-function InitialConditions(x0::Real, y0::Real; ref::Union{Nothing, EquirectangularReference} = nothing)
+function InitialConditions(tspan::Tuple{Real, Real}, x0::Real, y0::Real; ref::Union{Nothing, EquirectangularReference} = nothing)
     if ref !== nothing
         ics = sph2xy(x0, y0, ref)
     else
@@ -222,7 +230,7 @@ function InitialConditions(x0::Real, y0::Real; ref::Union{Nothing, Equirectangul
     end
 
     pushfirst!(ics, 1)
-    return InitialConditions(ics = ics)
+    return InitialConditions(tspan = tspan, ics = ics)
 end
 
 """
@@ -231,6 +239,8 @@ end
 Construct [`InitialConditions`](@ref) from a `SargassumDistribution`.
 
 ### Arguments 
+- `tspan`: A `Tuple{Real, Real}` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is \
+in days since `WATER_ITP.x.time_start`.
 - `dist`: A `SargassumDistribution`.
 - `weeks`: A `Vector{<:Integer}` giving the weeks of the month to consider. Each entry should be between 1 and 4 and appear only once.
 - `number`: The number of clumps to initialize; interactive with `sample_type` and should be at least `1`.
@@ -246,6 +256,7 @@ Construct [`InitialConditions`](@ref) from a `SargassumDistribution`.
                 covert these to equirectangular coordinates.
 """
 function InitialConditions(
+    tspan::Tuple{Real, Real},
     dist::SargassumDistribution, 
     weeks::Vector{<:Integer},
     number::Integer,
@@ -323,7 +334,7 @@ function InitialConditions(
     n_clumps = length(xy0)/2
     pushfirst!(xy0, n_clumps)
     
-    return InitialConditions(ics = xy0)
+    return InitialConditions(tspan = tspan, ics = xy0)
 end
 
 """
@@ -478,7 +489,6 @@ such that `u[1]` is an "amount" parameter which controls the growth and death of
 `u[2*i:2*i+1]` for `i = 1:n_clumps` gives the `[x, y]` coordinates of the clump in position `i`.
 
 ### Fields
-- `tspan`: A `Tuple{Real, Real}` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is in days.
 - `ics`: An [`InitialConditions`](@ref).
 - `clumps`: The [`ClumpParameters`](@ref) shared by each clump in the raft.
 - `springs`: The [`SpringParameters`](@ref) shared by each spring joining the clumps.
@@ -496,7 +506,6 @@ Use `RaftParameters(; tspan, ics, clumps, springs, connections, gd_model, land)`
 The quantities `n_clumps_tot` and `loc2label` are computed automatically.
 """
 mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
-    tspan::Tuple{T, T}
     ics::InitialConditions{T}
     clumps::ClumpParameters{T}
     springs::SpringParameters{F, T}
@@ -507,7 +516,6 @@ mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConne
     land::L
 
     function RaftParameters(;
-        tspan::Tuple{Real, Real},
         ics::InitialConditions{T},
         clumps::ClumpParameters{T},
         springs::SpringParameters{F, T},
@@ -515,14 +523,11 @@ mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConne
         gd_model::G,
         land::L) where {T<:Real, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
 
-        @assert tspan[1] < tspan[2] "initial time must be less than final time"
-
-        tspan_prom = (T(tspan[1]), T(tspan[2]))
         n_clumps = Int64((length(ics.ics) - 1)/2)
-        loc2label = Dict(tspan_prom[1] => Dict(i => i for i = 1:n_clumps))
+        loc2label = Dict(ics.tspan[1] => Dict(i => i for i = 1:n_clumps))
         form_connections!(connections, ics.ics)
 
-        return new{T, Int64, F, C, G, L}(tspan_prom, ics, clumps, springs, n_clumps, connections, loc2label, gd_model, land)
+        return new{T, Int64, F, C, G, L}(ics, clumps, springs, n_clumps, connections, loc2label, gd_model, land)
     end
 end
 

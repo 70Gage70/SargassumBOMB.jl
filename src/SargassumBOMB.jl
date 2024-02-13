@@ -60,7 +60,7 @@ include("trajectories.jl")
 export Trajectory, time_slice, RaftTrajectory, uniformize, bins
 
 include("main.jl")
-export simulate, yearmonth2tspan
+export simulate, ymw2tspan
 
 include("optimization.jl")
 export OPTIMIZATION_PARAMETER_NAMES, LossFunction, LOSS_L1, LOSS_L2, LOSS_COR, LOSS_L2_SHAPE, OptimizationParameter, BOMBOptimizationProblem, loss, optimize!, sample!
@@ -85,16 +85,16 @@ PrecompileTools.@compile_workload begin
 end
 
 PrecompileTools.@compile_workload begin
-    ics = InitialConditions(range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5), ref = EQR_DEFAULT)
+    tspan = (0.0, 5.0)
+    ics = InitialConditions(tspan, range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5), ref = EQR_DEFAULT)
     clumps = ClumpParameters()
     springs = SpringParameters(k -> 0.1, 100.0)
     connections = ConnectionsNearest(10)
     gd_model = BrooksModel()
     land = Land()
-    tspan = (0.0, 5.0)
+    
 
     rp = RaftParameters(
-        tspan = tspan,
         ics = ics,
         clumps = clumps,
         springs = springs,

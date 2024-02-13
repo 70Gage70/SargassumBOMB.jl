@@ -7,6 +7,8 @@ Equal to `["δ", "a", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]`.
 """
 const OPTIMIZATION_PARAMETER_NAMES = ["δ", "a", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]
 
+
+
 """
     struct LossFunction
 
@@ -26,6 +28,7 @@ struct LossFunction
     name::String
 
     function LossFunction(; f::Function, name::String)
+        @assert hasmethod(f, Tuple{BOMBOptimizationProblem, RaftTrajectory}) "Could not evaluate `f(::BOMBOptimizationProblem, ::RaftTrajectory)`."
 
         m1_test = rand(4, 4)
         m2_test = rand(4, 4)

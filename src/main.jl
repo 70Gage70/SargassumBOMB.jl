@@ -48,27 +48,16 @@ function simulate(
 end
 
 """
-    ymw2tspan(ymw_initial, ymw_final)
+    ymw2time(y, m, w)
 
-Convert two "ymw" (tuples of the form `(year, month, week)`) into a single tuple `(t_initial, t_final)` suitable for 
-use in [`InitialConditions`](@ref).
-
-The times are meaured with respect to `WATER_ITP.x.time_start`.
+Convert the time corresponding to the year `y`, month `m` and week `w` indicated into a single time measured in
+days since `WATER_ITP.x.time_start`.
 
 The days of the four weeks per month are defined as the 8th, 15th, 22nd and 29th.
 """
-function ymw2tspan(
-    ymw_initial::Tuple{Integer, Integer, Integer}, 
-    ymw_final::Tuple{Integer, Integer, Integer})
+function ymw2time(year::Integer, month::Integer, week::Integer)
 
-    @assert ymw_initial[3] in [1, 2, 3, 4]
-    @assert ymw_final[3] in [1, 2, 3, 4]
+    @assert week in [1, 2, 3, 4]
 
-    y1, m1, d1 = ymw_initial[1], ymw_initial[2], 7*ymw_initial[3] + 1
-    y2, m2, d2 = ymw_final[1], ymw_final[2], 7*ymw_final[3] + 1
-
-    t1 = Day(DateTime(y1, m1, d1) - WATER_ITP.x.time_start).value |> float
-    t2 = t1 + Day(DateTime(y2, m2, d2) - DateTime(y1, m1, d1)).value |> float
-
-    return (t1, t2)
+    return Day(DateTime(year, month, 7*week + 1) - WATER_ITP.x.time_start).value |> float
 end

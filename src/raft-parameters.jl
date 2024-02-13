@@ -149,6 +149,16 @@ function spring_force(
 end
 
 """
+    BOMB_k(x, A, L)
+
+The "BOMB" spring function. Of the form `A * (exp((x - 2*L)/0.2) + 1)^(-1)`.
+"""
+function BOMB_k(x::Real, A::Real, L::Real)
+    return A * (exp((x - 2*L)/0.2) + 1)^(-1)
+end
+
+
+"""
     struct InitialConditions{T}
 
 A container for the initial conditions for a raft. 

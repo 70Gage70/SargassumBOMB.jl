@@ -130,7 +130,7 @@ mutable struct OptimizationParameter{T<:Real}
 end
 
 """
-    mutable struct BOMBOptimizationProblem{T, R, U}
+    mutable struct BOMBOptimizationProblem{F, T, U}
 
 A container for all the data defining an optimization problem.
 
@@ -143,8 +143,7 @@ for testing purposes.
 - `immortal`: A `Bool` such that if `true`, the [`ImmortalModel`](@ref) will be used, resulting in no clump \
 growths or deaths.
 - `ics`: The [`InitialConditions`](@ref) for the integration.
-- `target`: A tuple of the form `(SargassumDistribution, week)` such that the integration is performed up to and including \
-the year and month defined by the distribution and the particular week defined by `week`.
+- `springs`: A [`SpringParameters`](@ref) for the integration. Assumes that `springs.k` is given by [`BOMB_k`](@ref).
 - `loss_func`: The [`LossFunction`](@ref) used during the optimization.
 - `opt`: The minimal [`LossFunction`](@ref) obtained. If `nothing`, the problem is considered unoptimized.
 - `opt_rtr`: When optimized, the [`RaftTrajectory`](@ref) that attained the optimal loss.
@@ -159,12 +158,12 @@ Use
 If not provided, `loss_func` defaults to [`LOSS_COV`](@ref) and `seed` defaults to `1234`. In general, 
 `opt` should not be provided directly but it can be to bypass certain checks.
 """
-mutable struct BOMBOptimizationProblem{T<:Real, R<:Real, U<:Integer}
+mutable struct BOMBOptimizationProblem{F<:Function, T<:Real, U<:Integer}
     params::Dict{String, OptimizationParameter{T}}
     rhs::Function
     immortal::Bool
     ics::InitialConditions{T}
-    target::Tuple{SargassumDistribution{T, R}, U}
+    springs::SpringParameters{F, T}
     loss_func::LossFunction
     opt::Union{Nothing, T}
     opt_rtr::Union{Nothing, RaftTrajectory{U, T}}
@@ -175,16 +174,16 @@ mutable struct BOMBOptimizationProblem{T<:Real, R<:Real, U<:Integer}
         rhs::Function,
         immortal::Bool,
         ics::InitialConditions{T},
-        target::Tuple{SargassumDistribution{T, R}, U},
+        springs::SpringParameters{F, T},
         loss_func::LossFunction = LOSS_COV,
         opt::Union{Nothing, T} = nothing,
         opt_rtr::Union{Nothing, RaftTrajectory{U, T}} = nothing,
-        seed::U = 1234) where {T<:Real, R<:Real, U<:Integer}
+        seed::U = 1234) where {F<:Function, T<:Real, U<:Integer}
 
         @assert length(params) > 0 "Must optimize at least one parameter."
         @assert rhs in [Raft!, WaterWind!]
 
-        return new{T, R, U}(params, rhs, immortal, ics, target, loss_func, opt, opt_rtr, seed)
+        return new{F, T, U}(params, rhs, immortal, ics, springs, loss_func, opt, opt_rtr, seed)
     end
 end
 
@@ -256,12 +255,8 @@ function simulate(
     clumps = ClumpParameters(δ = δ, a = a, σ = σ)
     
     # springs
-    L_spring = λ*ΔL(bop.target[1])
-    function spring_k(x::Real; A::Real = A_spring, L::Real = L_spring)
-        return A * (exp((x - 2*L)/0.2) + 1)^(-1)
-    end
-
-    springs = SpringParameters(spring_k, L_spring)
+    L_spring = λ*bop.springs.L
+    springs = SpringParameters(x -> bop.springs.k(x, A_spring, L_spring), L_spring)
     
     # connections
     connections = ConnectionsNearest(10)

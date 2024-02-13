@@ -45,7 +45,7 @@ export AbstractLand, NoLand, Land
 
 include("raft-parameters.jl")
 export ClumpParameters
-export SpringParameters, ΔL, spring_force
+export SpringParameters, ΔL, spring_force, BOMB_k
 export InitialConditions
 export AbstractConnections, ConnectionsNone, ConnectionsFull, ConnectionsRadius, ConnectionsNearest, form_connections!
 export RaftParameters

@@ -33,14 +33,17 @@ struct LossFunction
 
         ymws = ymwspan2weekspan(ymw1, ymw2)
         tspans = [(ymw2time(ymws[i]...), ymw2time(ymws[i + 1]...)) for i = 1:length(ymws) - 1]
+        # integrate for a week, then compare with the distribution (i.e. the next week's distribution)
 
         function weekly_loss(rtr::RaftTrajectory)
             loss_total = 0.0
 
-            for i = 1:length(ymws[i])
-                target = dists[ymws[i][1:2]].sargassum[:,:,ymws[i][3]] |> x -> x/sum(x)
+            for i = 1:length(ymws)-1
+                year, month, week = ymws[i+1]
+                target = dists[(year, month)]
                 data = bins(time_slice(rtr, tspans[i]), target) |> x -> x/sum(x)
-                loss_total = loss_toal + metric(target, data)
+                target = target.sargassum[:,:,week] |> x -> x/sum(x)
+                loss_total = loss_total + metric(target, data)
             end
 
             return loss_total

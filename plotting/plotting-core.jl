@@ -334,7 +334,8 @@ function plot(
     bop::BOMBOptimizationProblem,
     ymw1::NTuple{3, Integer},
     ymw2::NTuple{3, Integer},
-    dists::Dict{Tuple{Int64, Int64}, SargassumFromAFAI.SargassumDistribution};
+    dists::Dict{Tuple{Int64, Int64}, SargassumFromAFAI.SargassumDistribution},
+    rtr_waterwind::RaftTrajectory;
     opt::Bool = false)
 
     fig = Figure(
@@ -370,67 +371,35 @@ function plot(
     land!(ax)
 
     # final distribution 
-    tspan_end = ymwspan2weekspan(ymw1, ymw2)[end]
+    tspan_end = ymwspan2weekspan(ymw1, ymw2) |> x -> (ymw2time(x[end - 1]...), ymw2time(x[end]...))
     rtr_final = time_slice(rtr, tspan_end)
     ax = geo_axis(fig[2, 2], limits = limits, title = "BOMB final [optim] $(monthname(ymw2[2])), week $(ymw2[3])")
     trajectory_hist!(ax, rtr_final, dist_final, ymw2[3])
     land!(ax)
 
-    ### COMPARISON
-    # δ_param = OptimizationParameter("δ",                1.25,   (1.05, 1.5),        false)
-    # a_param = OptimizationParameter("a",                1.0e-4, (1.0e-5, 1.0e-3),   false)
-    # σ_param = OptimizationParameter("σ",                1.0,    (0.9, 1.1),         false)
-    δ_param = OptimizationParameter("δ",                3.0,   (2.99, 3.01),        false)
-    a_param = OptimizationParameter("a",                4.25e-4, (4.24e-4, 4.26e-4),   false)
-    σ_param = OptimizationParameter("σ",                0.0,    (-0.01, 0.01),         false)
-
-    A_spring_param = OptimizationParameter("A_spring",  1.0,    (0.1, 3.0),         false)
-    λ_param = OptimizationParameter("λ",                1.0,    (0.5, 1.5),         false)
-    μ_max_param = OptimizationParameter("μ_max",        0.1,    (0.05, 0.5),        false)
-    m_param = OptimizationParameter("m",                0.05,   (0.0, 0.1),         false)
-    k_N_param = OptimizationParameter("k_N",            0.012,  (0.005, 0.05),      false)
-    
-    params_waterwind = Dict(param.name => param for param in [δ_param, a_param, σ_param, A_spring_param, λ_param, μ_max_param, m_param, k_N_param])
-    
-    bop_waterwind = BOMBOptimizationProblem(
-        params = params_waterwind,
-        rhs = WaterWind!,
-        immortal = true,
-        tspan = bop.tspan,
-        n_levels = bop.n_levels,
-        t_extra = bop.t_extra,
-        loss_func = bop.loss_func
-    )
-
-    rtr = simulate(bop_waterwind, high_accuracy = high_accuracy, type = "default", showprogress = false)
+    ### WATERWIND COMPARISON
 
     # initial distribution 
-    ax = geo_axis(fig[3, 1], limits = limits, title = "WATER+WIND 3% initial [optim] $(monthname(start_date[2])), week 1")
-    rtr_initial = time_slice(rtr, (tstart, tstart))
+    ax = geo_axis(fig[3, 1], limits = limits, title = "WATER+WIND 3% initial [optim] $(monthname(ymw1[2])), week $(ymw1[3])")
+    rtr_initial = time_slice(rtr_waterwind, (tstart, tstart))
     trajectory_hist!(ax, rtr_initial, dist_initial, 1)
     land!(ax)
 
     # final distribution 
-    ax = geo_axis(fig[3, 2], limits = limits, title = "WATER+WIND 3% final [optim] $(monthname(end_date[2])), week 1")
-    rtr_final = time_slice(rtr, (tend - bop.t_extra, tend))
-    trajectory_hist!(ax, rtr_final, dist_final, 1)
+    ax = geo_axis(fig[3, 2], limits = limits, title = "WATER+WIND 3% final [optim] $(monthname(ymw2[2])), week $(ymw2[3])")
+    rtr_final = time_slice(rtr_waterwind, tspan_end)
+    trajectory_hist!(ax, rtr_final, dist_final, ymw2[3])
     land!(ax)
 
-    # strings
+    ### LABELS
     ltx(x) = latexify(x, fmt = FancyNumberFormatter(4))
 
-    if type == "opt"
-        loss_ltx = latexify(bop.opt, fmt = FancyNumberFormatter(4))
-        p_vals = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
-    elseif type == "default"
-        loss_ltx = latexify(loss(rtr, bop), fmt = FancyNumberFormatter(4))
-        p_vals = [bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
-    end
-
-    loss_ltx_comp = latexify(loss(rtr_final, bop), fmt = FancyNumberFormatter(4))
-
+    loss_ltx = ltx(bop.opt)
+    p_vals = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
     δ_opt, a_opt, σ_opt, A_spring_opt, λ_opt, μ_max_opt, m_opt, k_N_opt = ltx.(p_vals)
 
+    loss_ltx_comp = ltx(bop.loss_func.f(rtr_waterwind))
+    
     if bop.rhs == WaterWind!
         fig[-4,:] = Label(fig, L"\text{WaterWind}")
     elseif bop.rhs == Raft!

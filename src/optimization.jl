@@ -186,6 +186,34 @@ function Base.show(io::IO, bop::BOMBOptimizationProblem)
 end
 
 """
+    save_bop(filename, bop; name)
+
+Save `bop::BOMBOptimizationProblem` to the file `filename`.
+
+### Optional Arguments
+
+- `name`: A `String` giving the name of the variable storing `bop`. Default `"bop"`.
+"""
+function save_bop(filename::String, bop::BOMBOptimizationProblem; name::String = "bop")
+    jldopen(filename, "w") do f
+        f[name] = bop
+    end
+end
+
+"""
+    load_bop(filename; name)
+
+Load a `BOMBOptimizationProblem` from the file `filename`.
+
+### Optional Arguments
+
+- `name`: A `String` giving the name of the `BOMBOptimizationProblem`. Default "bop".
+"""
+function load_bop(filename::String; name::String = "bop")
+    return load(filename)[name]
+end
+
+"""
     simulate(bop::BOMBOptimizationProblem; high_accuracy, type, showprogress)
 
 Integrate `bop` by constructing the [`RaftParameters`](@ref) implied by its fields using [`simulate(::RaftParameters)`](@ref).

@@ -16,67 +16,41 @@ A container for the function used for measuring the loss of a simulation.
 ### Fields 
 
 - `f`: A `Function`. This function must be callable as `f(rtr::RaftTrajectory)` and return a `Real`.
+- `metric`: A `Function`. This function must be callable as `f(a::Matrix, b::Matrix)` and return a `Real`.
 - `name`: A `String` giving the name of the loss function, e.g. `"L1"`.
 """
 struct LossFunction
     f::Function
+    metric::Function
     name::String
 
-    function LossFunction(; f::Function, name::String)
+    function LossFunction(
+        ymw1::NTuple{3, Integer}, 
+        ymw2::NTuple{3, Integer},
+        dists::Dict{Tuple{Int64, Int64}, SargassumFromAFAI.SargassumDistribution};
+        metric::Function = (a, b) -> sum(abs.(a - b)), 
+        name::String = "L1")
 
-        m1_test = rand(4, 4)
-        m2_test = rand(4, 4)
+        ymws = ymwspan2weekspan(ymw1, ymw2)
+        tspans = [(ymw2time(ymws[i]...), ymw2time(ymws[i + 1]...)) for i = 1:length(ymws) - 1]
 
-        try 
-            f(m1_test, m2_test)
-        catch e
-            @warn "Could not evaluate `f(::Matrix, ::Matrix)`. Ensure that `f` can accept two
-                    matrix arguments."
-            throw(e)
+        function weekly_loss(rtr::RaftTrajectory)
+            loss_total = 0.0
+
+            for i = 1:length(ymws[i])
+                target = dists[ymws[i][1:2]].sargassum[:,:,ymws[i][3]] |> x -> x/sum(x)
+                data = bins(time_slice(rtr, tspans[i]), target) |> x -> x/sum(x)
+                loss_total = loss_toal + metric(target, data)
+            end
+
+            return loss_total
         end
-    
-        @assert f(m1_test, m2_test) isa Real "The loss function must evaluate to a real number."
-        @assert f(m1_test, m1_test) <= f(m1_test, m2_test) "`f` doesn't decrease when data are closer together."
 
-        return new(f, name)
+
+        return new(weekly_loss, metric, name)
     end
 end
 
-"""
-    const LOSS_L1
-
-A `LossFunction` for the L1 norm.
-"""
-const LOSS_L1 = LossFunction(f = (a::Matrix, b::Matrix) -> sum(abs.(a - b)) , name = "L1")
-
-"""
-    const LOSS_L2
-
-A `LossFunction` for the L2 norm.
-"""
-const LOSS_L2 = LossFunction(f = (a::Matrix, b::Matrix) -> sqrt(sum((a - b) .^ 2)) , name = "L2")
-
-"""
-    const LOSS_COR
-
-A `LossFunction` for the negative correlation.
-"""
-const LOSS_COR = LossFunction(f = (a::Matrix, b::Matrix) -> -cor(vec(a), vec(b)), name = "-COR")
-
-function l2_shape(a::Matrix, b::Matrix)
-    # a is target, b is data
-    idx = findall(iszero, a) 
-    va, vb = a[idx], b[idx]
-    return sqrt(sum((va - vb) .^ 2))
-end
-
-"""
-    const LOSS_L2_SHAPE
-
-A `LossFunction` for the L2 norm, calculated only at those locations where the target is zero. In other words, 
-the loss is minimized when the data does not show up where it shouldn't (but doesn't necessarily show up where it should).
-"""
-const LOSS_L2_SHAPE = LossFunction(f = l2_shape, name = "L2_SHAPE")
 
 """
     mutable struct OptimizationParameter{T}
@@ -172,7 +146,7 @@ mutable struct BOMBOptimizationProblem{F<:Function, T<:Real, U<:Integer}
         immortal::Bool,
         ics::InitialConditions{T},
         springs::SpringParameters{F, T},
-        loss_func::LossFunction = LOSS_COV,
+        loss_func::LossFunction,
         opt::Union{Nothing, T} = nothing,
         opt_rtr::Union{Nothing, RaftTrajectory{U, T}} = nothing,
         seed::U = 1234) where {F<:Function, T<:Real, U<:Integer}
@@ -325,17 +299,8 @@ function loss(
         bop.params[optimizable[i]].val = u[i]
     end
 
-    target_dist = bop.target[1]
-    target = target_dist.sargassum[:,:,bop.target[2]]
-    target = target/sum(target)
-
     rtr = simulate(bop, high_accuracy = high_accuracy, type = type, showprogress = showprogress)
-
-    tend = bop.ics.tspan[2]
-    rtr_final = time_slice(rtr, (tend - 7, tend))
-    data = bins(rtr_final, target_dist)
-    data = data/sum(data)
-    loss_val = bop.loss_func.f(target, data)
+    loss_val = bop.loss_func.f(rtr)
 
     if (type == "val") 
         if (bop.opt === nothing) || (loss_val < bop.opt)
@@ -347,32 +312,6 @@ function loss(
     return loss_val
 end
 
-"""
-    loss(rtr::RaftTrajectory, bop::BOMBOptimizationProblem)
-
-Compute the loss associated with the [`RaftTrajectory`](@ref) `rtr`.
-
-Use this instead of `loss(u::Vector, bop)` when the integration is already done.
-
-### Optional Arguments
-
-None.
-"""
-function loss(
-    rtr::RaftTrajectory, 
-    bop::BOMBOptimizationProblem)
-
-    target_dist = bop.target[1]
-    target = target_dist.sargassum[:,:,bop.target[2]]
-    target = target/sum(target)
-
-    tend = bop.ics.tspan[2]
-    rtr_final = time_slice(rtr, (tend - 7, tend))
-    data = bins(rtr_final, target_dist)
-    data = data/sum(data)
-
-    return bop.loss_func.f(target_data, data)
-end
 
 """
     optimize!(bop; time_limit, high_accuracy, verbose)

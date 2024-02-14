@@ -332,6 +332,7 @@ the initial and final times provided by `bop.tspan`.
 
 The following arguments are passed directly to `simulate`, the result of which is used to make the plot.
 
+- `log_scale`: Whether to display the graphs using a logarithmic scale.
 - `show_coast`: Highlight the coastlines in each graph via [`coast!`](@ref). Default `false`.
 - `show_clouds`: Highlight clouds/missing data in each graph via [`clouds!`](@ref). Default `false`.
 """
@@ -341,6 +342,7 @@ function plot(
     ymw2::NTuple{3, Integer},
     dists::Dict{Tuple{Int64, Int64}, SargassumFromAFAI.SargassumDistribution},
     rtr_waterwind::RaftTrajectory;
+    log_scale::Bool = true,
     show_coast::Bool = false,
     show_clouds::Bool = false)
 
@@ -357,7 +359,7 @@ function plot(
     # initial distribution 
     dist_initial = dists[ymw1[1:2]]
     ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial $(monthname(ymw1[2])), week $(ymw1[3])")
-    SargassumFromAFAI.plot!(ax, dist_initial, ymw1[3], log_scale = true)
+    SargassumFromAFAI.plot!(ax, dist_initial, ymw1[3], log_scale = log_scale)
     show_coast ? coast!(ax, dist_initial) : nothing
     show_clouds ? clouds!(ax, dist_initial, ymw1[3]) : nothing
     land!(ax)
@@ -365,7 +367,7 @@ function plot(
     # final distribution
     dist_final = dists[ymw2[1:2]]
     ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final $(monthname(ymw2[2])), week $(ymw2[3])")
-    SargassumFromAFAI.plot!(ax, dist_final, ymw2[3], log_scale = true)
+    SargassumFromAFAI.plot!(ax, dist_final, ymw2[3], log_scale = log_scale)
     show_coast ? coast!(ax, dist_final) : nothing
     show_clouds ? clouds!(ax, dist_final, ymw2[3]) : nothing
     land!(ax)
@@ -377,7 +379,7 @@ function plot(
     tstart = ymw2time(ymw1...)
     rtr_initial = time_slice(rtr, (tstart, tstart))
     ax = geo_axis(fig[2, 1], limits = limits, title = "BOMB initial [optim] $(monthname(ymw1[2])), week $(ymw1[3])")
-    trajectory_hist!(ax, rtr_initial, dist_initial, ymw1[3], log_scale = true)
+    trajectory_hist!(ax, rtr_initial, dist_initial, ymw1[3], log_scale = log_scale)
     show_coast ? coast!(ax, dist_initial) : nothing
     show_clouds ? clouds!(ax, dist_initial, ymw1[3]) : nothing
     land!(ax)
@@ -386,7 +388,7 @@ function plot(
     tspan_end = ymwspan2weekspan(ymw1, ymw2) |> x -> (ymw2time(x[end - 1]...), ymw2time(x[end]...))
     rtr_final = time_slice(rtr, tspan_end)
     ax = geo_axis(fig[2, 2], limits = limits, title = "BOMB final [optim] $(monthname(ymw2[2])), week $(ymw2[3])")
-    trajectory_hist!(ax, rtr_final, dist_final, ymw2[3], log_scale = true)
+    trajectory_hist!(ax, rtr_final, dist_final, ymw2[3], log_scale = log_scale)
     show_coast ? coast!(ax, dist_final) : nothing
     show_clouds ? clouds!(ax, dist_final, ymw2[3]) : nothing
     land!(ax)
@@ -396,7 +398,7 @@ function plot(
     # initial distribution 
     ax = geo_axis(fig[3, 1], limits = limits, title = "WATER+WIND 3% initial [optim] $(monthname(ymw1[2])), week $(ymw1[3])")
     rtr_initial = time_slice(rtr_waterwind, (tstart, tstart))
-    trajectory_hist!(ax, rtr_initial, dist_initial, ymw1[3], log_scale = true)
+    trajectory_hist!(ax, rtr_initial, dist_initial, ymw1[3], log_scale = log_scale)
     show_coast ? coast!(ax, dist_initial) : nothing
     show_clouds ? clouds!(ax, dist_initial, ymw1[3]) : nothing
     land!(ax)
@@ -404,7 +406,7 @@ function plot(
     # final distribution 
     ax = geo_axis(fig[3, 2], limits = limits, title = "WATER+WIND 3% final [optim] $(monthname(ymw2[2])), week $(ymw2[3])")
     rtr_final = time_slice(rtr_waterwind, tspan_end)
-    trajectory_hist!(ax, rtr_final, dist_final, ymw2[3], log_scale = true)
+    trajectory_hist!(ax, rtr_final, dist_final, ymw2[3], log_scale = log_scale)
     show_coast ? coast!(ax, dist_final) : nothing
     show_clouds ? clouds!(ax, dist_final, ymw2[3]) : nothing
     land!(ax)

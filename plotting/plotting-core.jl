@@ -209,23 +209,24 @@ function trajectory!(
 end
 
 """
-    trajectory_hist!(axis, traj, lon_bins, lat_bins; opts...)
+    trajectory_hist!(axis, traj, lon_bins, lat_bins; log_scale)
 
 Create a `Makie.heatmap` on `axis` with bin centers at the coordinates defined by `lon_bins` 
 and `lat_bins` of the data in `traj`.
 
 `traj` can be a single [`RaftTrajectory`](@ref) or a `Vector` of [`RaftTrajectory`](@ref). In the case of 
 a `Vector`, all trajectories are mixed together to make a single plot.
+
+### Optional Arguments
+
+- `log_scale`: Plot on a `log10` scale. Default `false`.
 """
 function trajectory_hist!(
     axis::Axis, 
     traj::Vector{<:RaftTrajectory},
     lon_bins::StepRangeLen,
     lat_bins::StepRangeLen;
-    opts::NamedTuple = (
-        # colormap = Reverse(:RdYlGn),
-        colormap = EUREKA,
-        colorscale = log10)
+    log_scale::Bool = false
     )
 
     δ_lon = step(lon_bins)
@@ -238,6 +239,10 @@ function trajectory_hist!(
     for tr in traj
         binned = binned + bins(tr, lon_bins, lat_bins)
     end
+
+    opts= (
+        colormap = EUREKA,
+        colorscale = log_scale ? log10 : x -> x)
 
     range_opts = (lowclip = :white, colorrange = (1.0, maximum(binned)))
 
@@ -252,13 +257,10 @@ function trajectory_hist!(
     traj::RaftTrajectory,
     lon_bins::StepRangeLen,
     lat_bins::StepRangeLen;
-    opts::NamedTuple = (
-        # colormap = Reverse(:RdYlGn),
-        colormap = EUREKA,
-        colorscale = log10)
+    log_scale::Bool = false
     )
 
-    trajectory_hist!(axis, [traj], lon_bins, lat_bins; opts = opts)
+    trajectory_hist!(axis, [traj], lon_bins, lat_bins, log_scale = log_scale)
 end
 
 """
@@ -269,16 +271,17 @@ Create a `Makie.heatmap` on `axis` with the same bins as the `SargassumFromAFAI.
 
 `traj` can be a single [`RaftTrajectory`](@ref) or a `Vector` of [`RaftTrajectory`](@ref). In the case of 
 a `Vector`, all trajectories are mixed together to make a single plot.
+
+### Optional Arguments
+
+- `log_scale`: Plot on a `log10` scale. Default `false`.
 """
 function trajectory_hist!(
     axis::Axis, 
     traj::Vector{<:RaftTrajectory},
     dist::SargassumDistribution,
     week::Integer;
-    opts::NamedTuple = (
-        # colormap = Reverse(:RdYlGn),
-        colormap = EUREKA,
-        colorscale = log10)
+    log_scale::Bool = false
     )
 
     @assert week in [1, 2, 3, 4]
@@ -296,6 +299,9 @@ function trajectory_hist!(
     binned = binned*sum(sarg)/sum(binned)
     sarg_limits = (minimum(filter(x -> x > 0, sarg)), maximum(sarg))
 
+    opts= (
+        colormap = EUREKA,
+        colorscale = log_scale ? log10 : x -> x)
     range_opts = (lowclip = :white, colorrange = sarg_limits)
 
     return heatmap!(axis, 
@@ -309,13 +315,11 @@ function trajectory_hist!(
     traj::RaftTrajectory,
     dist::SargassumDistribution,
     week::Integer;
-    opts::NamedTuple = (
-        # colormap = Reverse(:RdYlGn),
-        colormap = EUREKA,
-        colorscale = log10)
+    log_scale::Bool = false
     )
 
-    trajectory_hist!(axis, [traj], dist, week; opts = opts) 
+
+    trajectory_hist!(axis, [traj], dist, week, log_scale = log_scale) 
 end
 
 """
@@ -328,7 +332,8 @@ the initial and final times provided by `bop.tspan`.
 
 The following arguments are passed directly to `simulate`, the result of which is used to make the plot.
 
-- `opt`: .
+- `show_coast`: Highlight the coastlines in each graph via [`coast!`](@ref). Default `false`.
+- `show_clouds`: Highlight clouds/missing data in each graph via [`clouds!`](@ref). Default `false`.
 """
 function plot(
     bop::BOMBOptimizationProblem,
@@ -336,7 +341,8 @@ function plot(
     ymw2::NTuple{3, Integer},
     dists::Dict{Tuple{Int64, Int64}, SargassumFromAFAI.SargassumDistribution},
     rtr_waterwind::RaftTrajectory;
-    opt::Bool = false)
+    show_coast::Bool = false,
+    show_clouds::Bool = false)
 
     fig = Figure(
         # size = (1920, 1080), 
@@ -352,12 +358,16 @@ function plot(
     dist_initial = dists[ymw1[1:2]]
     ax = geo_axis(fig[1, 1], limits = limits, title = "AFAI initial $(monthname(ymw1[2])), week $(ymw1[3])")
     SargassumFromAFAI.plot!(ax, dist_initial, ymw1[3], log_scale = true)
+    show_coast ? coast!(ax, dist_initial) : nothing
+    show_clouds ? clouds!(ax, dist_initial, ymw1[3]) : nothing
     land!(ax)
 
     # final distribution
     dist_final = dists[ymw2[1:2]]
     ax = geo_axis(fig[1, 2], limits = limits, title = "AFAI final $(monthname(ymw2[2])), week $(ymw2[3])")
     SargassumFromAFAI.plot!(ax, dist_final, ymw2[3], log_scale = true)
+    show_coast ? coast!(ax, dist_final) : nothing
+    show_clouds ? clouds!(ax, dist_final, ymw2[3]) : nothing
     land!(ax)
 
     ### BOMB
@@ -367,14 +377,18 @@ function plot(
     tstart = ymw2time(ymw1...)
     rtr_initial = time_slice(rtr, (tstart, tstart))
     ax = geo_axis(fig[2, 1], limits = limits, title = "BOMB initial [optim] $(monthname(ymw1[2])), week $(ymw1[3])")
-    trajectory_hist!(ax, rtr_initial, dist_initial, ymw1[3])
+    trajectory_hist!(ax, rtr_initial, dist_initial, ymw1[3], log_scale = true)
+    show_coast ? coast!(ax, dist_initial) : nothing
+    show_clouds ? clouds!(ax, dist_initial, ymw1[3]) : nothing
     land!(ax)
 
     # final distribution 
     tspan_end = ymwspan2weekspan(ymw1, ymw2) |> x -> (ymw2time(x[end - 1]...), ymw2time(x[end]...))
     rtr_final = time_slice(rtr, tspan_end)
     ax = geo_axis(fig[2, 2], limits = limits, title = "BOMB final [optim] $(monthname(ymw2[2])), week $(ymw2[3])")
-    trajectory_hist!(ax, rtr_final, dist_final, ymw2[3])
+    trajectory_hist!(ax, rtr_final, dist_final, ymw2[3], log_scale = true)
+    show_coast ? coast!(ax, dist_final) : nothing
+    show_clouds ? clouds!(ax, dist_final, ymw2[3]) : nothing
     land!(ax)
 
     ### WATERWIND COMPARISON
@@ -382,13 +396,17 @@ function plot(
     # initial distribution 
     ax = geo_axis(fig[3, 1], limits = limits, title = "WATER+WIND 3% initial [optim] $(monthname(ymw1[2])), week $(ymw1[3])")
     rtr_initial = time_slice(rtr_waterwind, (tstart, tstart))
-    trajectory_hist!(ax, rtr_initial, dist_initial, 1)
+    trajectory_hist!(ax, rtr_initial, dist_initial, ymw1[3], log_scale = true)
+    show_coast ? coast!(ax, dist_initial) : nothing
+    show_clouds ? clouds!(ax, dist_initial, ymw1[3]) : nothing
     land!(ax)
 
     # final distribution 
     ax = geo_axis(fig[3, 2], limits = limits, title = "WATER+WIND 3% final [optim] $(monthname(ymw2[2])), week $(ymw2[3])")
     rtr_final = time_slice(rtr_waterwind, tspan_end)
-    trajectory_hist!(ax, rtr_final, dist_final, ymw2[3])
+    trajectory_hist!(ax, rtr_final, dist_final, ymw2[3], log_scale = true)
+    show_coast ? coast!(ax, dist_final) : nothing
+    show_clouds ? clouds!(ax, dist_final, ymw2[3]) : nothing
     land!(ax)
 
     ### LABELS

@@ -39,7 +39,8 @@ struct LossFunction
         function weekly_loss(rtr::RaftTrajectory)
             loss_total = 0.0
 
-            for i = 1:length(ymws)-1
+            # for i = 1:length(ymws)-1
+            for i = length(ymws)-1:length(ymws)-1
                 year, month, week = ymws[i+1]
                 target = dists[(year, month)]
 
@@ -266,7 +267,7 @@ function simulate(
     springs = SpringParameters(x -> bop.springs.k(x, A_spring, L_spring), L_spring)
     
     # connections
-    connections = ConnectionsNearest(5)
+    connections = ConnectionsNearest(1)
     
     # growth-death
     if bop.immortal

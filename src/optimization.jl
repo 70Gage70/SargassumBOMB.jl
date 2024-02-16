@@ -266,7 +266,7 @@ function simulate(
     springs = SpringParameters(x -> bop.springs.k(x, A_spring, L_spring), L_spring)
     
     # connections
-    connections = ConnectionsNearest(1)
+    connections = ConnectionsNearest(5)
     
     # growth-death
     if bop.immortal

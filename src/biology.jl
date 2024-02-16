@@ -230,10 +230,14 @@ function (model::BrooksModel)(integrator)
     end
 
     for i in model.growths
-        grow!(integrator, location = i)
+        # grow!(integrator, location = i)
+        grow!(integrator, location = "parent")
     end
 
-    kill!(integrator, model.deaths)
+    # kill!(integrator, model.deaths)
+    for i = 1:length(model.deaths)
+        kill!(integrator, rand(1:n_clumps(integrator.u)))
+    end
 
     return nothing
 end

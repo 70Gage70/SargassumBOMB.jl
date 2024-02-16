@@ -28,6 +28,7 @@ struct LossFunction
         ymw1::NTuple{3, Integer}, 
         ymw2::NTuple{3, Integer},
         dists::Dict{Tuple{Int64, Int64}, SargassumFromAFAI.SargassumDistribution};
+        corners::Tuple{Real, Real, Real, Real} = (-180, 180, -90, 90),
         metric::Function = (a, b) -> sum(abs.(a - b)), 
         name::String = "L1")
 
@@ -41,9 +42,13 @@ struct LossFunction
             for i = 1:length(ymws)-1
                 year, month, week = ymws[i+1]
                 target = dists[(year, month)]
+
+                lons = findall(lon -> corners[1] <= lon <= corners[2], target.lon)
+                lats = findall(lat -> corners[3] <= lat <= corners[4], target.lat)
+
                 data = bins(time_slice(rtr, tspans[i]), target) |> x -> x/sum(x)
                 target = target.sargassum[:,:,week] |> x -> x/sum(x)
-                loss_total = loss_total + metric(target, data)
+                loss_total = loss_total + metric(target[lons, lats], data[lons, lats])
             end
 
             return loss_total
@@ -261,7 +266,7 @@ function simulate(
     springs = SpringParameters(x -> bop.springs.k(x, A_spring, L_spring), L_spring)
     
     # connections
-    connections = ConnectionsNearest(10)
+    connections = ConnectionsNearest(1)
     
     # growth-death
     if bop.immortal

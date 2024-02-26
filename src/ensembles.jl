@@ -113,7 +113,7 @@ july_plot = SargassumFromAFAI.plot(dists[(2018, 7)], size = (1920, 1080), legend
 # integrate to August 1, point is that the distribution for July take into account the entirety of 
 # July, not just July 1st.
 # rtrs = [ensemble((2018, t_start), (2018, 8)) for t_start = 4:6]
-# rtrs = [ensemble(WaterWind!, (2018, 4), (2018, 6))]
+# rtrs = [ensemble(Leeway!, (2018, 4), (2018, 6))]
 # rtrs = [ensemble(Raft!, (2018, 4), (2018, 6))]
 
 # @info "Plotting results."
@@ -162,9 +162,9 @@ cp_water = ClumpParameters(EQR_DEFAULT, 0.0, 0.0, 0.0, 0.0, 0.0)
 cp_wind = ClumpParameters(EQR_DEFAULT, cp_default.α, 0.0, 0.0, 0.0, 0.0)
 
 seed!(1234)
-rtr_water = ensemble((2018, 4), (2018, 8), rhs = WaterWind!, cp = cp_water, rtr_dt = 0.1)
+rtr_water = ensemble((2018, 4), (2018, 8), rhs = Leeway!, cp = cp_water, rtr_dt = 0.1)
 seed!(1234)
-rtr_wind = ensemble((2018, 4), (2018, 8), rhs = WaterWind!, cp = cp_wind, rtr_dt = 0.1)
+rtr_wind = ensemble((2018, 4), (2018, 8), rhs = Leeway!, cp = cp_wind, rtr_dt = 0.1)
 seed!(1234)
 rtr_none = ensemble((2018, 4), (2018, 8), rhs = Raft!, cp = cp_default, cb_connections_type = "none", rtr_dt = 0.1)
 seed!(1234)

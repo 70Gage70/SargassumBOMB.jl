@@ -11,7 +11,7 @@ This function modifies `raft_parameters` significantly.
 
 ### Optional Arguments
 
-- `rhs`: The function to integrate, default [`Raft!`](@ref). Use [`WaterWind!`](@ref) to integrate particles with no springs or inertia.
+- `rhs`: The function to integrate, default [`Raft!`](@ref). Use [`Leeway!`](@ref) to integrate particles with no springs or inertia.
 - `alg`: The integration algorithm to use, default [`Tsit5()`](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
 - `abstol`: The absolute tolerance of integration; default `1e-6`. Can be `nothing` to use `OrdinaryDiffEq.solve` defaults.
 - `reltol`: The relative tolerance of integration; default `1e-6`. Can be `nothing` to use `OrdinaryDiffEq.solve` defaults.

@@ -51,7 +51,7 @@ export AbstractConnections, ConnectionsNone, ConnectionsFull, ConnectionsRadius,
 export RaftParameters
 
 include("physics.jl")
-export Raft!, WaterWind!
+export Raft!, Leeway!
 
 include("control.jl")
 export n_clumps, clump_i, com, cb_update, cb_land, cb_growth_death, cb_connections, kill!, grow!

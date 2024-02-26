@@ -118,7 +118,7 @@ A container for all the data defining an optimization problem.
 
 - `params`: A `Dict` mapping each element of `[OPTIMIZATION_PARAMETER_NAMES](@ref)` to an [`OptimizationParameter`](@ref) \
 that contains it.
-- `rhs`: The `Function` to integrate, generally should be [`Raft!`](@ref), but [`WaterWind!`] can be used \
+- `rhs`: The `Function` to integrate, generally should be [`Raft!`](@ref), but [`Leeway!`] can be used \
 for testing purposes.
 - `immortal`: A `Bool` such that if `true`, the [`ImmortalModel`](@ref) will be used, resulting in no clump \
 growths or deaths.
@@ -161,7 +161,7 @@ mutable struct BOMBOptimizationProblem{F<:Function, T<:Real, U<:Integer}
         seed::U = 1234) where {F<:Function, T<:Real, U<:Integer}
 
         @assert length(params) > 0 "Must optimize at least one parameter."
-        @assert rhs in [Raft!, WaterWind!]
+        @assert rhs in [Raft!, Leeway!]
 
         return new{F, T, U}(params, rhs, immortal, ics, springs, loss_func, opt, opt_rtr, seed)
     end
@@ -267,7 +267,7 @@ function simulate(
     springs = SpringParameters(x -> bop.springs.k(x, A_spring, L_spring), L_spring)
     
     # connections
-    connections = ConnectionsNearest(1)
+    connections = ConnectionsNearest(3)
     
     # growth-death
     if bop.immortal

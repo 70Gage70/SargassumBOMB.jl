@@ -420,7 +420,7 @@ function plot(
 
     loss_ltx_comp = ltx(bop.loss_func.f(rtr_waterwind))
     
-    if bop.rhs == WaterWind!
+    if bop.rhs == Leeway!
         fig[-4,:] = Label(fig, L"\text{WaterWind}")
     elseif bop.rhs == Raft!
         fig[-4,:] = Label(fig, L"\text{BOMB}")

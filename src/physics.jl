@@ -8,6 +8,8 @@ Du_xDt(x, y, t, α, σ) = (1 - α) * Dv_xDt(x, y, t, σ) + α * WIND_ITP.x.field
 Du_yDt(x, y, t, α, σ) = (1 - α) * Dv_yDt(x, y, t, σ) + α * WIND_ITP.x.fields[:DDt_y](x, y, t)
 ω(x, y, t) = WATER_ITP.x.fields[:vorticity](x, y, t)
 
+leeway_x(x, y, t, α, σ) = v_x(x, y, t, σ) + α * WIND_ITP.x.fields[:u](x, y, t)
+leeway_y(x, y, t, α, σ) = v_y(x, y, t, σ) + α * WIND_ITP.x.fields[:v](x, y, t)
 ########################################################################
 
 """
@@ -20,7 +22,7 @@ The solution vector `u` is a vector of length `2n_clumps + 1` such that `u[1]` i
 controls the growth and death of clumps by biophysical effects. Then, `u[2*i:2*i+1]` for `i = 1:n_clumps` gives 
 the `[x, y]` coordinates of the clump in position `i`.
 
-For integrating water or wind particles, [`WaterWind!`](@ref) should be used.
+For integrating using a leeway velocity, [`Leeway!`](@ref) should be used.
 """
 function Raft!(du, u, p::RaftParameters, t)
     du[1] = p.gd_model.dSdt(u, t)
@@ -56,16 +58,14 @@ end
 
 
 """
-    WaterWind!(du, u, p::RaftParameters, t)
+    Leeway!(du, u, p::RaftParameters, t)
 
 Compute the right-hand-side of the differential equation controlling the motion of raft particles 
-whose velocities are equal to `u = (1 - α)v_water + (α + σ) v_wind`.
+whose velocities are equal to `u = v_water + σ v_stokes + α v_wind`.
 
 The parameters `p` are given by [`RaftParameters`](@ref), but only `p.α, p.σ` and `p.gd_model` are used.
-
-This function is equivalent to [`Raft!`](@ref) in the case where `τ = 0`, but is slightly faster.
 """
-function WaterWind!(du, u, p::RaftParameters, t)
+function Leeway!(du, u, p::RaftParameters, t)
     du[1] = p.gd_model.dSdt(u, t)
 
     α, σ = p.clumps.α, p.clumps.σ
@@ -73,7 +73,7 @@ function WaterWind!(du, u, p::RaftParameters, t)
     for i = 1:floor(Int64, length(u)/2)
         x, y = u[2*i:2*i+1]
 
-        du[2*i] = u_x(x, y, t, α, σ)
-        du[2*i+1] = u_y(x, y, t, α, σ)
+        du[2*i] = leeway_x(x, y, t, α, σ)
+        du[2*i+1] = leeway_y(x, y, t, α, σ)
     end
 end

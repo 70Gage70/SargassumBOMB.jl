@@ -378,7 +378,7 @@ function plot(
     # initial distribution 
     tstart = ymw2time(ymw1...)
     rtr_initial = time_slice(rtr, (tstart, tstart))
-    ax = geo_axis(fig[2, 1], limits = limits, title = "BOMB initial [optim] $(monthname(ymw1[2])), week $(ymw1[3])")
+    ax = geo_axis(fig[2, 1], limits = limits, title = "eBOMB initial [optim] $(monthname(ymw1[2])), week $(ymw1[3])")
     trajectory_hist!(ax, rtr_initial, dist_initial, ymw1[3], log_scale = log_scale)
     show_coast ? coast!(ax, dist_initial) : nothing
     show_clouds ? clouds!(ax, dist_initial, ymw1[3]) : nothing
@@ -387,7 +387,7 @@ function plot(
     # final distribution 
     tspan_end = ymwspan2weekspan(ymw1, ymw2) |> x -> (ymw2time(x[end - 1]...), ymw2time(x[end]...))
     rtr_final = time_slice(rtr, tspan_end)
-    ax = geo_axis(fig[2, 2], limits = limits, title = "BOMB final [optim] $(monthname(ymw2[2])), week $(ymw2[3])")
+    ax = geo_axis(fig[2, 2], limits = limits, title = "eBOMB final [optim] $(monthname(ymw2[2])), week $(ymw2[3])")
     trajectory_hist!(ax, rtr_final, dist_final, ymw2[3], log_scale = log_scale)
     show_coast ? coast!(ax, dist_final) : nothing
     show_clouds ? clouds!(ax, dist_final, ymw2[3]) : nothing
@@ -396,7 +396,7 @@ function plot(
     ### WATERWIND COMPARISON
 
     # initial distribution 
-    ax = geo_axis(fig[3, 1], limits = limits, title = "WATER+WIND 3% initial [optim] $(monthname(ymw1[2])), week $(ymw1[3])")
+    ax = geo_axis(fig[3, 1], limits = limits, title = "LEEWAY initial [optim] $(monthname(ymw1[2])), week $(ymw1[3])")
     rtr_initial = time_slice(rtr_waterwind, (tstart, tstart))
     trajectory_hist!(ax, rtr_initial, dist_initial, ymw1[3], log_scale = log_scale)
     show_coast ? coast!(ax, dist_initial) : nothing
@@ -404,7 +404,7 @@ function plot(
     land!(ax)
 
     # final distribution 
-    ax = geo_axis(fig[3, 2], limits = limits, title = "WATER+WIND 3% final [optim] $(monthname(ymw2[2])), week $(ymw2[3])")
+    ax = geo_axis(fig[3, 2], limits = limits, title = "LEEWAY final [optim] $(monthname(ymw2[2])), week $(ymw2[3])")
     rtr_final = time_slice(rtr_waterwind, tspan_end)
     trajectory_hist!(ax, rtr_final, dist_final, ymw2[3], log_scale = log_scale)
     show_coast ? coast!(ax, dist_final) : nothing
@@ -421,12 +421,12 @@ function plot(
     loss_ltx_comp = ltx(bop.loss_func.f(rtr_waterwind))
     
     if bop.rhs == Leeway!
-        fig[-4,:] = Label(fig, L"\text{WaterWind}")
+        fig[-4,:] = Label(fig, L"\text{LEEWAY}")
     elseif bop.rhs == Raft!
-        fig[-4,:] = Label(fig, L"\text{BOMB}")
+        fig[-4,:] = Label(fig, L"\text{eBOMB}")
     end
 
-    fig[-3,:] = Label(fig, L"[%$(bop.loss_func.name)] Loss(BOMB) =  %$(loss_ltx), Loss(WATER) =  %$(loss_ltx_comp)")
+    fig[-3,:] = Label(fig, L"[%$(bop.loss_func.name)] Loss(eBOMB) =  %$(loss_ltx), Loss(LEEWAY) =  %$(loss_ltx_comp)")
     
     fig[-2,:] = Label(fig, L"Optimals (clumps): $\delta =$ %$(δ_opt), $a =$ %$(a_opt), $\sigma =$ %$(σ_opt)")
     fig[-1,:] = Label(fig, L"Optimals (springs): $A_\text{spring} =$ %$(A_spring_opt), $λ =$ %$(λ_opt), $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")

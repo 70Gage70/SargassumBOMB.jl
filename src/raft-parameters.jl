@@ -244,7 +244,7 @@ function InitialConditions(tspan::Tuple{Real, Real}, x0::Real, y0::Real; ref::Un
 end
 
 """
-    InitialConditions(dist, number, sample_type, ref)
+    InitialConditions(tspan, dist, weeks, number, sample_type, ref; seed)
 
 Construct [`InitialConditions`](@ref) from a `SargassumDistribution`.
 
@@ -264,6 +264,10 @@ in days since `WATER_ITP.x.time_start`.
     - `"uniform"`: Exactly one clump is placed in the center of each box with nonzero concentration. Note that this ignores `number`.
 - `ref`: An [`EquirectangularReference`](@ref). A `SargassumDistribution` has fields `lon` and `lat`, so this is necessary to 
                 covert these to equirectangular coordinates.
+
+### Optional Arguments 
+
+- `seed`: A `Random.seed!` used in the initialization.
 """
 function InitialConditions(
     tspan::Tuple{Real, Real},
@@ -271,7 +275,10 @@ function InitialConditions(
     weeks::Vector{<:Integer},
     number::Integer,
     sample_type::String,
-    ref::EquirectangularReference)
+    ref::EquirectangularReference;
+    seed::Integer = 1234)
+
+    seed!(seed)
 
     @assert sample_type in ["sample", "sorted", "uniform", "levels"] "`sample_type` not recognized."
     @assert number > 0 "Must request at least one clump"

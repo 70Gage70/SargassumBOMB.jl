@@ -14,7 +14,7 @@ function construct_wind_itp()
         NaN_replacement = 0.0, 
         var_units = ["deg E/W", "deg N/S", "days"], 
         field_units = ["km/d", "km/d"], 
-        ref = EQR_DEFAULT)
+        ref = EQR.x)
     itp = itp |> sph2xy |> interpolate
     itp = add_derivatives(itp)
 
@@ -41,7 +41,7 @@ function construct_water_itp()
         NaN_replacement = 0.0, 
         var_units = ["deg E/W", "deg N/S", "days"], 
         field_units = ["km/d", "km/d"], 
-        ref = EQR_DEFAULT)
+        ref = EQR.x)
     itp = itp |> sph2xy |> interpolate
     itp = add_derivatives(itp)
 

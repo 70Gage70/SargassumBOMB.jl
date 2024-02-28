@@ -4,7 +4,6 @@
 A container for the high-level parameters of the BOM equations.
 
 ### Fields
-- `ref`: The `EquirectangularReference` with which the projection is defined.
 - `α` []: The fraction of the wind field acting on the particle.
 - `τ` [d]: Measures the inertial response time of the medium to the particle
 - `R` []: A geometric parameter.
@@ -13,7 +12,6 @@ A container for the high-level parameters of the BOM equations.
     component of the particle.
 """
 struct ClumpParameters{T<:Real}
-    ref::EquirectangularReference{T}
     α::T
     τ::T
     R::T
@@ -28,7 +26,6 @@ Compute the parameters required for the BOM equations from physical constants.
 
 ### Arguments
 
-- `ref`: The `EquirectangularReference` with which the projection is defined. Default [`EQR_DEFAULT`](@ref).
 - `δ` []: The bouancy of the particle. Default: `1.25`.
 - `a` [km]: The radius of the particle. Default: `1.0e-4`.
 - `ρ` [kg/km^3]: The density of the water. Default: `1027.0e9`.
@@ -39,7 +36,6 @@ Compute the parameters required for the BOM equations from physical constants.
 - σ []: The Stokes drift parameter. Default: `0.0`.
 """
 function ClumpParameters(;
-    ref::EquirectangularReference = EQR_DEFAULT,
     δ::Real = 1.25,
     a::Real = 1.0e-4,
     ρ::Real = 1027.0e9,
@@ -61,10 +57,10 @@ function ClumpParameters(;
     τ = (1 - Φ/6)/(1 - (1 - γ)*Ψ) * (a^2 * ρ / (3*μ*δ^4))
     R = (1 - Φ/2)/(1 - Φ/6)
 
-    ϑ0 = ref.lat0
+    ϑ0 = EQR.x.lat0
     f = 2*Ω*sin(ϑ0*π/180)
 
-    return ClumpParameters(ref, α, τ, R, f, σ)
+    return ClumpParameters(α, τ, R, f, σ)
 end
 
 """
@@ -102,16 +98,17 @@ function Base.show(io::IO, x::SpringParameters)
 end
 
 """
-    ΔL(x_range, y_range; ref)
+    ΔL(x_range, y_range; to_sph)
 
 Compute a spring length from a rectangular arrangement of clumps provided by `x_range` and `y_range`. This is the distance between the centers of 
 diagonally-adjacent gridpoints.
 
-If `ref` is provided, the ranges are converted from spherical to equirectangular coordinates. Default `nothing`.
+These should be equirectangular coordinates; if `to_sph == true` the ranges are 
+converted from spherical to equirectangular coordinates. Default `false`.
 """
-function ΔL(x_range::AbstractRange, y_range::AbstractRange; ref::Union{Nothing, EquirectangularReference} = nothing)
-    if ref !== nothing
-        x_range, y_range = sph2xy(x_range, y_range, EQR_DEFAULT)
+function ΔL(x_range::AbstractRange, y_range::AbstractRange; to_sph::Bool = false)
+    if to_sph
+        x_range, y_range = sph2xy(x_range, y_range)
     end
 
     return norm([x_range[1], y_range[1]] - [x_range[2], y_range[2]])
@@ -124,8 +121,8 @@ Compute a spring length from a `SargassumDistribution`. This is the distance bet
 diagonally-adjacent gridpoints.
 """
 function ΔL(dist::SargassumDistribution)
-    p1 = sph2xy(dist.lon[1], dist.lat[1], EQR_DEFAULT)
-    p2 = sph2xy(dist.lon[2], dist.lat[2], EQR_DEFAULT)
+    p1 = sph2xy(dist.lon[1], dist.lat[1])
+    p2 = sph2xy(dist.lon[2], dist.lat[2])
     return norm(p1 - p2)
 end
 
@@ -187,19 +184,19 @@ struct InitialConditions{T<:Real}
 end
 
 """
-    InitialConditions(tspan, xy0; ref = nothing)
+    InitialConditions(tspan, xy0; to_sph)
 
 Construct initial conditions suitable for use in `RaftParameters.ics` from a list of coordinates `xy0` of the form 
-`[x1, y1, x2, y2 ..., xN, yN]`. These should be equirectangular coordinates; if `ref` is provided, the coordinates 
-are converted from spherical coordinates.
+`[x1, y1, x2, y2 ..., xN, yN]`. These should be equirectangular coordinates; if `to_sph == true` the ranges are 
+converted from spherical to equirectangular coordinates. Default `false`.
 
-Can be applied as `InitialConditions(tspan, x_range, y_range; ref = nothing)` to generate clumps in a rectangular arrangement.
+Can be applied as `InitialConditions(tspan, x_range, y_range; to_sph)` to generate clumps in a rectangular arrangement.
 
-Can be applied as `InitialConditions(tspan, x0, y0; ref = nothing)` for a single clump with coordinates `(x0, y0)`.
+Can be applied as `InitialConditions(tspan, x0, y0; to_sph)` for a single clump with coordinates `(x0, y0)`.
 """
-function InitialConditions(tspan::Tuple{Real, Real}, xy0::Vector{<:Real}; ref::Union{Nothing, EquirectangularReference} = nothing)
-    if ref !== nothing
-        ics = sph2xy(xy0, ref)
+function InitialConditions(tspan::Tuple{Real, Real}, xy0::Vector{<:Real}; to_sph::Bool = false)
+    if to_sph
+        ics = sph2xy(xy0)
     else
         ics = deepcopy(xy0)
     end
@@ -212,13 +209,13 @@ function InitialConditions(
     tspan::Tuple{Real, Real},
     x_range::AbstractRange{T}, 
     y_range::AbstractRange{T}; 
-    ref::Union{Nothing, EquirectangularReference} = nothing) where {T<:Real}
+    to_sph::Bool = false) where {T<:Real}
 
     @assert allunique(x_range) "`x_range` can not have repeated entries"
     @assert allunique(y_range) "`y_range` can not have repeated entries"
 
-    if ref !== nothing
-        ics_x, ics_y = sph2xy(x_range, y_range, ref)
+    if to_sph
+        ics_x, ics_y = sph2xy(x_range, y_range)
     else
         ics_x, ics_y = x_range, y_range
     end
@@ -232,9 +229,9 @@ function InitialConditions(
     return InitialConditions(tspan = tspan, ics = ics)
 end
 
-function InitialConditions(tspan::Tuple{Real, Real}, x0::Real, y0::Real; ref::Union{Nothing, EquirectangularReference} = nothing)
-    if ref !== nothing
-        ics = sph2xy(x0, y0, ref)
+function InitialConditions(tspan::Tuple{Real, Real}, x0::Real, y0::Real; to_sph::Bool = false)
+    if to_sph
+        ics = sph2xy(x0, y0)
     else
         ics = [x0, y0]
     end
@@ -244,7 +241,7 @@ function InitialConditions(tspan::Tuple{Real, Real}, x0::Real, y0::Real; ref::Un
 end
 
 """
-    InitialConditions(tspan, dist, weeks, number, sample_type, ref; seed)
+    InitialConditions(tspan, dist, weeks, number, sample_type; seed)
 
 Construct [`InitialConditions`](@ref) from a `SargassumDistribution`.
 
@@ -262,8 +259,6 @@ in days since `WATER_ITP.x.time_start`.
     - `"sorted"`: Boxes are filled with one clump placed uniformly at random inside them, starting from the box with the highest concentration. If `number` 
                 is greater than the total number of boxes, repeat the loop starting again from the highest concentration box.
     - `"uniform"`: Exactly one clump is placed in the center of each box with nonzero concentration. Note that this ignores `number`.
-- `ref`: An [`EquirectangularReference`](@ref). A `SargassumDistribution` has fields `lon` and `lat`, so this is necessary to 
-                covert these to equirectangular coordinates.
 
 ### Optional Arguments 
 
@@ -274,8 +269,7 @@ function InitialConditions(
     dist::SargassumDistribution, 
     weeks::Vector{<:Integer},
     number::Integer,
-    sample_type::String,
-    ref::EquirectangularReference;
+    sample_type::String;
     seed::Integer = 1234)
 
     seed!(seed)
@@ -347,7 +341,7 @@ function InitialConditions(
         end           
     end
 
-    xy0 = sph2xy(xy0, ref)
+    xy0 = sph2xy(xy0)
     n_clumps = length(xy0)/2
     pushfirst!(xy0, n_clumps)
     

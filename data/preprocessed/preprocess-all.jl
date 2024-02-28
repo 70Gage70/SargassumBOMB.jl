@@ -14,7 +14,7 @@ Compute all the preprocessed `.mat` files from raw data. Any preexisting `.mat` 
 Generally, [`construct_all_itp`](@ref) should be used instead of this function.
 """
 function preprocess_all()
-    raw_path = joinpath(@__DIR__, "..", "raw")
+    raw_path = "C:" * joinpath(@__DIR__, "..", "raw")
 
     wind_raw = joinpath(raw_path, "wind.nc")
     water_temp_raw = joinpath(raw_path, "currents-temperature.nc")

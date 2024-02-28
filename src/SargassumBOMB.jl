@@ -28,7 +28,7 @@ using QuasiMonteCarlo
 ###############################################################
 
 include("coordinates.jl")
-export EquirectangularReference, EQR_DEFAULT, sph2xy, xy2sph
+export EARTH_RADIUS, EquirectangularReference, EQR, sph2xy, xy2sph
 
 include(joinpath(@__DIR__, "..", "interpolants", "itp-core.jl"))
 export GriddedField, InterpolatedField, interpolate, add_derivatives, reduce_vector_to_range, rata2datetime_minute
@@ -89,7 +89,7 @@ end
 
 PrecompileTools.@compile_workload begin
     tspan = (0.0, 5.0)
-    ics = InitialConditions(tspan, range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5), ref = EQR_DEFAULT)
+    ics = InitialConditions(tspan, range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5))
     clumps = ClumpParameters()
     springs = SpringParameters(k -> 0.1, 100.0)
     connections = ConnectionsNearest(10)

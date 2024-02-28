@@ -14,7 +14,7 @@ function construct_temp_itp()
         NaN_replacement = 0.0, 
         var_units = ["deg E/W", "deg N/S", "days"], 
         field_units = ["° C"], 
-        ref = EQR_DEFAULT)
+        ref = EQR.x)
     itp = itp |> sph2xy |> interpolate
 
     jldsave(outfile, TEMP_ITP = itp)
@@ -40,7 +40,7 @@ function construct_no3_itp()
         NaN_replacement = 0.0, 
         var_units = ["deg E/W", "deg N/S", "days"], 
         field_units = ["mmol/m^3"], 
-        ref = EQR_DEFAULT)
+        ref = EQR.x)
     itp = itp |> sph2xy |> interpolate
 
     jldsave(outfile, NO3_ITP = itp)

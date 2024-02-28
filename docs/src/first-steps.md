@@ -38,7 +38,7 @@ tspan = (t_initial, t_final)
 Next, the clump initial conditions. Important to note is that all calculations are performed on a flat plane, in equirectangular coordinates but it is often more convenient to begin with definitions in spherical coordinates. 
 Helper functions [`sph2xy`](@ref) and [`xy2sph`](@ref) are provided with a variety of methods to make conversion between both worlds easy. 
 Such conversions require reference longitudes and latitudes contained in an [`EquirectangularReference`](@ref) object. 
-The default is [`EQR_DEFAULT`](@ref) which has a reference longitude of $75\degree\,\text{W}$  and $10\degree\,\text{N}$. 
+The default is [`EQR`](@ref) which has a reference longitude of $75\degree\,\text{W}$  and $10\degree\,\text{N}$. 
 
 We will place the clumps in a rectangular arrangement, with longitudes in $[55\degree\,\text{W}, 50\degree\,\text{W}]$ and latitudes in $[5\degree\,\text{N}, 10\degree\,\text{N}]$. 
 Note that we use the convention that the western and southern directions are negative. 
@@ -47,7 +47,7 @@ We will place 5 clumps in each direction for a total of 25 clumps in the simulat
 ```julia
 lon_range = range(-55.0, -50.0, length = 5)
 lat_range = range(5.0, 10.0, length = 5)
-ics = InitialConditions(lon_range, lat_range, ref = EQR_DEFAULT)
+ics = InitialConditions(lon_range, lat_range, ref = EQR)
 ```
 
 Next, the clump parameters; we'll stick with the defaults.
@@ -60,7 +60,7 @@ Next, the spring parameters; we'll use a constant spring stiffness of 1.0 and a 
 
 ```julia
 spring_k(k) = 1.0 # note that `spring_k` is actually a function even though the stiffness is constant
-spring_L = ΔL(lon_range, lat_range, ref = EQR_DEFAULT)
+spring_L = ΔL(lon_range, lat_range, ref = EQR)
 springs = SpringParameters(spring_k, spring_L)
 ```
 
@@ -143,12 +143,12 @@ tspan = (t_initial, t_final)
 
 lon_range = range(-55.0, -50.0, length = 5)
 lat_range = range(5.0, 10.0, length = 5)
-ics = InitialConditions(lon_range, lat_range, ref = EQR_DEFAULT)
+ics = InitialConditions(lon_range, lat_range, ref = EQR)
 
 clumps = ClumpParameters()
 
 spring_k = k -> 1.0
-spring_L = ΔL(lon_range, lat_range, ref = EQR_DEFAULT)
+spring_L = ΔL(lon_range, lat_range, ref = EQR)
 springs = SpringParameters(spring_k, spring_L)
 
 connections = ConnectionsFull()

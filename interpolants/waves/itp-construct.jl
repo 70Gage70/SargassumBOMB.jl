@@ -14,7 +14,7 @@ function construct_waves_itp()
         NaN_replacement = 0.0, 
         var_units = ["deg E/W", "deg N/S", "days"], 
         field_units = ["m"], 
-        ref = EQR_DEFAULT)
+        ref = EQR.x)
     itp = itp |> sph2xy |> interpolate
 
     jldsave(outfile, WAVES_ITP = itp)
@@ -40,7 +40,7 @@ function construct_stokes_itp()
         NaN_replacement = 0.0, 
         var_units = ["deg E/W", "deg N/S", "days"], 
         field_units = ["km/d", "km/d"], 
-        ref = EQR_DEFAULT)
+        ref = EQR.x)
     itp = itp |> sph2xy |> interpolate
     itp = add_derivatives(itp)
 

@@ -43,7 +43,7 @@ function simulate(
     if return_raw
         return sol
     else
-        return RaftTrajectory(sol, rp, EQR_DEFAULT, dt = 0.1)
+        return RaftTrajectory(sol, rp, dt = 0.1)
     end
 end
 

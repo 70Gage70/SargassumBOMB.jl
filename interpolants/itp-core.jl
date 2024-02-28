@@ -15,7 +15,7 @@ A container for gridded, possibly time-dependent, field data.
 - `time_start`: For time-dependent fields, this is the `DateTime` of the first entry of the time variable.
 - `ref`: An [`EquirectangularReference`](@ref) providing the translation between spherical and equirectangular coordinates of the `vars`.
 """
-struct GriddedField{R<:AbstractRange, A<:AbstractArray, Q<:Union{EquirectangularReference{<:Real}, Nothing}}
+struct GriddedField{R<:AbstractRange, A<:AbstractArray, Q<:Union{EquirectangularReference, Nothing}}
     var_names::Vector{Symbol}
     vars::Dict{Symbol, R}
     fields::Dict{Symbol, A}
@@ -59,7 +59,7 @@ function GriddedField(
     NaN_replacement::Any = nothing,
     var_units::Union{Vector{String}, Nothing} = nothing,
     field_units::Union{Vector{String}, Nothing} = nothing,
-    ref::Union{EquirectangularReference{<:Real}, Nothing} = nothing
+    ref::Union{EquirectangularReference, Nothing} = nothing
     )
 
     # ensure that the provided file is a mat file
@@ -162,7 +162,7 @@ function sph2xy(
 
     lon = gridded_field.vars[lon_name]
     lat = gridded_field.vars[lat_name]
-    x, y = sph2xy(lon, lat, gridded_field.ref)
+    x, y = sph2xy(lon, lat)
 
     new_var_names = Vector{Symbol}()
     new_vars = typeof(gridded_field.vars)()
@@ -209,7 +209,7 @@ rather than arrays.
 
 Refer to `interpolate(gridded_field::GriddedField)`.
 """
-struct InterpolatedField{R<:AbstractRange, I<:AbstractInterpolation, Q<:Union{EquirectangularReference{<:Real}, Nothing}}
+struct InterpolatedField{R<:AbstractRange, I<:AbstractInterpolation, Q<:Union{EquirectangularReference, Nothing}}
     var_names::Vector{Symbol}
     vars::Dict{Symbol, R}
     fields::Dict{Symbol, I}

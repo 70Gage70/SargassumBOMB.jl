@@ -27,6 +27,9 @@ using QuasiMonteCarlo
 
 ###############################################################
 
+include("utils.jl")
+export vec2range
+
 include("coordinates.jl")
 export EARTH_RADIUS, EquirectangularReference, EQR, sph2xy, xy2sph
 

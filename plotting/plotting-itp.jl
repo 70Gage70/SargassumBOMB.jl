@@ -66,8 +66,8 @@ function check_windwater(
 
     for i = 1:length(windwater_itp)
         itp = windwater_itp[i]
-        us = [itp.fields[u_name](sph2xy(x, y, itp.ref)..., time) for x in xs, y in ys]
-        vs = [itp.fields[v_name](sph2xy(x, y, itp.ref)..., time) for x in xs, y in ys]
+        us = [itp.fields[u_name](sph2xy(x, y)..., time) for x in xs, y in ys]
+        vs = [itp.fields[v_name](sph2xy(x, y)..., time) for x in xs, y in ys]
 
         ax_u = geo_axis(fig[i, 1], title = "$(names[i]) u", limits = limits)
         heatmap!(ax_u, xs, ys, us)

@@ -1,27 +1,32 @@
 """
+    T_REF
+
+The time to which all times are referred.
+"""
+const T_REF = Ref{DateTime}(DateTime(2000, 1, 1))
+
+"""
+    datetime2time(dt)
+
+Convert `dt::DateTime` to the amount of time since [`T_REF`](@ref) expressed in the units of `UNITS["time"]`.
+"""
+function datetime2time(dt::DateTime)
+    return uconvert(UNITS["time"], dt - T_REF)
+end
+
+"""
     ymw2time(y, m, w)
 
 Convert the time corresponding to the year `y`, month `m` and week `w` indicated into a single time measured in
-days since `WATER_ITP.x.time_start`.
+days since [`T_REF`](@ref).
 
 The days of the four weeks per month are defined as the 7th, 14th, 21nd and 28th.
-
-### Example
-```julia-repl
-julia> WATER_ITP.x.time_start
-2018-01-01T00:00:00
-
-julia> ymw2time(2018, 1, 2)
-14.0
-```
-
-Note that `t = 14.0` is midnight on January 15th, i.e. integrating from `t = 0.0` to `t = 14.0` will include the events of January 14th.
 """
 function ymw2time(year::Integer, month::Integer, week::Integer)
 
     @assert week in [1, 2, 3, 4]
 
-    return 1 + Day(DateTime(year, month, 7*week) - WATER_ITP.x.time_start).value |> float
+    return datetime2time(DateTime(year, month, 7*week))
 end
 
 """

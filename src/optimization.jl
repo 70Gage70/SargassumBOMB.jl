@@ -273,7 +273,7 @@ function simulate(
     if bop.immortal
         gd_model = ImmortalModel()
     else
-        bmp = BrooksModelParameters(TEMP_ITP.x, NO3_ITP.x, 
+        bmp = BrooksModelParameters(TEMPERATURE_ITP.x, NUTRIENTS_ITP.x, 
             clumps_limits = (0, Integer(2*ics.ics[1])), # the number of clumps can at most double
             μ_max = μ_max,
             m = m,

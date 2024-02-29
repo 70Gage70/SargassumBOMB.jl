@@ -105,8 +105,8 @@ end
 
 function Base.show(io::IO, x::BrooksModelParameters)
     println(io, "BrooksModelParameters")
-    println(io, " temp = TEMP_ITP.x")
-    println(io, " no3 = NO3_ITP.x")
+    println(io, " temp = TEMPERATURE_ITP.x")
+    println(io, " no3 = NUTRIENTS_ITP.x")
     println(io, " μ_max = $(x.μ_max)")
     println(io, " m = $(x.m)")
     println(io, " I_k = $(x.I_k)")
@@ -160,7 +160,7 @@ The growth/death model of [Brooks et al. (2018)](https://www.int-res.com/abstrac
 
 ### Constructors
 
-Use `BrooksModel(;params = BrooksModelParameters(TEMP_ITP, NO3_ITP), verbose = false)`.
+Use `BrooksModel(;params = BrooksModelParameters(TEMPERATURE_ITP, NUTRIENTS_ITP), verbose = false)`.
 
 ### Callbacks
 
@@ -179,7 +179,7 @@ mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, F<:Function} <:
     deaths::Vector{U}
     verbose::Bool
 
-    function BrooksModel(;params::BrooksModelParameters = BrooksModelParameters(TEMP_ITP.x, NO3_ITP.x), verbose = false)
+    function BrooksModel(;params::BrooksModelParameters = BrooksModelParameters(TEMPERATURE_ITP.x, NUTRIENTS_ITP.x), verbose = false)
         return new{typeof(params), Int64, Function}(params, (u, t) -> brooks_dSdt_raft(u, t, params), Int64[], Int64[], verbose)
     end
 end

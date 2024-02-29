@@ -31,14 +31,18 @@ include("utils.jl")
 export vec2range
 
 include("coordinates.jl")
-export EARTH_RADIUS, EquirectangularReference, EQR, sph2xy, xy2sph
+export UNITS, EARTH_RADIUS, EquirectangularReference, EQR, sph2xy, xy2sph
 
-include(joinpath(@__DIR__, "..", "interpolants", "itp-core.jl"))
-export GriddedField, InterpolatedField, interpolate, add_derivatives, reduce_vector_to_range, rata2datetime_minute
+include("time.jl")
+export T_REF, datetime2time, ymw2time, ymwspan2weekspan
 
-include(joinpath(@__DIR__, "..", "interpolants", "itp-construct.jl"))
-export preprocess_all, construct_all_itp
-export WATER_ITP, WIND_ITP, WAVES_ITP, STOKES_ITP, LAND_ITP, TEMP_ITP, NO3_ITP
+include(joinpath(@__DIR__, "..", "interpolants", "itps-core.jl"))
+export GriddedField, InterpolatedField
+export add_spatial_dimension!, add_temporal_dimension!, add_field!, ranges_increasing!, sph2xy!, add_derivatives!
+
+include(joinpath(@__DIR__, "..", "interpolants", "itps-construct.jl"))
+export WATER_ITP, WIND_ITP, WAVES_ITP, STOKES_ITP, LAND_ITP, TEMPERATURE_ITP, NUTRIENTS_ITP
+export itps_default_construct, itps_default_assign
 
 include(joinpath(@__DIR__, "biology.jl"))
 export AbstractGrowthDeathModel, ImmortalModel, BrooksModelParameters, brooks_dSdt_clump, brooks_dSdt_raft, BrooksModel
@@ -65,32 +69,29 @@ export Trajectory, time_slice, RaftTrajectory, uniformize, bins
 include("main.jl")
 export simulate
 
-include("time.jl")
-export ymw2time, ymwspan2weekspan
-
 include("optimization.jl")
 export OPTIMIZATION_PARAMETER_NAMES, LossFunction, OptimizationParameter, BOMBOptimizationProblem, loss, optimize!, sample!, save_bop, load_bop
 
 include(joinpath(@__DIR__, "..", "plotting", "plotting-core.jl"))
-export default_fig, geo_axis, land!, data_legend!, trajectory!, vector_field_t!, scalar_field_t!, trajectory_hist!, plot
+export default_fig, geo_axis, land!, data_legend!, trajectory!, trajectory_hist!, plot
 
 include(joinpath(@__DIR__, "..", "plotting", "plotting-itp.jl"))
-export check_land, check_windwater
+export check_land, check_itp
 
 export length, show, iterate # various Base extensions
 
 # initialize interpolants
 function __init__()
-    construct_all_itp()
+    itps_default_construct()
+    itps_default_assign()
 end
 
 import PrecompileTools
 
 PrecompileTools.@compile_workload begin
-    construct_all_itp()
-end
+    itps_default_construct()
+    itps_default_assign()
 
-PrecompileTools.@compile_workload begin
     tspan = (0.0, 5.0)
     ics = InitialConditions(tspan, range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5))
     clumps = ClumpParameters()

@@ -1,3 +1,21 @@
+const UFUL = Unitful.Unitlike
+
+"""
+    const UNITS
+
+A dictionary mapping dimension names to the `Unitful.Unitlike` that measures it.
+"""
+const UNITS = Dict{String, UFUL}(
+    "distance" => u"km",
+    "speed" => u"km/d",
+    "wave_height" => u"m",
+    "temperature" => u"°C",
+    "concentration" => u"mmol/m^3",
+    "degrees" => u"°",
+    "time" => u"d",
+    "none" => NoUnits
+)
+
 """
     const EARTH_RADIUS
 
@@ -18,14 +36,14 @@ A container for the reference longitude and latitude of an equirectangular proje
 
 ### Constructor
 
-Use `EquirectangularReference(; lon0 = -75.0, lat0 = 10.0, units = u"km")`.
+Use `EquirectangularReference(; lon0 = -75.0, lat0 = 10.0, units = UNITS["distance"])`.
 """
 struct EquirectangularReference{T<:AbstractFloat, U<:Unitful.AbstractQuantity}
     lon0::T
     lat0::T
     R::U
 
-    function EquirectangularReference(; lon0::Real = -75.0, lat0::Real = 10.0, units::Unitful.Unitlike = u"km")
+    function EquirectangularReference(; lon0::Real = -75.0, lat0::Real = 10.0, units::Unitful.Unitlike = UNITS["distance"])
         @assert -180.0 <= lon0 <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
         @assert -90 <= lat0 <= 90 "The latitude must be between -90 degrees and 90 degrees."
     

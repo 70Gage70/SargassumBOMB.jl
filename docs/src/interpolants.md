@@ -70,7 +70,7 @@ by `~/data/preprocessed/raw-preprocess.jl` The resulting data are stored in `.ma
 There are four kinds of interpolants, `biology`, `land`, `ocean-atmos` and `waves`, each stored in `~/interpolants/` in a folder of the same name. After the data 
 are preprocessed, the actual interpolants may be constructed using the `itp-construct.jl` file in each folder. The interpolants are stored as [`.jld2`](https://github.com/JuliaIO/JLD2.jl) files.
 
-- `biology`: Constructs `NO3_ITP.jld2` storing nitrogen and `TEMP_ITP.jld2` storing temperature.
+- `biology`: Constructs `NUTRIENTS_ITP.jld2` storing nitrogen and `TEMPERATURE_ITP.jld2` storing temperature.
 - `land`: Constructs `LAND_ITP.jld2` storing a heatmap of land vs. ocean locations.
 - `ocean-atmos`: Constructs `water_itp.jld2` storing ocean currents and `WIND_ITP.jld2` storing wind velocities.
 - `waves`: Constants `WAVES_ITP.jld2` storing significant wave heights and `STOKES_ITP.jld2` storing Stokes drift velocities.

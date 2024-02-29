@@ -98,9 +98,7 @@ Temporary Items
 **/src/data
 
 # JLD files (store interpolants)
-*.jld
 *.jld2
-!**/src/data*.jld2
 
 # so files (sysimages)
 *.so

@@ -1,0 +1,4 @@
+currents-temperature.nc filter=lfs diff=lfs merge=lfs -text
+nutrients.nc filter=lfs diff=lfs merge=lfs -text
+wind.nc filter=lfs diff=lfs merge=lfs -text
+water.nc filter=lfs diff=lfs merge=lfs -text

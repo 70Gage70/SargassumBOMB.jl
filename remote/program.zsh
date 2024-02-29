@@ -1,1 +1,0 @@
-julia --threads=auto --project=@. ./../src/optimization.jl

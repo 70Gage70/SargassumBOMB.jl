@@ -89,14 +89,6 @@ function Base.iterate(::SpringParameters, ::Nothing)
     return nothing
 end
 
-function Base.show(io::IO, x::SpringParameters)
-    print(io, "SpringParameters[1->")
-    show(io, x.k(1))
-    print(io, ", ")
-    show(io, x.L)
-    print(io, "]")
-end
-
 """
     ΔL(x_range, y_range; to_sph)
 
@@ -540,10 +532,4 @@ mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConne
 
         return new{T, Int64, F, C, G, L}(ics, clumps, springs, n_clumps, connections, loc2label, gd_model, land)
     end
-end
-
-function Base.show(io::IO, x::RaftParameters)
-    print(io, "RaftParameters[")
-    show(io, Integer(x.ics.ics[1]))
-    print(io, " Clumps]")
 end

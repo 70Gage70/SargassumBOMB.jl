@@ -40,20 +40,6 @@ function Base.length(tr::Trajectory)
     return length(tr.t)
 end
 
-function Base.show(io::IO, x::Trajectory)
-    if length(x.t) == 0
-        print(io, "Trajectory[0 pts]")
-    else
-        print(io, "Trajectory[(")
-        show(io, first(x.t))
-        print(io, ", ")
-        show(io, last(x.t))
-        print(io, "), ")
-        show(io, length(x.t))
-        print(io, " pts]")
-    end
-end
-
 """
     time_slice(traj, tspan)
 
@@ -168,14 +154,6 @@ function RaftTrajectory(
     tr_com = Trajectory(sum(data[:,i,:] for i = 1:rp.n_clumps_tot) ./ n_clumps_t, times, to_xy = true)
 
     return RaftTrajectory(trajectories, times, n_clumps_t, tr_com)
-end
-
-function Base.show(io::IO, x::RaftTrajectory)
-    print(io, "RaftTrajectory[")
-    show(io, length(keys(x.trajectories)))
-    print(io, " trajectories, ")
-    show(io, length(x.t))
-    print(io, " times]")
 end
 
 """

@@ -34,7 +34,7 @@ include("coordinates.jl")
 export UNITS, EARTH_RADIUS, EquirectangularReference, EQR, sph2xy, xy2sph
 
 include("time.jl")
-export T_REF, datetime2time, ymw2time, ymwspan2weekspan
+export T_REF, datetime2time, time2datetime, ymw2time, ymwspan2weekspan
 
 include(joinpath(@__DIR__, "..", "interpolants", "itps-core.jl"))
 export GriddedField, InterpolatedField
@@ -78,6 +78,7 @@ export default_fig, geo_axis, land!, data_legend!, trajectory!, trajectory_hist!
 include(joinpath(@__DIR__, "..", "plotting", "plotting-itp.jl"))
 export check_land, check_itp
 
+include("show.jl")
 export length, show, iterate # various Base extensions
 
 # initialize interpolants

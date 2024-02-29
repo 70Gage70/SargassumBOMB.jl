@@ -23,10 +23,6 @@ function (land::NoLand)(integrator)
     return nothing
 end
 
-function Base.show(io::IO, x::NoLand)
-    print(io, "NoLand")
-end
-
 """
     mutable struct Land{I, U}
 
@@ -66,8 +62,4 @@ function (land::Land)(integrator)
     end
     
     kill!(integrator, land.deaths)
-end
-
-function Base.show(io::IO, x::Land)
-    print(io, "Land[land_itp = LAND_ITP.x]")
 end

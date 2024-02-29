@@ -2,6 +2,8 @@
     T_REF
 
 The time to which all times are referred.
+
+This is a `Ref`, access or modify the actual value with `T_REF.x`.
 """
 const T_REF = Ref{DateTime}(DateTime(2000, 1, 1))
 
@@ -9,9 +11,28 @@ const T_REF = Ref{DateTime}(DateTime(2000, 1, 1))
     datetime2time(dt)
 
 Convert `dt::DateTime` to the amount of time since [`T_REF`](@ref) expressed in the units of `UNITS["time"]`.
+
+This inverts [`time2datetime`](@ref).
 """
 function datetime2time(dt::DateTime)
     return uconvert(UNITS["time"], dt - T_REF.x) |> x -> float(x.val)
+end
+
+"""
+    time2datetime(time)
+
+Convert the amount of time since [`T_REF`](@ref) expressed in the units of `UNITS["time"]` to a `DateTime`.
+
+This inverts [`datetime2time`](@ref).
+"""
+function time2datetime(time::Real)
+    uful2date = Dict(
+        u"d" => Day,
+        u"hr" => Hour,
+        u"minute" => Minute,
+        u"s" => Second
+    )
+    return T_REF.x + uful2date[UNITS["time"]](time)
 end
 
 """

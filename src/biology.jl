@@ -41,10 +41,6 @@ function (model::ImmortalModel)(integrator)
     return nothing
 end
 
-function Base.show(io::IO, x::ImmortalModel)
-    print(io, "ImmortalModel")
-end
-
 """
     struct BrooksModelParameters{I, U, T}
 
@@ -101,20 +97,6 @@ struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real}
     
         return new{typeof(temp), eltype(clumps_limits), typeof(μ_max)}(temp, no3, μ_max, m, I_k, a_ref, k_N, T_ref, z_max, clumps_limits)
     end
-end
-
-function Base.show(io::IO, x::BrooksModelParameters)
-    println(io, "BrooksModelParameters")
-    println(io, " temp = TEMPERATURE_ITP.x")
-    println(io, " no3 = NUTRIENTS_ITP.x")
-    println(io, " μ_max = $(x.μ_max)")
-    println(io, " m = $(x.m)")
-    println(io, " I_k = $(x.I_k)")
-    println(io, " a_ref = $(x.a_ref)")
-    println(io, " k_N = $(x.k_N)")
-    println(io, " T_ref = $(x.T_ref)")
-    println(io, " z_max = $(x.z_max)")
-    println(io, " clumps_limits = $(x.clumps_limits)")
 end
 
 """
@@ -240,8 +222,4 @@ function (model::BrooksModel)(integrator)
     end
 
     return nothing
-end
-
-function Base.show(io::IO, x::BrooksModel)
-    print(io, "BrooksModel")
 end

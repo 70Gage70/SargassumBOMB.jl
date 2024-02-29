@@ -167,30 +167,6 @@ mutable struct BOMBOptimizationProblem{F<:Function, T<:Real, U<:Integer}
     end
 end
 
-function Base.show(io::IO, bop::BOMBOptimizationProblem)
-    optimizable = [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
-    space = [(name, bop.params[name].default, (bop.params[name].bounds)) for name in optimizable]
-    optimized_q = bop.opt === nothing ? false : true
-    
-    println(io, "BOMBOptimizationProblem")
-
-    println(io, " Optimized?: $(optimized_q)")
-    println(io, " Search space: $(space)")
-
-    if optimized_q
-        opts = Tuple{String, Float64}[]
-        for name in OPTIMIZATION_PARAMETER_NAMES
-            opt = bop.params[name].opt
-            if opt === nothing 
-                opt = bop.params[name].default
-            end
-            push!(opts, (name, round(Float64(opt), sigdigits = 4)))
-        end
-        println(io, " Optimals: $(opts)")
-        println(io, " Loss: $(bop.opt)")
-    end
-end
-
 """
     save_bop(filename, bop; name)
 

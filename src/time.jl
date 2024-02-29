@@ -11,7 +11,7 @@ const T_REF = Ref{DateTime}(DateTime(2000, 1, 1))
 Convert `dt::DateTime` to the amount of time since [`T_REF`](@ref) expressed in the units of `UNITS["time"]`.
 """
 function datetime2time(dt::DateTime)
-    return uconvert(UNITS["time"], dt - T_REF)
+    return uconvert(UNITS["time"], dt - T_REF.x) |> x -> float(x.val)
 end
 
 """

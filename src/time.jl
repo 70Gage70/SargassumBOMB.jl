@@ -23,16 +23,14 @@ end
 
 Convert the amount of time since [`T_REF`](@ref) expressed in the units of `UNITS["time"]` to a `DateTime`.
 
+By convention, `time` is rounded down to the nearest second.   
+
 This inverts [`datetime2time`](@ref).
 """
 function time2datetime(time::Real)
-    uful2date = Dict(
-        u"d" => Day,
-        u"hr" => Hour,
-        u"minute" => Minute,
-        u"s" => Second
-    )
-    return T_REF.x + uful2date[UNITS["time"]](time)
+    t = uconvert(u"s", time * UNITS["time"]) |> x -> round(Int64, x.val)
+
+    return T_REF.x + Second(t)
 end
 
 """

@@ -127,6 +127,7 @@ growths or deaths.
 - `loss_func`: The [`LossFunction`](@ref) used during the optimization.
 - `opt`: The minimal [`LossFunction`](@ref) obtained. If `nothing`, the problem is considered unoptimized.
 - `opt_rtr`: When optimized, the [`RaftTrajectory`](@ref) that attained the optimal loss.
+- `opt_rp`: When optimized, the [`RaftParameters`](@ref) that attained the optimal loss.
 - `seed`: A `Random.seed!` used in the integration.
 
 ### Constructor
@@ -138,7 +139,7 @@ Use
 If not provided, `loss_func` defaults to [`LOSS_COV`](@ref) and `seed` defaults to `1234`. In general, 
 `opt` should not be provided directly but it can be to bypass certain checks.
 """
-mutable struct BOMBOptimizationProblem{F<:Function, T<:Real, U<:Integer}
+mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer, F<:Function}
     params::Dict{String, OptimizationParameter{T}}
     rhs::Function
     immortal::Bool
@@ -147,6 +148,7 @@ mutable struct BOMBOptimizationProblem{F<:Function, T<:Real, U<:Integer}
     loss_func::LossFunction
     opt::Union{Nothing, T}
     opt_rtr::Union{Nothing, RaftTrajectory{U, T}}
+    opt_rp::Union{Nothing, RaftParameters}
     seed::U
 
     function BOMBOptimizationProblem(;
@@ -156,14 +158,50 @@ mutable struct BOMBOptimizationProblem{F<:Function, T<:Real, U<:Integer}
         ics::InitialConditions{T},
         springs::SpringParameters{F, T},
         loss_func::LossFunction,
-        opt::Union{Nothing, T} = nothing,
-        opt_rtr::Union{Nothing, RaftTrajectory{U, T}} = nothing,
-        seed::U = 1234) where {F<:Function, T<:Real, U<:Integer}
+        seed::U = 1234) where {T<:Real, U<:Integer, F<:Function}
 
         @assert length(params) > 0 "Must optimize at least one parameter."
         @assert rhs in [Raft!, Leeway!]
 
-        return new{F, T, U}(params, rhs, immortal, ics, springs, loss_func, opt, opt_rtr, seed)
+        δ, a, σ, A_spring, λ, μ_max, m, k_N = [params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
+        
+        # clumps
+        clumps = ClumpParameters(δ = δ, a = a, σ = σ)
+        
+        # springs
+        L_spring = λ*springs.L
+        springs_new = SpringParameters(x -> springs.k(x, A_spring, L_spring), L_spring)
+        
+        # connections
+        connections = ConnectionsNearest(2)
+        
+        # growth-death
+        if immortal
+            gd_model = ImmortalModel()
+        else
+            bmp = BrooksModelParameters(TEMPERATURE_ITP.x, NUTRIENTS_ITP.x, 
+                clumps_limits = (0, Integer(2*ics.ics[1])), # the number of clumps can at most double
+                μ_max = μ_max,
+                m = m,
+                k_N = k_N)
+            gd_model = BrooksModel(params = bmp)
+        end
+    
+        # land
+        land = Land()
+        
+        # params
+        
+        rp = RaftParameters(
+            ics = ics,
+            clumps = clumps,
+            springs = springs_new,
+            connections = connections,
+            gd_model = gd_model,
+            land = land
+        )
+
+        return new{T, U, F}(params, rhs, immortal, ics, springs, loss_func, nothing, nothing, nothing, seed)
     end
 end
 
@@ -208,12 +246,14 @@ Integrate `bop` by constructing the [`RaftParameters`](@ref) implied by its fiel
     - `"default"`: Each parameter is set equal to its `default`.
     - `"opt`: Each parameter is set equal to its optimal value, if it is both optimizable and optimized. Otherwise, `default` is used.
 - `showprogress`: A `Bool` which outputs the integration progress when `true`. Default `false`.
+- `return_rp`: A `Bool` which returns the result of the simulation and the [`RaftParameters`](@ref) used for it as a `Tuple` if `true`. Default `false`.
 """
 function simulate(
     bop::BOMBOptimizationProblem;
     high_accuracy::Bool = true, 
     type::String = "val",
-    showprogress::Bool = false)
+    showprogress::Bool = false,
+    return_rp::Bool = false)
 
     seed!(bop.seed)
 
@@ -274,7 +314,9 @@ function simulate(
     abstol = high_accuracy ? 1.0e-6 : nothing
     reltol = high_accuracy ? 1.0e-6 : nothing
 
-    return simulate(rp, rhs = bop.rhs, abstol = abstol, reltol = reltol, showprogress = showprogress)
+    rtr = simulate(rp, rhs = bop.rhs, abstol = abstol, reltol = reltol, showprogress = showprogress)
+
+    return return_rp ? (rtr, rp) : rtr
 end
 
 
@@ -312,13 +354,14 @@ function loss(
         bop.params[optimizable[i]].val = u[i]
     end
 
-    rtr = simulate(bop, high_accuracy = high_accuracy, type = type, showprogress = showprogress)
+    rtr, rp = simulate(bop, high_accuracy = high_accuracy, type = type, showprogress = showprogress, return_rp = true)
     loss_val = bop.loss_func.f(rtr)
 
     if (type == "val") 
         if (bop.opt === nothing) || (loss_val < bop.opt)
             bop.opt = loss_val
             bop.opt_rtr = rtr
+            bop.opt_rp = rp
         end
     end
         

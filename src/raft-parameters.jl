@@ -26,7 +26,7 @@ Compute the parameters required for the BOM equations from physical constants.
 
 ### Arguments
 
-- `δ` []: The bouancy of the particle. Default: `1.25`.
+- `δ` []: The bouyancy of the particle. Default: `1.25`.
 - `a` [km]: The radius of the particle. Default: `1.0e-4`.
 - `ρ` [kg/km^3]: The density of the water. Default: `1027.0e9`.
 - `ρa` [kg/km^3]: The density of the air. Default: `1.2e9`.

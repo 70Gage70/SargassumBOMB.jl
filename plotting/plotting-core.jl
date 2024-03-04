@@ -428,7 +428,7 @@ function plot(
 
     fig[-3,:] = Label(fig, L"[%$(bop.loss_func.name)] Loss(eBOMB) =  %$(loss_ltx), Loss(LEEWAY) =  %$(loss_ltx_comp)")
     
-    fig[-2,:] = Label(fig, L"Optimals (clumps): $\delta =$ %$(δ_opt), $a =$ %$(a_opt), $\sigma =$ %$(σ_opt)")
+    fig[-2,:] = Label(fig, L"Optimals (clumps): $\delta =$ %$(δ_opt), $\tau =$ %$(a_opt), $\sigma =$ %$(σ_opt)")
     fig[-1,:] = Label(fig, L"Optimals (springs): $A_\text{spring} =$ %$(A_spring_opt), $λ =$ %$(λ_opt), $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
     fig[0,:] = Label(fig, L"Optimals (biology): $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
 

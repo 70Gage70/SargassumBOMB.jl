@@ -3,9 +3,20 @@
 
 A `Vector` of `String`s giving the names of all the parameters it is possible to optimize by default.
 
-Equal to `["δ", "a", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]`.
+Equal to `["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]`.
+
+### Definitions
+
+- `δ`: The buoyancy of a clump. 
+- `τ`: Measures the inertial response time of the medium to the particle.
+- `σ`: A prefactor multiplying the Stokes drift term. 
+- `A_spring`: The maximum value of the spring stiffness function.
+- `λ`: A prefactor multiplying the spring natural length.
+- `μ_max`:  Sargassum maximum growth rate.
+- `m`: Sargassum mortality rate.
+- `k_N`: Sargassum nutrient (N) uptake half saturation.
 """
-const OPTIMIZATION_PARAMETER_NAMES = ["δ", "a", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]
+const OPTIMIZATION_PARAMETER_NAMES = ["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]
 
 
 """
@@ -97,7 +108,7 @@ mutable struct OptimizationParameter{T<:Real}
         val::Union{Nothing, Real} = nothing,
         opt::Union{Nothing, Real} = nothing)
 
-        @assert name in OPTIMIZATION_PARAMETER_NAMES
+        @assert name in OPTIMIZATION_PARAMETER_NAMES "Got $(name) ∉ $(OPTIMIZATION_PARAMETER_NAMES)"
         @assert first(bounds) < last(bounds)
 
         def, lb, ub = promote(default, first(bounds), last(bounds))
@@ -205,33 +216,33 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer, F<:Function}
     end
 end
 
-"""
-    save_bop(filename, bop; name)
+# """
+#     save(filename, bop; name)
 
-Save `bop::BOMBOptimizationProblem` to the file `filename`.
+# Save `bop::BOMBOptimizationProblem` to the file `filename`.
 
-### Optional Arguments
+# ### Optional Arguments
 
-- `name`: A `String` giving the name of the variable storing `bop`. Default `"bop"`.
-"""
-function save_bop(filename::String, bop::BOMBOptimizationProblem; name::String = "bop")
-    jldopen(filename, "w") do f
-        f[name] = bop
-    end
-end
+# - `name`: A `String` giving the name of the variable storing `bop`. Default `"bop"`.
+# """
+# function save(filename::String, bop::BOMBOptimizationProblem; name::String = "bop")
+#     jldopen(filename, "w") do f
+#         f[name] = bop
+#     end
+# end
 
-"""
-    load_bop(filename; name)
+# """
+#     load_bop(filename; name)
 
-Load a `BOMBOptimizationProblem` from the file `filename`.
+# Load a `BOMBOptimizationProblem` from the file `filename`.
 
-### Optional Arguments
+# ### Optional Arguments
 
-- `name`: A `String` giving the name of the `BOMBOptimizationProblem`. Default "bop".
-"""
-function load_bop(filename::String; name::String = "bop")
-    return load(filename)[name]
-end
+# - `name`: A `String` giving the name of the `BOMBOptimizationProblem`. Default "bop".
+# """
+# function load(filename::String; name::String = "bop")
+#     return load(filename)[name]
+# end
 
 """
     simulate(bop::BOMBOptimizationProblem; high_accuracy, type, showprogress)
@@ -260,15 +271,15 @@ function simulate(
     @assert type in ["val", "default", "opt"]
 
     if type == "val"
-        δ, a, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
+        δ, τ, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].val for param in OPTIMIZATION_PARAMETER_NAMES]
     elseif type == "default"
-        δ, a, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
+        δ, τ, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
     elseif type == "opt"
         if bop.opt === nothing
             @warn "The `opt` parameter value has been selected, but `bop` has not been optimized. The default parameters will be used."
-            δ, a, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
+            δ, τ, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
         else
-            δ, a, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
+            δ, τ, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
         end
     end
     
@@ -276,7 +287,8 @@ function simulate(
     ics = bop.ics
 
     # clumps
-    clumps = ClumpParameters(δ = δ, a = a, σ = σ)
+    clumps = ClumpParameters(δ = δ, σ = σ)
+    clumps = ClumpParameters(clumps.α, τ, clumps.R, clumps.f, clumps.σ)
     
     # springs
     L_spring = λ*bop.springs.L

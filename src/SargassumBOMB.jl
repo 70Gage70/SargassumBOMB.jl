@@ -31,7 +31,8 @@ include("utils.jl")
 export vec2range
 
 include("coordinates.jl")
-export UNITS, EARTH_RADIUS, EquirectangularReference, EQR, sph2xy, xy2sph
+export UNITS, EARTH_RADIUS, EquirectangularReference, EQR
+export sph2xy, xy2sph
 
 include("time.jl")
 export T_REF, datetime2time, time2datetime, ymw2time, ymwspan2weekspan
@@ -70,7 +71,8 @@ include("main.jl")
 export simulate
 
 include("optimization.jl")
-export OPTIMIZATION_PARAMETER_NAMES, LossFunction, OptimizationParameter, BOMBOptimizationProblem, loss, optimize!, sample!, save_bop, load_bop
+export OPTIMIZATION_PARAMETER_NAMES, LossFunction, OptimizationParameter, BOMBOptimizationProblem
+export loss, optimize!, sample!
 
 include(joinpath(@__DIR__, "..", "plotting", "plotting-core.jl"))
 export default_fig, geo_axis, land!, data_legend!, trajectory!, trajectory_hist!, plot
@@ -93,7 +95,7 @@ PrecompileTools.@compile_workload begin
     itps_default_construct()
     itps_default_assign()
 
-    tspan = (0.0, 5.0)
+    tspan = (0.0, 1.0)
     ics = InitialConditions(tspan, range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5))
     clumps = ClumpParameters()
     springs = SpringParameters(k -> 0.1, 100.0)

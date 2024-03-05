@@ -41,10 +41,18 @@ function Base.show(io::IO, x::ClumpParameters)
     print(io, "ClumpParameters[α = $α, τ = $τ, R = $R, f = $f, σ = $σ]")
 end
 
-function Base.show(io::IO, x::SpringParameters)
-    print(io, "SpringParameters[1->")
-    show(io, x.k(1))
-    print(io, ", ")
+function Base.show(io::IO, x::HookeSpring)
+    print(io, "HookeSpring[k = ")
+    show(io, x.k)
+    print(io, ", L = ")
+    show(io, x.L)
+    print(io, "]")
+end
+
+function Base.show(io::IO, x::BOMBSpring)
+    print(io, "BOMBSpring[A = ")
+    show(io, x.A)
+    print(io, ", L = ")
     show(io, x.L)
     print(io, "]")
 end

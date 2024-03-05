@@ -63,89 +63,6 @@ function ClumpParameters(;
     return ClumpParameters(α, τ, R, f, σ)
 end
 
-"""
-    SpringParameters{T}
-
-A container for the parameters defining a spring.
-   
-### Fields
-- `k` [kg/d^2]: A scalar function of one variable which represents the stiffness of the spring. Recover a spring constant by providing, e.g. `k -> 5`.
-- `L` [km]: The natural length of the spring.
-"""
-struct SpringParameters{F<:Function, T<:Real}
-    k::F
-    L::T
-end
-
-function Base.length(::SpringParameters)
-    return 1
-end
-
-function Base.iterate(sp::SpringParameters)
-    return (sp, nothing)
-end
-
-function Base.iterate(::SpringParameters, ::Nothing)
-    return nothing
-end
-
-"""
-    ΔL(x_range, y_range; to_sph)
-
-Compute a spring length from a rectangular arrangement of clumps provided by `x_range` and `y_range`. This is the distance between the centers of 
-diagonally-adjacent gridpoints.
-
-These should be equirectangular coordinates; if `to_sph == true` the ranges are 
-converted from spherical to equirectangular coordinates. Default `false`.
-"""
-function ΔL(x_range::AbstractRange, y_range::AbstractRange; to_sph::Bool = false)
-    if to_sph
-        x_range, y_range = sph2xy(x_range, y_range)
-    end
-
-    return norm([x_range[1], y_range[1]] - [x_range[2], y_range[2]])
-end
-
-"""
-    ΔL(dist::SargassumDistribution)
-
-Compute a spring length from a `SargassumDistribution`. This is the equirectangular distance between the centers of 
-diagonally-adjacent gridpoints.
-"""
-function ΔL(dist::SargassumDistribution)
-    p1 = sph2xy(dist.lon[1], dist.lat[1])
-    p2 = sph2xy(dist.lon[2], dist.lat[2])
-    return norm(p1 - p2)
-end
-
-"""
-    spring_force(xy1, xy2, parameters)
-
-Calculate the x and y components of the force on a point particle with coordinates `xy1` 
-which is attached by a spring defined by `parameters` to another point particle with coordinates `xy2`.
-"""
-function spring_force(xy1::Vector{<:Real}, xy2::Vector{<:Real}, parameters::SpringParameters)
-    d = norm(xy1 - xy2)
-    return parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)
-end
-
-function spring_force(
-    xy1::SubArray{T, 1, Vector{T}, Tuple{UnitRange{R}}},
-    xy2::SubArray{T, 1, Vector{T}, Tuple{UnitRange{R}}},
-    parameters::SpringParameters) where {T <:Real, R<:Integer}
-    d = norm(xy1 - xy2)
-    return parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)
-end
-
-"""
-    BOMB_k(x, A, L)
-
-The "BOMB" spring function. Of the form `A * (exp((x - 2*L)/0.2) + 1)^(-1)`.
-"""
-function BOMB_k(x::Real, A::Real, L::Real)
-    return A * (exp((x - 2*L)/0.2) + 1)^(-1)
-end
-
 
 """
     struct InitialConditions{T}
@@ -176,18 +93,18 @@ struct InitialConditions{T<:Real}
 end
 
 """
-    InitialConditions(tspan, xy0; to_sph)
+    InitialConditions(tspan, xy0; to_xy)
 
 Construct initial conditions suitable for use in `RaftParameters.ics` from a list of coordinates `xy0` of the form 
-`[x1, y1, x2, y2 ..., xN, yN]`. These should be equirectangular coordinates; if `to_sph == true` the ranges are 
+`[x1, y1, x2, y2 ..., xN, yN]`. These should be equirectangular coordinates; if `to_xy == true` the ranges are 
 converted from spherical to equirectangular coordinates. Default `false`.
 
-Can be applied as `InitialConditions(tspan, x_range, y_range; to_sph)` to generate clumps in a rectangular arrangement.
+Can be applied as `InitialConditions(tspan, x_range, y_range; to_xy)` to generate clumps in a rectangular arrangement.
 
-Can be applied as `InitialConditions(tspan, x0, y0; to_sph)` for a single clump with coordinates `(x0, y0)`.
+Can be applied as `InitialConditions(tspan, x0, y0; to_xy)` for a single clump with coordinates `(x0, y0)`.
 """
-function InitialConditions(tspan::Tuple{Real, Real}, xy0::Vector{<:Real}; to_sph::Bool = false)
-    if to_sph
+function InitialConditions(tspan::Tuple{Real, Real}, xy0::Vector{<:Real}; to_xy::Bool = false)
+    if to_xy
         ics = sph2xy(xy0)
     else
         ics = deepcopy(xy0)
@@ -201,12 +118,12 @@ function InitialConditions(
     tspan::Tuple{Real, Real},
     x_range::AbstractRange{T}, 
     y_range::AbstractRange{T}; 
-    to_sph::Bool = false) where {T<:Real}
+    to_xy::Bool = false) where {T<:Real}
 
     @assert allunique(x_range) "`x_range` can not have repeated entries"
     @assert allunique(y_range) "`y_range` can not have repeated entries"
 
-    if to_sph
+    if to_xy
         ics_x, ics_y = sph2xy(x_range, y_range)
     else
         ics_x, ics_y = x_range, y_range
@@ -221,8 +138,8 @@ function InitialConditions(
     return InitialConditions(tspan = tspan, ics = ics)
 end
 
-function InitialConditions(tspan::Tuple{Real, Real}, x0::Real, y0::Real; to_sph::Bool = false)
-    if to_sph
+function InitialConditions(tspan::Tuple{Real, Real}, x0::Real, y0::Real; to_xy::Bool = false)
+    if to_xy
         ics = sph2xy(x0, y0)
     else
         ics = [x0, y0]
@@ -340,23 +257,6 @@ function InitialConditions(
     return InitialConditions(tspan = tspan, ics = xy0)
 end
 
-"""
-    ΔL(ics::InitialConditions)
-
-Compute a spring length from a `InitialConditions`. This is the median among all pairwise 
-equirectangular distances between points' 5 nearest neighbors.
-"""
-function ΔL(ics::InitialConditions)
-    n_clumps = Int64((length(ics.ics) - 1)/2)
-    xy = reshape(@view(ics.ics[2:end]), 2, n_clumps)
-
-    kdtree = KDTree(xy)
-    k = 5
-    idx, dists = knn(kdtree, xy, k, true)
-    dists = [sum(d)/(k - 1) for d in dists] # k - 1 since self is included   
-
-    return median(dists)
-end
 
 """
     abstract type AbstractConnections
@@ -498,6 +398,163 @@ function form_connections!(con::ConnectionsNearest, u::Vector{<:Real})
     return nothing
 end
 
+
+"""
+    abstract type AbstractSpring
+
+A supertype for all spring parameters. Each clump, when conncted, is joined by the same kind of spring.
+
+Every subtype of `AbstractSpring` should have a field `k::Function` representing the stiffness force 
+and callable as `k(x)` as well as a field `L::Real` representing the spring's natural length.
+
+All forces are computed using [`spring_force`].
+"""
+abstract type AbstractSpring end
+
+"""
+    spring_force(xy1, xy2, parameters)
+
+Calculate the x and y components of the force on a point particle with coordinates `xy1` 
+which is attached by a spring defined by `parameters` to another point particle with coordinates `xy2`.
+"""
+function spring_force(xy1::Vector{<:Real}, xy2::Vector{<:Real}, parameters::AbstractSpring)
+    d = norm(xy1 - xy2)
+    return parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)
+end
+
+function spring_force(
+    xy1::SubArray{T, 1, Vector{T}, Tuple{UnitRange{R}}},
+    xy2::SubArray{T, 1, Vector{T}, Tuple{UnitRange{R}}},
+    parameters::AbstractSpring) where {T <:Real, R<:Integer}
+    d = norm(xy1 - xy2)
+    return parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)
+end
+
+"""
+    HookeSpring{T}
+
+A subtype of `AbstractSpring` representing a spring with a constant stiffness.
+
+### Constructor
+
+`HookeSpring(k::Real, L::Real)`
+"""
+struct HookeSpring{T<:Real} <: AbstractSpring
+    k::Function
+    L::T
+
+    function HookeSpring(k::Real, L::Real)
+        return new{typeof(L)}(x -> k, L)
+    end
+end
+
+"""
+    BOMBSpring{T}
+
+A subtype of `AbstractSpring` representing a BOMB spring of the form `A * (exp((x - 2*L)/0.2) + 1)^(-1)`.
+
+### Extra fields
+
+- `A`: The amplitude of the force.
+
+### Constructor
+
+`BOMBSpring(A::Real, L::Real)`
+"""
+struct BOMBSpring{T<:Real} <: AbstractSpring
+    k::Function
+    L::T
+    A::T
+
+    function BOMBSpring(A::Real, L::Real)
+        return new{typeof(L)}(x -> A * (exp((x - 2*L)/0.2) + 1)^(-1), L, A)
+    end
+end
+
+
+# """
+#     SpringParameters{T}
+
+# A container for the parameters defining a spring.
+   
+# ### Fields
+# - `k` [kg/d^2]: A scalar function of one variable which represents the stiffness of the spring. Recover a spring constant by providing, e.g. `k -> 5`.
+# - `L` [km]: The natural length of the spring.
+# """
+# struct SpringParameters{F<:Function, T<:Real}
+#     k::F
+#     L::T
+# end
+
+# function Base.length(::SpringParameters)
+#     return 1
+# end
+
+# function Base.iterate(sp::SpringParameters)
+#     return (sp, nothing)
+# end
+
+# function Base.iterate(::SpringParameters, ::Nothing)
+#     return nothing
+# end
+
+"""
+    ΔL(x_range, y_range; to_xy)
+
+Compute a spring length from a rectangular arrangement of clumps provided by `x_range` and `y_range`. This is the distance between the centers of 
+diagonally-adjacent gridpoints.
+
+These should be equirectangular coordinates; if `to_xy == true` the ranges are 
+converted from spherical to equirectangular coordinates. Default `false`.
+"""
+function ΔL(x_range::AbstractRange, y_range::AbstractRange; to_xy::Bool = false)
+    if to_xy
+        x_range, y_range = sph2xy(x_range, y_range)
+    end
+
+    return norm([x_range[1], y_range[1]] - [x_range[2], y_range[2]])
+end
+
+"""
+    ΔL(dist::SargassumDistribution)
+
+Compute a spring length from a `SargassumDistribution`. This is the equirectangular distance between the centers of 
+diagonally-adjacent gridpoints.
+"""
+function ΔL(dist::SargassumDistribution)
+    p1 = sph2xy(dist.lon[1], dist.lat[1])
+    p2 = sph2xy(dist.lon[2], dist.lat[2])
+    return norm(p1 - p2)
+end
+
+"""
+    ΔL(ics::InitialConditions)
+
+Compute a spring length from a `InitialConditions`. This is the median among all pairwise 
+equirectangular distances between points' 5 nearest neighbors.
+"""
+function ΔL(ics::InitialConditions)
+    n_clumps = Int64((length(ics.ics) - 1)/2)
+    xy = reshape(@view(ics.ics[2:end]), 2, n_clumps)
+
+    kdtree = KDTree(xy)
+    k = 5
+    idx, dists = knn(kdtree, xy, k, true)
+    dists = [sum(d)/(k - 1) for d in dists] # k - 1 since self is included   
+
+    return median(dists)
+end
+
+
+# """
+#     BOMB_k(x, A, L)
+
+# The "BOMB" spring function. Of the form `A * (exp((x - 2*L)/0.2) + 1)^(-1)`.
+# """
+# function BOMB_k(x::Real, A::Real, L::Real)
+#     return A * (exp((x - 2*L)/0.2) + 1)^(-1)
+# end
+
 """
     mutable struct RaftParameters{T, U, F, C, G, L}
 
@@ -512,7 +569,7 @@ such that `u[1]` is an "amount" parameter which controls the growth and death of
 ### Fields
 - `ics`: An [`InitialConditions`](@ref).
 - `clumps`: The [`ClumpParameters`](@ref) shared by each clump in the raft.
-- `springs`: The [`SpringParameters`](@ref) shared by each spring joining the clumps.
+- `springs`: A subtybe of [`AbstractSpring`](@ref).
 - `n_clumps_tot`: An `Integer` equal to the total number of clumps that have ever existed (i.e. it is at least the number of clumps that exist at any specific time.)
 - `connections`: A subtybe of [`AbstractConnections`](@ref).
 - `loc2label`: A `Dict` such that `loc2label[t]` is itself a `Dict` mapping vector indices to the absolute label of the clump in that location at
@@ -526,10 +583,10 @@ clump 1 dies at some later time `t`, then `loc2label[t][1] = 2`, `loc2label[t][2
 Use `RaftParameters(; tspan, ics, clumps, springs, connections, gd_model, land)`.
 The quantities `n_clumps_tot` and `loc2label` are computed automatically.
 """
-mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
+mutable struct RaftParameters{T<:Real, U<:Integer, S<:AbstractSpring, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
     ics::InitialConditions{T}
     clumps::ClumpParameters{T}
-    springs::SpringParameters{F, T}
+    springs::S
     n_clumps_tot::U
     connections::C
     loc2label::Dict{T, Dict{U, U}}
@@ -539,15 +596,15 @@ mutable struct RaftParameters{T<:Real, U<:Integer, F<:Function, C<:AbstractConne
     function RaftParameters(;
         ics::InitialConditions{T},
         clumps::ClumpParameters{T},
-        springs::SpringParameters{F, T},
+        springs::S,
         connections::C,
         gd_model::G,
-        land::L) where {T<:Real, F<:Function, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
+        land::L) where {T<:Real, S<:AbstractSpring, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
 
         n_clumps = Int64((length(ics.ics) - 1)/2)
         loc2label = Dict(ics.tspan[1] => Dict(i => i for i = 1:n_clumps))
         form_connections!(connections, ics.ics)
 
-        return new{T, Int64, F, C, G, L}(ics, clumps, springs, n_clumps, connections, loc2label, gd_model, land)
+        return new{T, Int64, S, C, G, L}(ics, clumps, springs, n_clumps, connections, loc2label, gd_model, land)
     end
 end

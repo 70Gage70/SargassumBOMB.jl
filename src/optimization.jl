@@ -138,7 +138,7 @@ mutable struct OptimizationParameter{T<:Real}
 end
 
 """
-    mutable struct BOMBOptimizationProblem{T, U, F}
+    mutable struct BOMBOptimizationProblem{T, U, C}
 
 A container for all the data defining an optimization problem.
 
@@ -151,7 +151,7 @@ for testing purposes.
 - `immortal`: A `Bool` such that if `true`, the [`ImmortalModel`](@ref) will be used, resulting in no clump \
 growths or deaths.
 - `ics`: The [`InitialConditions`](@ref) for the integration.
-- `springs`: A [`SpringParameters`](@ref) for the integration. Assumes that `springs.k` is given by [`BOMB_k`](@ref).
+- `springs`: An [`BOMBSpring`](@ref) for the integration.
 - `connections`: A subtype of [`AbstractConnections`](@ref) for the integration.
 - `loss_func`: The [`LossFunction`](@ref) used during the optimization.
 - `opt`: The minimal [`LossFunction`](@ref) obtained. If `nothing`, the problem is considered unoptimized.
@@ -164,12 +164,12 @@ growths or deaths.
 
 The fields `opt` and `opt_rtr` are initialized to `nothing`.
 """
-mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer, F<:Function, C<:AbstractConnections}
+mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer, C<:AbstractConnections}
     params::Dict{String, OptimizationParameter{T}}
     rhs::Function
     immortal::Bool
     ics::InitialConditions{T}
-    springs::SpringParameters{F, T}
+    springs::BOMBSpring{T}
     connections::C
     loss_func::LossFunction
     opt::Union{Nothing, T}
@@ -181,17 +181,17 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer, F<:Function, C<:Abst
         rhs::Function,
         immortal::Bool,
         ics::InitialConditions{T},
-        springs::SpringParameters{F, T},
+        springs::BOMBSpring{T},
         connections::C,
         loss_func::LossFunction,
-        seed::U = 1234) where {T<:Real, U<:Integer, F<:Function, C<:AbstractConnections}
+        seed::U = 1234) where {T<:Real, U<:Integer, C<:AbstractConnections}
 
         if length(params) > 0 
             @warn "No parameters are set to be optimized."
         end
         @assert rhs in [Raft!, Leeway!]
 
-        return new{T, U, F, C}(params, rhs, immortal, ics, springs, connections, loss_func, nothing, nothing, seed)
+        return new{T, U, C}(params, rhs, immortal, ics, springs, connections, loss_func, nothing, nothing, seed)
     end
 end
 
@@ -263,8 +263,7 @@ function RaftParameters(bop::BOMBOptimizationProblem, type::Union{String, Vector
     clumps = ClumpParameters(clumps.α, τ, clumps.R, clumps.f, clumps.σ)
     
     # springs
-    L_spring = λ*bop.springs.L
-    springs = SpringParameters(x -> bop.springs.k(x, A_spring, L_spring), L_spring)
+    springs = BOMBSpring(A_spring, λ*bop.springs.L)
     
     # connections
     connections = bop.connections |> deepcopy
@@ -312,19 +311,33 @@ and leaving all other parameters equal to the defaults.
 
 ### Optional Arguments
 
+- `ics`: If provided, `bop` will be integrated with these `InitialConditions` rather than `bop.ics`. This has 
+the effect of create a new `BOMBOptimizationProblem` with different `ics` and `springs`. The springs 
+are updated with `L = ΔL(ics)`.
 - `high_accuracy`: A `Bool` which, if `true`, uses higher tolerances in the integration. Default `false`.
 - `showprogress`: A `Bool` which outputs the integration progress when `true`. Default `false`.
 """
 function simulate(
     bop::BOMBOptimizationProblem,
     type::Union{String, Vector{<:Real}};
+    ics::Union{InitialConditions, Nothing} = nothing,
     high_accuracy::Bool = false, 
     showprogress::Bool = false)
 
     seed!(bop.seed)
 
-    rp = RaftParameters(bop, type)
-    
+    if ics === nothing
+        rp = RaftParameters(bop, type)
+    else
+        A_spring = type == "opt" ? bop.params["A_spring"].opt : bop.params["A_spring"].default
+        springs = BOMBSpring(A_spring, ΔL(ics)) # don't apply λ, might be nonsensical in general
+        bop_new = deepcopy(bop)
+        bop_new.ics = ics
+        bop_new.springs = springs
+
+        rp = RaftParameters(bop_new, type)
+    end
+
     abstol = high_accuracy ? 1.0e-6 : nothing
     reltol = high_accuracy ? 1.0e-6 : nothing
 

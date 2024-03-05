@@ -53,7 +53,7 @@ export AbstractLand, NoLand, Land
 
 include("raft-parameters.jl")
 export ClumpParameters
-export SpringParameters, ΔL, spring_force, BOMB_k
+export AbstractSpring, HookeSpring, BOMBSpring, ΔL, spring_force
 export InitialConditions
 export AbstractConnections, ConnectionsNone, ConnectionsFull, ConnectionsRadius, ConnectionsNearest, form_connections!
 export RaftParameters
@@ -96,9 +96,9 @@ PrecompileTools.@compile_workload begin
     itps_default_assign()
 
     tspan = (0.0, 1.0)
-    ics = InitialConditions(tspan, range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5))
+    ics = InitialConditions(tspan, range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5), to_xy = true)
     clumps = ClumpParameters()
-    springs = SpringParameters(k -> 0.1, 100.0)
+    springs = BOMBSpring(1.0, ΔL(ics))
     connections = ConnectionsNearest(2)
     gd_model = BrooksModel()
     land = Land()

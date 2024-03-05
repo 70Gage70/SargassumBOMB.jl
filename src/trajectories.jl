@@ -10,28 +10,28 @@ A container for the data of a single clump's trajectory.
 
 ### Constructors
 
-Apply as `Trajectory(xy, t; to_xy)` where `xy` can be a matrix or vector of vectors, `t` is a vector with the same length as `xy`.
-If `to_xy == true`, construct the trajectory such that `xy` is converted from equirectangular to lon/lat coordinates - default `false`.
+Apply as `Trajectory(xy, t; to_sph)` where `xy` can be a matrix or vector of vectors, `t` is a vector with the same length as `xy`.
+If `to_sph == true`, construct the trajectory such that `xy` is converted from equirectangular to lon/lat coordinates - default `false`.
 
 """
 struct Trajectory{T<:Real}
     xy::Matrix{T}
     t::Vector{T}
 
-    function Trajectory(xy::Union{Matrix{T}, Vector{<:Vector{T}}}, t::Vector{T}; to_xy::Bool = false) where {T<:Real}
+    function Trajectory(xy::Union{Matrix{T}, Vector{<:Vector{T}}}, t::Vector{T}; to_sph::Bool = false) where {T<:Real}
         if xy isa Matrix
             @assert length(t) == size(xy, 1) "`t` and `xy` must have the same length."
             @assert size(xy, 2) == 2 "`xy` must have two columns."
         
             inds = unique(i -> t[i], eachindex(t))
 
-            return to_xy ? new{T}(xy2sph(xy[inds,:]), t[inds]) : new{T}(xy[inds,:], t[inds])
+            return to_sph ? new{T}(xy2sph(xy[inds,:]), t[inds]) : new{T}(xy[inds,:], t[inds])
         else
             @assert length(t) == length(xy) "`t` and `xy` must have the same length."
 
             inds = unique(i -> t[i], eachindex(t))
         
-            return to_xy ? new{T}(xy2sph(stack(xy, dims = 1)[inds,:]), t[inds]) : new{T}(stack(xy, dims = 1)[inds,:], t[inds])
+            return to_sph ? new{T}(xy2sph(stack(xy, dims = 1)[inds,:]), t[inds]) : new{T}(stack(xy, dims = 1)[inds,:], t[inds])
         end
     end   
 end
@@ -146,12 +146,12 @@ function RaftTrajectory(
     trajectories = Dict{Int64, Trajectory{Float64}}()
 
     for i = 1:rp.n_clumps_tot
-        trajectories[i] = Trajectory(data[lifetimes[i],i,:], times[lifetimes[i]], to_xy = true)
+        trajectories[i] = Trajectory(data[lifetimes[i],i,:], times[lifetimes[i]], to_sph = true)
     end
 
     # return data, n_clumps_t 
 
-    tr_com = Trajectory(sum(data[:,i,:] for i = 1:rp.n_clumps_tot) ./ n_clumps_t, times, to_xy = true)
+    tr_com = Trajectory(sum(data[:,i,:] for i = 1:rp.n_clumps_tot) ./ n_clumps_t, times, to_sph = true)
 
     return RaftTrajectory(trajectories, times, n_clumps_t, tr_com)
 end

@@ -72,7 +72,7 @@ export simulate
 
 include("optimization.jl")
 export OPTIMIZATION_PARAMETER_NAMES, LossFunction, OptimizationParameter, BOMBOptimizationProblem
-export loss, optimize!, sample!
+export optimizable, optimize!
 
 include(joinpath(@__DIR__, "..", "plotting", "plotting-core.jl"))
 export default_fig, geo_axis, land!, data_legend!, trajectory!, trajectory_hist!, plot
@@ -99,7 +99,7 @@ PrecompileTools.@compile_workload begin
     ics = InitialConditions(tspan, range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5))
     clumps = ClumpParameters()
     springs = SpringParameters(k -> 0.1, 100.0)
-    connections = ConnectionsNearest(10)
+    connections = ConnectionsNearest(2)
     gd_model = BrooksModel()
     land = Land()
     

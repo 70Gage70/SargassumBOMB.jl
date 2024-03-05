@@ -109,7 +109,7 @@ end
 """
     ΔL(dist::SargassumDistribution)
 
-Compute a spring length from a `SargassumDistribution`. This is the distance between the centers of 
+Compute a spring length from a `SargassumDistribution`. This is the equirectangular distance between the centers of 
 diagonally-adjacent gridpoints.
 """
 function ΔL(dist::SargassumDistribution)
@@ -338,6 +338,24 @@ function InitialConditions(
     pushfirst!(xy0, n_clumps)
     
     return InitialConditions(tspan = tspan, ics = xy0)
+end
+
+"""
+    ΔL(ics::InitialConditions)
+
+Compute a spring length from a `InitialConditions`. This is the median among all pairwise 
+equirectangular distances between points' 5 nearest neighbors.
+"""
+function ΔL(ics::InitialConditions)
+    n_clumps = Int64((length(ics.ics) - 1)/2)
+    xy = reshape(@view(ics.ics[2:end]), 2, n_clumps)
+
+    kdtree = KDTree(xy)
+    k = 5
+    idx, dists = knn(kdtree, xy, k, true)
+    dists = [sum(d)/(k - 1) for d in dists] # k - 1 since self is included   
+
+    return median(dists)
 end
 
 """

@@ -329,7 +329,12 @@ function simulate(
     if ics === nothing
         rp = RaftParameters(bop, type)
     else
-        A_spring = type == "opt" ? bop.params["A_spring"].opt : bop.params["A_spring"].default
+        if "A_spring" in optimizable(bop) && type == "opt"
+            A_spring = bop.params["A_spring"].opt
+        else
+            A_spring = bop.params["A_spring"].default
+        end
+
         springs = BOMBSpring(A_spring, ΔL(ics)) # don't apply λ, might be nonsensical in general
         bop_new = deepcopy(bop)
         bop_new.ics = ics

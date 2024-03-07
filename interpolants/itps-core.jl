@@ -65,6 +65,7 @@ The new dimension appears last in the list of dimension names.
 ### Optional Arguments
 
 - `transform`: If provided, the dimension will be mapped according to `transform` before any other steps are taken. Default `nothing`.
+- `force`: If `true`, the range will be constructed even if the vector isn't linearly spaced by linear interpolation preserving the length. Default `false`.
 """
 function add_spatial_dimension!(
     gf::GriddedField,
@@ -73,7 +74,8 @@ function add_spatial_dimension!(
     dim_name_out::Symbol,  
     dim_units_in::UFUL, 
     dim_units_out::String;
-    transform::Union{Function, Nothing} = nothing)
+    transform::Union{Function, Nothing} = nothing,
+    force::Bool = false)
 
     extension = infile[findlast(==('.'), infile)+1:end]
     @assert extension in ["nc"] "Require a .nc file."
@@ -84,7 +86,7 @@ function add_spatial_dimension!(
     dim = ncread(infile, dim_name_in)
     (transform !== nothing) && (dim = map(transform, dim))
     dim = dim * uconvert(u_out, 1.0 * dim_units_in).val
-    dim = vec2range(dim)
+    dim = vec2range(dim, force = force)
 
     push!(gf.dims_names, (dim_name_out, u_out))
     gf.dims[dim_name_out] = dim
@@ -111,6 +113,7 @@ The new dimension appears last in the list of dimension names.
 ### Optional Arguments
 
 - `transform`: If provided, the dimension will be mapped according to `transform` before any other steps are taken. Default `nothing`.
+- `force`: If `true`, the range will be constructed even if the vector isn't linearly spaced by linear interpolation preserving the length. Default `false`.
 """
 function add_temporal_dimension!(
     gf::GriddedField,
@@ -119,7 +122,8 @@ function add_temporal_dimension!(
     time_name_out::Symbol,  
     time_start::DateTime,
     time_period::DataType;
-    transform::Union{Function, Nothing} = nothing)
+    transform::Union{Function, Nothing} = nothing,
+    force::Bool = false)
 
     extension = infile[findlast(==('.'), infile)+1:end]
     @assert extension in ["nc"] "Require a .nc file."
@@ -130,7 +134,7 @@ function add_temporal_dimension!(
     (transform !== nothing) && (time = map(transform, time))
     time = map(x -> time_start + time_period(x) - T_REF.x, time)
     time = map(x -> uconvert(u_out, x).val, time)
-    time = vec2range(time)
+    time = vec2range(time, force = force)
 
     push!(gf.dims_names, (time_name_out, u_out))
     gf.dims[time_name_out] = time

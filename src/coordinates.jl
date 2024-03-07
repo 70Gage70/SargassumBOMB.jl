@@ -57,7 +57,7 @@ end
 """
     const EQR
     
-The [`EquirectangularReference`](@ref) used during all conversions. 
+The [`EquirectangularReference`](@ref) used during all conversions. This is a `Ref`, use `EQR.x` to acess the actual `EquirectangularReference`.
 
 ### Defaults
 
@@ -68,15 +68,15 @@ The [`EquirectangularReference`](@ref) used during all conversions.
 const EQR = Ref{EquirectangularReference}(EquirectangularReference())
 
 """
-    sph2xy(lon, lat)
+    sph2xy(lon, lat; eqr = EQR.x)
 
-Compute planar coordinates `[x, y]` from spherical coordinates `(lon, lat)` [deg].
+Compute planar coordinates `[x, y]` from spherical coordinates `(lon, lat)` [deg] using [`EquirectangularReference`](@ref) `eqr`, default [`EQR`](@ref).
 
-The units of `x` and `y` the same as `EQR.R`.
+The units of `x` and `y` the same as `eqr.R`.
 
-Can be applied as `sph2xy(lon_range, lat_range)` where `lon_range` and `lat_range` are `AbstractRange`. Returns `(x_range, y_range)`.
+Can be applied as `sph2xy(lon_range, lat_range; eqr = EQR)` where `lon_range` and `lat_range` are `AbstractRange`. Returns `(x_range, y_range)`.
 
-Can be applied as `sph2xy(lon_lat)` where `lon_lat` is an `N x 2` `Matrix` or a `Vector` of length `2N` with 
+Can be applied as `sph2xy(lon_lat; eqr = EQR)` where `lon_lat` is an `N x 2` `Matrix` or a `Vector` of length `2N` with 
 entries of the form `[lon1, lat1, lon2, lat2 ... lonN, latN]`. Returns a result in the same shape as the input.
 
 ### Arguments
@@ -84,11 +84,11 @@ entries of the form `[lon1, lat1, lon2, lat2 ... lonN, latN]`. Returns a result 
 - `lon`: Longitude in degrees (East/West).
 - `lat`: Latitude in degrees (North/South).
 """
-function sph2xy(lon::Real, lat::Real)
+function sph2xy(lon::Real, lat::Real; eqr::EquirectangularReference = EQR.x)
     @assert -180.0 <= lon <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
     @assert -90 <= lat <= 90 "The latitude must be between -90 degrees and 90 degrees."
 
-    lon0, lat0, R = (EQR.x.lon0, EQR.x.lat0, EQR.x.R.val)
+    lon0, lat0, R = (eqr.lon0, eqr.lat0, eqr.R.val)
     deg2rad = π/180
 
     x = R*(lon - lon0)*deg2rad*cos(lat0*deg2rad)
@@ -97,10 +97,10 @@ function sph2xy(lon::Real, lat::Real)
     return [x, y]
 end
 
-function sph2xy(lon_range::AbstractRange, lat_range::AbstractRange)
+function sph2xy(lon_range::AbstractRange, lat_range::AbstractRange; eqr::EquirectangularReference = EQR.x)
     # uses the fact that the translation between eqr and spherical is linear
-    lonmin, latmin = sph2xy(first(lon_range), first(lat_range))
-    lonmax, latmax = sph2xy(last(lon_range), last(lat_range))
+    lonmin, latmin = sph2xy(first(lon_range), first(lat_range), eqr = eqr)
+    lonmax, latmax = sph2xy(last(lon_range), last(lat_range), eqr = eqr)
 
     return  (
             range(start = lonmin, length = length(lon_range), stop = lonmax), 
@@ -108,35 +108,35 @@ function sph2xy(lon_range::AbstractRange, lat_range::AbstractRange)
             )
 end
 
-function sph2xy(lon_lat::Matrix{T}) where {T<:Real}
+function sph2xy(lon_lat::Matrix{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
     @assert size(lon_lat, 2) == 2 "lon_lat should be an `N x 2` matrix"
     xy = zeros(T, size(lon_lat))
     
     for i = 1:size(lon_lat, 1)
-        xy[i,:] .= sph2xy(lon_lat[i,1], lon_lat[i,2])
+        xy[i,:] .= sph2xy(lon_lat[i,1], lon_lat[i,2], eqr = eqr)
     end
 
     return xy
 end
 
-function sph2xy(lon_lat::Vector{T}) where {T<:Real}
+function sph2xy(lon_lat::Vector{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
     @assert iseven(length(lon_lat)) "lon_lat should be of the form `[lon1, lat1, lon2, lat2 ... lon3, lat3]`."
 
     xy = zeros(T, length(lon_lat))
     
     for i = 1:2:length(lon_lat)
-        xy[i:i+1] .= sph2xy(lon_lat[i], lon_lat[i + 1])
+        xy[i:i+1] .= sph2xy(lon_lat[i], lon_lat[i + 1], eqr = eqr)
     end
 
     return xy
 end
 
 """
-    xy2sph(x, y)
+    xy2sph(x, y, eqr = EQR.x)
 
-Compute spherical coordinates `[lon, lat]` [deg] from rectilinear coordinates `(x, y)`.
+Compute spherical coordinates `[lon, lat]` [deg] from rectilinear coordinates `(x, y)` using [`EquirectangularReference`](@ref) `eqr`, default [`EQR`](@ref).
 
-The units of `x` and `y` should be the same as `EQR.R`.
+The units of `x` and `y` should be the same as `eqr.R`.
 
 Can be applied as `xy2sph(xy)` where `xy` is a `Vector{Vector{T}}` or an `N x 2` `Matrix`. Returns an `N x 2` `Matrix` in these cases.
 
@@ -150,8 +150,8 @@ Can be applied as `xy2sph(x_range, y_range)` where `x_range` and `y_range` are `
 - `x`: The x Cartesian coordinate in km (East/West).
 - `y`: The y Cartesian coordinate in km (North/South).
 """
-function xy2sph(x::Real, y::Real)
-    lon0, lat0, R = (EQR.x.lon0, EQR.x.lat0, EQR.x.R.val)
+function xy2sph(x::Real, y::Real; eqr::EquirectangularReference = EQR.x)
+    lon0, lat0, R = (eqr.lon0, eqr.lat0, eqr.R.val)
     deg2rad = π/180
     rad2deg = 1/deg2rad
 
@@ -161,31 +161,31 @@ function xy2sph(x::Real, y::Real)
     return [lon, lat]
 end
 
-function xy2sph(xy::Vector{<:Vector{T}}) where {T<:Real}
+function xy2sph(xy::Vector{<:Vector{T}}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
     lonlat = zeros(T, length(xy), 2) 
     
     for i = 1:length(xy)
-        lonlat[i,:] = xy2sph(xy[i][1], xy[i][2])
+        lonlat[i,:] = xy2sph(xy[i][1], xy[i][2], eqr = eqr)
     end
 
     return lonlat
 end
 
-function xy2sph(xy::Matrix{T}) where {T<:Real}
+function xy2sph(xy::Matrix{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
     @assert size(xy, 2) == 2 "xy should be an `N x 2` matrix"
     lonlat = zeros(T, size(xy))
     
     for i = 1:size(xy, 1)
-        lonlat[i,:] = xy2sph(xy[i,1], xy[i,2])
+        lonlat[i,:] = xy2sph(xy[i,1], xy[i,2], eqr = eqr)
     end
 
     return lonlat
 end
 
-function xy2sph(x_range::AbstractRange, y_range::AbstractRange)
+function xy2sph(x_range::AbstractRange, y_range::AbstractRange; eqr::EquirectangularReference = EQR.x)
     # uses the fact that the translation between eqr and spherical is linear
-    xmin, ymin = xy2sph(first(x_range), first(y_range))
-    xmax, ymax = xy2sph(last(x_range), last(y_range))
+    xmin, ymin = xy2sph(first(x_range), first(y_range), eqr = eqr)
+    xmax, ymax = xy2sph(last(x_range), last(y_range), eqr = eqr)
 
     return  (
             range(start = xmin, length = length(x_range), stop = xmax), 
@@ -193,13 +193,13 @@ function xy2sph(x_range::AbstractRange, y_range::AbstractRange)
             )
 end
 
-function xy2sph(xy::Vector{T}) where {T<:Real}
+function xy2sph(xy::Vector{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
     @assert iseven(length(xy)) "xy should be of the form `[x1, y1, x2, y2 ... x3, y3]`."
 
     lon_lat = zeros(T, length(xy))
     
     for i = 1:2:length(xy)
-        lon_lat[i:i+1] .= xy2sph(xy[i], xy[i + 1])
+        lon_lat[i:i+1] .= xy2sph(xy[i], xy[i + 1], eqr = eqr)
     end
 
     return lon_lat

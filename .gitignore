@@ -77,12 +77,12 @@ Temporary Items
 
 # NetCDF
 *.nc
-!currents-temperature.nc
-!nutrients.nc
-!wind.nc
-!afai.nc
-!waves.nc
-!water.nc
+# !currents-temperature.nc
+# !nutrients.nc
+# !wind.nc
+# !afai.nc
+# !waves.nc
+# !water.nc
 
 # workspace
 /src/workspaces.jl

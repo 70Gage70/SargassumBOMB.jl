@@ -73,9 +73,6 @@ function itps_default_construct(; force::Bool = false)
     infile = joinpath(@__DIR__, "data", "water.nc")
     outfile = joinpath(@__DIR__, "itps", "WATER_ITP.jld2")
 
-    println("INFILE")
-    println(infile)
-
     rm(outfile, force = true)
 
     gf = GriddedField(3)

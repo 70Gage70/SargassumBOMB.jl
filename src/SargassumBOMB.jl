@@ -6,7 +6,7 @@ using Unitful, Dates
 using LinearAlgebra: norm, ⋅
 
 # i/o
-using MAT, NetCDF, JLD2
+using MAT, NetCDF, JLD2, RemoteFiles
 
 # probability/statistics
 using StatsBase, Distributions 
@@ -85,6 +85,7 @@ export length, show, iterate # various Base extensions
 
 # initialize interpolants
 function __init__()
+    include(joinpath(@__DIR__, "..", "interpolants", "data", "data.jl"))
     itps_default_construct()
     itps_default_assign()
 end
@@ -92,6 +93,7 @@ end
 import PrecompileTools
 
 PrecompileTools.@compile_workload begin
+    include(joinpath(@__DIR__, "..", "interpolants", "data", "data.jl"))
     itps_default_construct()
     itps_default_assign()
 

@@ -92,7 +92,6 @@ end
 import PrecompileTools
 
 PrecompileTools.@compile_workload begin
-    println("test")
     itps_default_construct()
     itps_default_assign()
 

@@ -95,8 +95,8 @@ PrecompileTools.@compile_workload begin
     itps_default_construct()
     itps_default_assign()
 
-    tspan = (0.0, 1.0)
-    ics = InitialConditions(tspan, range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5), to_xy = true)
+	tspan = (DateTime(2018, 4, 13), DateTime(2018, 4, 15)) .|> datetime2time
+	ics = InitialConditions(tspan, range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5), to_xy = true)
     clumps = ClumpParameters()
     springs = BOMBSpring(1.0, ΔL(ics))
     connections = ConnectionsNearest(2)

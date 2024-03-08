@@ -27,13 +27,15 @@ then `fig_pos[1, 1]` puts the axis in the first row and first column of `fig`.
 - `limits`: `An NTuple{4, <:Real}` of the form `(xmin, xmax, ymin, ymax)`.
 - `xticks`: A list of x tick mark locations.
 - `yticks`: A list of y tick mark locations.
+- `labelscale`: Scale the font size of the ticks labels by this amount. Default `1.0`.
 """
 function geo_axis(
     fig_pos::GridPosition;
     title::AbstractString = L"\mathrm{Title}",
     limits::NTuple{4, <:Real} = (-100, -50, 5, 35),
     xticks::Vector{<:Real} = [limits[1], limits[2]],
-    yticks::Vector{<:Real} = [limits[3], limits[4]]
+    yticks::Vector{<:Real} = [limits[3], limits[4]],
+    labelscale::Real = 1.0
     )
 
     Axis(
@@ -42,8 +44,8 @@ function geo_axis(
         title = title,
         xticks = xticks,
         yticks = yticks,
-        xticklabelsize = 40,
-        yticklabelsize = 40,
+        xticklabelsize = labelscale*40,
+        yticklabelsize = labelscale*40,
         xtickformat = values -> [
             if value > 0 
                 L"%$(abs(value)) \, \degree \mathrm{E}" 

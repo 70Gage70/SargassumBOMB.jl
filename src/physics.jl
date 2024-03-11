@@ -18,16 +18,16 @@ function Raft!(du, u, p::RaftParameters, t)
     for i = 1:floor(Int64, length(u)/2)
         # note that x, y = u[2*i], u[2*i+1]
 
-        x, y = u[2*i], u[2*i+1]
-        v_x = WATER_ITP.x.fields[:u](x, y, t) + σ * STOKES_ITP.x.fields[:u](x, y, t)
-        v_y =  WATER_ITP.x.fields[:v](x, y, t) + σ * STOKES_ITP.x.fields[:v](x, y, t)
-        Dv_xDt = WATER_ITP.x.fields[:DDt_x](x, y, t) + σ * STOKES_ITP.x.fields[:DDt_x](x, y, t)
-        Dv_yDt = WATER_ITP.x.fields[:DDt_y](x, y, t) + σ * STOKES_ITP.x.fields[:DDt_y](x, y, t)
-        u_x = (1 - α) * v_x + α * WIND_ITP.x.fields[:u](x, y, t)
-        u_y = (1 - α) * v_y + α * WIND_ITP.x.fields[:v](x, y, t)
-        Du_xDt = (1 - α) * Dv_xDt + α * WIND_ITP.x.fields[:DDt_x](x, y, t)
-        Du_yDt = (1 - α) * Dv_yDt + α * WIND_ITP.x.fields[:DDt_y](x, y, t)
-        ω = WATER_ITP.x.fields[:vorticity](x, y, t)        
+        x, y    = u[2*i], u[2*i+1]
+        v_x     = WATER_ITP.x.fields[:u](x, y, t) + σ * STOKES_ITP.x.fields[:u](x, y, t)
+        v_y     = WATER_ITP.x.fields[:v](x, y, t) + σ * STOKES_ITP.x.fields[:v](x, y, t)
+        Dv_xDt  = WATER_ITP.x.fields[:DDt_x](x, y, t) + σ * STOKES_ITP.x.fields[:DDt_x](x, y, t)
+        Dv_yDt  = WATER_ITP.x.fields[:DDt_y](x, y, t) + σ * STOKES_ITP.x.fields[:DDt_y](x, y, t)
+        u_x     = (1 - α) * v_x + α * WIND_ITP.x.fields[:u](x, y, t)
+        u_y     = (1 - α) * v_y + α * WIND_ITP.x.fields[:v](x, y, t)
+        Du_xDt  = (1 - α) * Dv_xDt + α * WIND_ITP.x.fields[:DDt_x](x, y, t)
+        Du_yDt  = (1 - α) * Dv_yDt + α * WIND_ITP.x.fields[:DDt_y](x, y, t)
+        ω       = WATER_ITP.x.fields[:vorticity](x, y, t)        
 
         du[2*i]     = u_x + τ * (R*Dv_xDt - R*(f + ω/3)*v_y - Du_xDt + (f + R*ω/3)*u_y)
         du[2*i+1]   = u_y + τ * (R*Dv_yDt + R*(f + ω/3)*v_x - Du_yDt - (f + R*ω/3)*u_x)

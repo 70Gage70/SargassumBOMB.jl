@@ -49,9 +49,12 @@ function Raft!(du, u, p::RaftParameters, t)
             - (f + R*ω(u[2*i], u[2*i+1], t)/3)*u_x(u[2*i], u[2*i+1], t, α, σ)
         )
 
-        # @views combined with .= minimizes allocations by not creating small/temporary arrays
-        @views for j in p.connections.connections[i]
-            du[2*i:2*i+1] .= du[2*i:2*i+1] .+ τ*spring_force(u[2*i:2*i+1], u[2*j:2*j+1], p.springs)
+        for j in p.connections.connections[i]
+            d = sqrt((u[2*i] - u[2*j])^2 + (u[2*i+1] - u[2*j+1])^2)
+            fac = τ*(p.springs.k(d))*(p.springs.L/d - 1)
+
+            du[2*i] += fac*(u[2*i] - u[2*j])
+            du[2*i+1] += fac*(u[2*i+1] - u[2*j+1])
         end
     end
 end

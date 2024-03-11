@@ -407,31 +407,12 @@ A supertype for all spring parameters. Each clump, when conncted, is joined by t
 Every subtype of `AbstractSpring` should have a field `k::Function` representing the stiffness force 
 and callable as `k(x)` as well as a field `L::Real` representing the spring's natural length.
 
-All forces are computed using [`spring_force`].
+All forces are computed using `parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)` where `d = norm(xy1 - xy2)`.
 """
 abstract type AbstractSpring end
 
 """
-    spring_force(xy1, xy2, parameters)
-
-Calculate the x and y components of the force on a point particle with coordinates `xy1` 
-which is attached by a spring defined by `parameters` to another point particle with coordinates `xy2`.
-"""
-function spring_force(xy1::Vector{<:Real}, xy2::Vector{<:Real}, parameters::AbstractSpring)
-    d = norm(xy1 - xy2)
-    return parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)
-end
-
-function spring_force(
-    xy1::SubArray{T, 1, Vector{T}, Tuple{UnitRange{R}}},
-    xy2::SubArray{T, 1, Vector{T}, Tuple{UnitRange{R}}},
-    parameters::AbstractSpring) where {T <:Real, R<:Integer}
-    d = norm(xy1 - xy2)
-    return parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)
-end
-
-"""
-    HookeSpring{T}
+    HookeSpring{T, Tk}
 
 A subtype of `AbstractSpring` representing a spring with a constant stiffness.
 
@@ -439,17 +420,18 @@ A subtype of `AbstractSpring` representing a spring with a constant stiffness.
 
 `HookeSpring(k::Real, L::Real)`
 """
-struct HookeSpring{T<:Real} <: AbstractSpring
-    k::Function
+struct HookeSpring{T<:Real, Tk<:Function} <: AbstractSpring
+    k::Tk
     L::T
 
     function HookeSpring(k::Real, L::Real)
-        return new{typeof(L)}(x -> k, L)
+        sk(x::Real; k::Real = k) = k
+        return new{typeof(L), typeof(sk)}(sk, L)
     end
 end
 
 """
-    BOMBSpring{T}
+    BOMBSpring{T, Tk}
 
 A subtype of `AbstractSpring` representing a BOMB spring of the form `A * (exp((x - 2*L)/0.2) + 1)^(-1)`.
 
@@ -461,42 +443,16 @@ A subtype of `AbstractSpring` representing a BOMB spring of the form `A * (exp((
 
 `BOMBSpring(A::Real, L::Real)`
 """
-struct BOMBSpring{T<:Real} <: AbstractSpring
-    k::Function
+struct BOMBSpring{T<:Real, Tk<:Function} <: AbstractSpring
+    k::Tk
     L::T
     A::T
 
     function BOMBSpring(A::Real, L::Real)
-        return new{typeof(L)}(x -> A * (exp((x - 2*L)/0.2) + 1)^(-1), L, A)
+        sk(x::Real; A::Real = A, L::Real = L) = A * (exp((x - 2*L)/0.2) + 1)^(-1)
+        return new{typeof(L), typeof(sk)}(sk, L, A)
     end
 end
-
-
-# """
-#     SpringParameters{T}
-
-# A container for the parameters defining a spring.
-   
-# ### Fields
-# - `k` [kg/d^2]: A scalar function of one variable which represents the stiffness of the spring. Recover a spring constant by providing, e.g. `k -> 5`.
-# - `L` [km]: The natural length of the spring.
-# """
-# struct SpringParameters{F<:Function, T<:Real}
-#     k::F
-#     L::T
-# end
-
-# function Base.length(::SpringParameters)
-#     return 1
-# end
-
-# function Base.iterate(sp::SpringParameters)
-#     return (sp, nothing)
-# end
-
-# function Base.iterate(::SpringParameters, ::Nothing)
-#     return nothing
-# end
 
 """
     ΔL(x_range, y_range; to_xy)

@@ -42,7 +42,6 @@ function Raft!(du, u, p::RaftParameters, t)
     end
 end
 
-
 """
     Leeway!(du, u, p::RaftParameters, t)
 

@@ -536,7 +536,7 @@ clump 1 dies at some later time `t`, then `loc2label[t][1] = 2`, `loc2label[t][2
 
 ### Constructors 
 
-Use `RaftParameters(; tspan, ics, clumps, springs, connections, gd_model, land)`.
+Use `RaftParameters(; ics, clumps, springs, connections, gd_model, land)`.
 The quantities `n_clumps_tot` and `loc2label` are computed automatically.
 """
 mutable struct RaftParameters{T<:Real, U<:Integer, S<:AbstractSpring, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}

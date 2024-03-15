@@ -58,7 +58,7 @@ A container for the parameters of the model of [Brooks et al. (2018)](https://ww
 - `z_max` [m]: Maximum depth before Sargassum buoyancy is compromised. Value: `120.0`.
 - `clumps_limits`: A `Tuple` of the form `(n_clumps_min, n_clumps_max)`. These impose hard lower \
 and upper limits on the total number of clumps that can exist at any specific time (the total number \
-of clumps that can have ever existed - i.e. `n_clumps_tot` of [`RaftParameters`](@ref) - may be higher.) Default: `(0, 10000)`.
+of clumps that can have ever existed - i.e. `n_clumps_tot` of [`RaftParameters`](@ref) - may be higher.) Default: `(0, 3000)`.
 - `dSdt`: Compute the rate of change of the "amount" `S` according to the Brooks model.
 
 ### dSdt
@@ -95,7 +95,7 @@ struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real, F<:Funct
         k_N::Real = 0.012,
         T_ref::Real = 18.0,
         z_max::Real = 120.0,
-        clumps_limits::Tuple{Integer, Integer} = (0, 10000)) where {I<:InterpolatedField}
+        clumps_limits::Tuple{Integer, Integer} = (0, 3000)) where {I<:InterpolatedField}
 
         μ_max, m, I_k, a_ref, k_N, T_ref, z_max = promote(μ_max, m, I_k, a_ref, k_N, T_ref, z_max)
 
@@ -160,20 +160,21 @@ end
     
 # condition 
 function (model::BrooksModel)(u, t, integrator)
-    growths = Int64[]
-    deaths = Int64[]
+    model.growths = Int64[]
+    model.deaths = Int64[]
 
     for i = 1:n_clumps(u)
-        model.S[i] += model.params.dSdt(clump_i(u, i)..., t)*model.S[i]*(t - integrator.tprev)
+        rhs = model.params.dSdt(clump_i(u, i)..., t)*model.S[i]*(t - integrator.tprev)#*n_clumps(u)
+        model.S[i] += rhs
 
-        if model.S[i] < 0
-            push!(deaths, i)
-        elseif model.S[i] > 2
-            push!(growths, i)
+        if model.S[i] < 0 && n_clumps(u) - length(model.deaths) >= model.params.clumps_limits[1]
+            push!(model.deaths, i)
+        elseif model.S[i] > 2 && n_clumps(u) + length(model.growths) <= model.params.clumps_limits[2]
+            push!(model.growths, i)
         end
     end
 
-    if length(growths) > 0 || length(deaths) > 0
+    if length(model.growths) > 0 || length(model.deaths) > 0
         return true
     else
         return false

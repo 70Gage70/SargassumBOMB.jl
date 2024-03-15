@@ -418,7 +418,7 @@ value is just the sample with the lowest loss function.
 ### Optional Arguments 
 
 - `sampling_algorithm`: A `QuasiMonteCarlo.SamplingAlgorithm`. Default `SobolSample()`.
-- `time_limit`: A `Float64` giving the upper time limit in seconds on the length of the optimization. Default `300.0`.
+- `time_limit`: If provided, a `Float64` giving the upper time limit in seconds on the length of the optimization. Default `nothing`.
 - `high_accuracy`: A `Bool` which, if `true`, uses lower tolerances in the integration. Default `false`.
 - `verbose`: Show the progress of the sampling. Default `true`.
 """
@@ -426,7 +426,7 @@ function sample!(
     bop::BOMBOptimizationProblem,
     n_samples::Integer;
     sampling_algorithm::QuasiMonteCarlo.SamplingAlgorithm = SobolSample(),
-    time_limit::Float64 = 300.0,
+    time_limit::Union{Float64, Nothing} = nothing,
     high_accuracy::Bool = false,
     verbose = true)
 
@@ -442,7 +442,7 @@ function sample!(
     j = 0
     Threads.@threads for i in 1:n_samples
         j = j + 1
-        if time() - tstart > time_limit
+        if (time_limit !== nothing) && (time() - tstart > time_limit)
             timedout = true
             break
         end

@@ -13,8 +13,8 @@ This function modifies `raft_parameters` significantly.
 
 - `rhs`: The function to integrate, default [`Raft!`](@ref). Use [`Leeway!`](@ref) to integrate particles with no springs or inertia.
 - `alg`: The integration algorithm to use, default [`Tsit5()`](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
-- `abstol`: The absolute tolerance of integration; default `1e-6`. Can be `nothing` to use `OrdinaryDiffEq.solve` defaults.
-- `reltol`: The relative tolerance of integration; default `1e-6`. Can be `nothing` to use `OrdinaryDiffEq.solve` defaults.
+- `abstol`: The absolute tolerance of integration; default `nothing`.
+- `reltol`: The relative tolerance of integration; default `nothing`.
 - `showprogress`: If `true`, print a status indicator of the progress of the integration. Default `true`.
 - `return_raw`: If true, return the result of `OrdinaryDiffEq.solve`, rather than a [`RaftTrajectory`](@ref). \
 Use this if you would like to manipulate the solution directly. Default `false`.
@@ -23,8 +23,8 @@ function simulate(
     rp::RaftParameters; 
     rhs::Function = Raft!,
     alg::OrdinaryDiffEq.OrdinaryDiffEqAlgorithm = Tsit5(),
-    abstol::Union{Real, Nothing} = 1e-6,
-    reltol::Union{Real, Nothing} = 1e-6,
+    abstol::Union{Real, Nothing} = nothing,
+    reltol::Union{Real, Nothing} = nothing,
     showprogress::Bool = true,
     return_raw::Bool = false)
 

@@ -72,7 +72,7 @@ export simulate
 
 include("optimization.jl")
 export OPTIMIZATION_PARAMETER_NAMES, LossFunction, OptimizationParameter, BOMBOptimizationProblem
-export optimizable, optimize!
+export optimizable, optimize!, sample!
 
 include(joinpath(@__DIR__, "..", "plotting", "plotting-core.jl"))
 export default_fig, geo_axis, land!, data_legend!, trajectory!, trajectory_hist!, plot

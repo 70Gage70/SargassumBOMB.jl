@@ -273,7 +273,7 @@ function RaftParameters(bop::BOMBOptimizationProblem, type::Union{String, Vector
         gd_model = ImmortalModel(ics)
     else
         bmp = BrooksModelParameters(
-            clumps_limits = (0, 2*n_clumps(ics.ics)), # the number of clumps can at most double
+            clumps_limits = (floor(Int64, n_clumps(ics.ics)/2), 2*n_clumps(ics.ics)), # the number of clumps can at most double and at least half
             μ_max = μ_max,
             m = m,
             k_N = k_N)

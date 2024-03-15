@@ -164,7 +164,7 @@ function (model::BrooksModel)(u, t, integrator)
     model.deaths = Int64[]
 
     for i = 1:n_clumps(u)
-        rhs = model.params.dSdt(clump_i(u, i)..., t)*model.S[i]*(t - integrator.tprev)#*n_clumps(u)
+        rhs = model.params.dSdt(clump_i(u, i)..., t)*(t - integrator.tprev)#*model.S[i]*n_clumps(u)
         model.S[i] += rhs
 
         if model.S[i] < 0 && n_clumps(u) - length(model.deaths) >= model.params.clumps_limits[1]

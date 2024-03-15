@@ -1,31 +1,4 @@
 """
-    n_clumps(u)
-
-Return the number of clumps in the solution vector `u`. This is `floor(Int64, length(u)/2)`.
-"""
-function n_clumps(u::Vector{<:Real})
-    return floor(Int64, length(u)/2)
-end
-
-"""
-    clump_i(u, i)
-
-Return the `[x, y]` coordinates of the `i`th clump in the solution vector `u`. This is `u[2*i:2*i+1]`.
-"""
-function clump_i(u::Vector{<:Real}, i::Integer)
-    return u[2*i:2*i+1]
-end
-
-"""
-    com(u)
-
-Return the center of mass `[x, y]` coordinates of the solution vector `u`.
-"""
-function com(u::Vector{<:Real})
-    return [mean(u[2:2:end]), mean(u[3:2:end])]
-end
-
-"""
     cb_update(; showprogress = false)
 
 This callback is mandatory, and must be the first callback in a `CallbackSet`.
@@ -93,18 +66,20 @@ end
 """
     kill!(integrator, i)
 
-Remove the clump with index `i` (by vector location) from `integrator.u`. For the [`RaftParameters`](@ref), `rp = integrator.p` update `rp.loc2label` appropriately.
+Remove the clump with index `i` (by vector location) from `integrator.u`. 
+
+For the [`RaftParameters`](@ref), `rp = integrator.p` update `rp.loc2label` and `rp.gd_model` appropriately.
 """
 function kill!(integrator::SciMLBase.DEIntegrator, i::Integer)
     # if this is the last clump, terminate the integration
-    if length(integrator.u) == 3
+    if n_clumps(integrator.u) == 1
         terminate!(integrator)
         return nothing
     end
 
     # first remove the appropriate u elements from `integrator`
-    deleteat!(integrator, 2*i) # e.g. index i = 2, delete the 4th component (x coord of 2nd clump)
-    deleteat!(integrator, 2*i) # now the y coordinate is where the x coordinate was
+    deleteat!(integrator, 2*i-1) # e.g. index i = 2, delete the 3rd component (x coord of 2nd clump)
+    deleteat!(integrator, 2*i-1) # now the y coordinate is where the x coordinate was
 
     # update rp.loc2label at the current time
     rp = integrator.p 
@@ -112,8 +87,8 @@ function kill!(integrator::SciMLBase.DEIntegrator, i::Integer)
     gtr_i(x) = x >= i ? x + 1 : x
     rp.loc2label[t] = Dict(j => rp.loc2label[t][gtr_i(j)] for j = 1:n_clumps(integrator.u))
 
-    # update u[1] to remove a clump
-    integrator.u[1] = integrator.u[1] - 1
+    # update rp.gd_model.S at the current time
+    deleteat!(rp.gd_model.S, i)
 
     return nothing
 end
@@ -198,8 +173,8 @@ function grow!(
     rp.n_clumps_tot = rp.n_clumps_tot + 1
     rp.loc2label[t][n_clumps_new] = rp.n_clumps_tot 
 
-    # update u[1] with the new clump
-    integrator.u[1] = integrator.u[1] + 1
+    # update rp.gd_model.S
+    push!(rp.gd_model.S, rand(rp.gd_model.S0))
     
     return nothing
 end

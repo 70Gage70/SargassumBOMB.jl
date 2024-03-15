@@ -1,4 +1,31 @@
 """
+    n_clumps(u)
+
+Return the number of clumps in the solution vector `u`. This is `floor(Int64, length(u)/2)`.
+"""
+function n_clumps(u::Vector{<:Real})
+    return floor(Int64, length(u)/2)
+end
+
+"""
+    clump_i(u, i)
+
+Return the `[x, y]` coordinates of the `i`th clump in the solution vector `u`. This is `u[2*i-1:2*i]`.
+"""
+function clump_i(u::Vector{<:Real}, i::Integer)
+    return u[2*i-1:2*i]
+end
+
+"""
+    com(u)
+
+Return the center of mass `[x, y]` coordinates of the solution vector `u`.
+"""
+function com(u::Vector{<:Real})
+    return [mean(u[1:2:end]), mean(u[2:2:end])]
+end
+
+"""
     vec2range(vector; force)
 
 Convert a `Vector` of linearly spaced values to a `StepRangeLen`. 

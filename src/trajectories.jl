@@ -116,7 +116,7 @@ function RaftTrajectory(
 
     for i = 1:length(sol_t)
         t = sol_t[i]
-        u = sol_u[i][2:end]
+        u = sol_u[i]
         nc = Integer(length(u)/2)
 
         if !(t in times) 

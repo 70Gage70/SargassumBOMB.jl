@@ -28,7 +28,7 @@ using QuasiMonteCarlo
 ###############################################################
 
 include("utils.jl")
-export vec2range
+export n_clumps, clump_i, com, vec2range
 
 include("coordinates.jl")
 export UNITS, EARTH_RADIUS, EquirectangularReference, EQR
@@ -45,24 +45,27 @@ include(joinpath(@__DIR__, "..", "interpolants", "itps-construct.jl"))
 export WATER_ITP, WIND_ITP, WAVES_ITP, STOKES_ITP, LAND_ITP, TEMPERATURE_ITP, NUTRIENTS_ITP
 export itps_default_construct, itps_default_assign
 
-include(joinpath(@__DIR__, "biology.jl"))
-export AbstractGrowthDeathModel, ImmortalModel, BrooksModelParameters, brooks_dSdt_clump, brooks_dSdt_raft, BrooksModel
-
-include("geography.jl")
+include("land.jl")
 export AbstractLand, NoLand, Land
 
-include("raft-parameters.jl")
-export ClumpParameters
-export AbstractSpring, HookeSpring, BOMBSpring, ΔL, spring_force
+include("ics.jl")
 export InitialConditions
+
+include("springs.jl")
+export AbstractSpring, HookeSpring, BOMBSpring, ΔL, spring_force
 export AbstractConnections, ConnectionsNone, ConnectionsFull, ConnectionsRadius, ConnectionsNearest, form_connections!
-export RaftParameters
+
+include("growth-death.jl")
+export AbstractGrowthDeathModel, ImmortalModel, BrooksModelParameters, BrooksModel
+
+include("rafts-clumps.jl")
+export ClumpParameters, RaftParameters
 
 include("physics.jl")
 export Raft!, Leeway!
 
 include("control.jl")
-export n_clumps, clump_i, com, cb_update, cb_land, cb_growth_death, cb_connections, kill!, grow!
+export cb_update, cb_land, cb_growth_death, cb_connections, kill!, grow!
 
 include("trajectories.jl")
 export Trajectory, time_slice, RaftTrajectory, uniformize, bins
@@ -102,7 +105,7 @@ PrecompileTools.@compile_workload begin
     clumps = ClumpParameters()
     springs = BOMBSpring(1.0, ΔL(ics))
     connections = ConnectionsNearest(2)
-    gd_model = BrooksModel()
+    gd_model = BrooksModel(ics)
     land = Land()
     
 

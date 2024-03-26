@@ -1,7 +1,7 @@
 name = "SargassumBOMB"
 uuid = "b5ee06fe-188d-450a-9f05-8f188668dd15"
 authors = ["Gage Bonner <gage.bonner@gmail.com>"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"

@@ -83,6 +83,9 @@ export default_fig, geo_axis, land!, data_legend!, trajectory!, trajectory_hist!
 include(joinpath(@__DIR__, "..", "plotting", "plotting-itp.jl"))
 export check_land, check_itp
 
+include("io.jl")
+export rtr2mat
+
 include("show.jl")
 export length, show, iterate # various Base extensions
 

@@ -42,7 +42,7 @@ end
     Leeway!(du, u, p::RaftParameters, t)
 
 Compute the right-hand-side of the differential equation controlling the motion of raft particles 
-whose velocities are equal to `u = v_water α v_wind`.
+whose velocities are equal to `u = v_water + α v_wind`.
 
 The parameters `p` are given by [`RaftParameters`](@ref), but only `p.α` is used.
 """
@@ -50,9 +50,9 @@ function Leeway!(du, u, p::RaftParameters, t)
     α = p.clumps.α
 
     for i = 1:n_clumps(u)
-        x, y = clump_i(u, i)
-
-        du[2*i-1] = v_x(x, y, t, σ) + α * WIND_ITP.x.fields[:u](x, y, t)
-        du[2*i]   = v_y(x, y, t, σ) + α * WIND_ITP.x.fields[:v](x, y, t)
+        x, y    = clump_i(u, i)
+    
+        du[2*i-1] = WATER_ITP.x.fields[:u](x, y, t) + α * WIND_ITP.x.fields[:u](x, y, t)
+        du[2*i]   = WATER_ITP.x.fields[:v](x, y, t) + α * WIND_ITP.x.fields[:v](x, y, t)
     end
 end

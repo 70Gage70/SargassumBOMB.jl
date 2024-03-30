@@ -84,7 +84,7 @@ include(joinpath(@__DIR__, "..", "plotting", "plotting-itp.jl"))
 export check_land, check_itp
 
 include("io.jl")
-export rtr2mat
+export rtr2mat, rtr2nc
 
 include("show.jl")
 export length, show, iterate # various Base extensions
@@ -94,34 +94,6 @@ function __init__()
     include(joinpath(@__DIR__, "..", "interpolants", "data", "data.jl"))
     itps_default_construct()
     itps_default_assign()
-end
-
-import PrecompileTools
-
-PrecompileTools.@compile_workload begin
-    include(joinpath(@__DIR__, "..", "interpolants", "data", "data.jl"))
-    itps_default_construct()
-    itps_default_assign()
-
-	tspan = (DateTime(2018, 4, 13), DateTime(2018, 4, 15)) .|> datetime2time
-	ics = InitialConditions(tspan, range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5), to_xy = true)
-    clumps = ClumpParameters()
-    springs = BOMBSpring(1.0, ΔL(ics))
-    connections = ConnectionsNearest(2)
-    gd_model = BrooksModel(ics)
-    land = Land()
-    
-
-    rp = RaftParameters(
-        ics = ics,
-        clumps = clumps,
-        springs = springs,
-        connections = connections,
-        gd_model = gd_model,
-        land = land
-    )
-
-    sol = simulate(rp, showprogress = false)
 end
 
 end # module

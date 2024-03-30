@@ -1,13 +1,13 @@
 """
-    simulate(raft_parameters; rhs, alg, abstol, reltol, return_raw)
+    simulate(rp; rhs, alg, abstol, reltol, showprogress, dt, return_raw)
 
-Simulate a Sargassum raft with [`RaftParameters`](@ref) `raft_parameters` for a time interval `tspan` and return a [`RaftTrajectory`](@ref).
+Simulate a Sargassum raft with [`RaftParameters`](@ref) `rp` and return a [`RaftTrajectory`](@ref).
 
-This function modifies `raft_parameters` significantly.
+This function modifies `rp` significantly.
 
 ### Arguments 
 
-- `raft_parameters`: A [`RaftParameters`](@ref) defining the raft.
+- `rp`: A [`RaftParameters`](@ref) defining the raft.
 
 ### Optional Arguments
 
@@ -16,6 +16,8 @@ This function modifies `raft_parameters` significantly.
 - `abstol`: The absolute tolerance of integration; default `nothing`.
 - `reltol`: The relative tolerance of integration; default `nothing`.
 - `showprogress`: If `true`, print a status indicator of the progress of the integration. Default `true`.
+- `dt`: The solution trajectories are uniformized (after integration) to be spaced in time by increments of `dt`. Note that the units of \
+this quantity are implicity `UNITS["time"]`. Default `0.1`.
 - `return_raw`: If true, return the result of `OrdinaryDiffEq.solve`, rather than a [`RaftTrajectory`](@ref). \
 Use this if you would like to manipulate the solution directly. Default `false`.
 """
@@ -26,6 +28,7 @@ function simulate(
     abstol::Union{Real, Nothing} = nothing,
     reltol::Union{Real, Nothing} = nothing,
     showprogress::Bool = true,
+    dt::Real = 0.1,
     return_raw::Bool = false)
 
     prob_raft = ODEProblem(rhs, rp.ics.ics, rp.ics.tspan, rp)
@@ -43,7 +46,8 @@ function simulate(
     if return_raw
         return sol
     else
-        return RaftTrajectory(sol, rp, dt = 0.1)
+
+        return RaftTrajectory(sol, rp, dt = dt)
     end
 end
 

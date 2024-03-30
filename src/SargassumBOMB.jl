@@ -4,6 +4,7 @@ module SargassumBOMB
 using OrdinaryDiffEq, SargassumFromAFAI, NearestNeighbors, Interpolations
 using Unitful, Dates
 using LinearAlgebra: norm, ⋅
+using ArgCheck
 
 # i/o
 using MAT, NetCDF, JLD2, RemoteFiles

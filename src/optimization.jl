@@ -126,8 +126,8 @@ mutable struct OptimizationParameter{T<:Real}
         optimizable::Bool;
         opt::Union{Nothing, Real} = nothing)
 
-        @assert name in OPTIMIZATION_PARAMETER_NAMES "Got $(name) ∉ $(OPTIMIZATION_PARAMETER_NAMES)"
-        @assert first(bounds) < last(bounds)
+        @argcheck name in OPTIMIZATION_PARAMETER_NAMES "Got $(name) ∉ $(OPTIMIZATION_PARAMETER_NAMES)"
+        @argcheck first(bounds) < last(bounds)
 
         def, lb, ub = promote(default, first(bounds), last(bounds))
 
@@ -189,7 +189,7 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer, C<:AbstractConnectio
         if length(params) > 0 
             @warn "No parameters are set to be optimized."
         end
-        @assert rhs in [Raft!, Leeway!]
+        @argcheck rhs in [Raft!, Leeway!]
 
         return new{T, U, C}(params, rhs, immortal, ics, springs, connections, loss_func, nothing, nothing, seed)
     end
@@ -225,7 +225,7 @@ function RaftParameters(bop::BOMBOptimizationProblem, type::Union{String, Vector
 
     ps = OPTIMIZATION_PARAMETER_NAMES
     if type isa String
-        @assert type in ["default", "opt"]   
+        @argcheck type in ["default", "opt"]   
 
         if type == "default"
             δ, τ, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].default for param in ps]
@@ -238,7 +238,7 @@ function RaftParameters(bop::BOMBOptimizationProblem, type::Union{String, Vector
             end
         end
     elseif type isa Vector
-        @assert length(type) == length(optimizable(bop)) "The vector `type` must have the same number of entries as the number of optimizable parameters."
+        @argcheck length(type) == length(optimizable(bop)) "The vector `type` must have the same number of entries as the number of optimizable parameters."
 
         ps = OPTIMIZATION_PARAMETER_NAMES
         vs = []
@@ -373,7 +373,7 @@ function optimize!(
     verbose = true)
 
     seed!(bop.seed)
-    @assert bop.opt === nothing "`bop` already has an optimal value"
+    @argcheck bop.opt === nothing "`bop` already has an optimal value"
 
     lb = [bop.params[param].bounds[1] for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
     ub = [bop.params[param].bounds[2] for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]

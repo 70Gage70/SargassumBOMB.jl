@@ -81,7 +81,7 @@ mutable struct ConnectionsRadius{U<:Integer, T<:Real} <: AbstractConnections
     radius::T
 
     function ConnectionsRadius(radius::Real)
-        @assert radius > 0 "`radius` must be positive"
+        @argcheck radius > 0 "`radius` must be positive"
 
         return new{Int64, typeof(radius)}(Dict(0 => Int64[]), radius)
     end
@@ -117,7 +117,7 @@ mutable struct ConnectionsNearest{U<:Integer} <: AbstractConnections
     neighbors::U
 
     function ConnectionsNearest(neighbors::Integer)
-        @assert neighbors >= 0 "`neighbors` must be nonnegative"
+        @argcheck neighbors >= 0 "`neighbors` must be nonnegative"
 
         return new{Int64}(Dict(0 => Int64[]), neighbors)
     end

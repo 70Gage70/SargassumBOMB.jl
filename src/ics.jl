@@ -18,7 +18,7 @@ struct InitialConditions{T<:Real}
     ics::Vector{T}
 
     function InitialConditions(;tspan::Tuple{Real, Real}, ics::Vector{T}) where {T<:Real}
-        @assert tspan[1] < tspan[2] "initial time must be less than final time"
+        @argcheck tspan[1] < tspan[2] "initial time must be less than final time"
 
         tspan_prom = (T(tspan[1]), T(tspan[2]))
 
@@ -53,8 +53,8 @@ function InitialConditions(
     y_range::AbstractRange{T}; 
     to_xy::Bool = false) where {T<:Real}
 
-    @assert allunique(x_range) "`x_range` can not have repeated entries"
-    @assert allunique(y_range) "`y_range` can not have repeated entries"
+    @argcheck allunique(x_range) "`x_range` can not have repeated entries"
+    @argcheck allunique(y_range) "`y_range` can not have repeated entries"
 
     if to_xy
         ics_x, ics_y = sph2xy(x_range, y_range)
@@ -115,11 +115,11 @@ function InitialConditions(
 
     seed!(seed)
 
-    @assert sample_type in ["sample", "sorted", "uniform", "levels"] "`sample_type` not recognized."
-    @assert number > 0 "Must request at least one clump"
-    @assert length(weeks) > 0 "At least one week must be selected."
-    @assert all(map(x -> 1 <= x <= 4, weeks)) "Each entry of `weeks` must be between 1 and 4."
-    @assert allunique(weeks) "Each week should only appear once."
+    @argcheck sample_type in ["sample", "sorted", "uniform", "levels"] "`sample_type` not recognized."
+    @argcheck number > 0 "Must request at least one clump"
+    @argcheck length(weeks) > 0 "At least one week must be selected."
+    @argcheck all(map(x -> 1 <= x <= 4, weeks)) "Each entry of `weeks` must be between 1 and 4."
+    @argcheck allunique(weeks) "Each week should only appear once."
 
     sarg = sum(dist.sargassum[:,:,week] for week in weeks)
     lons = dist.lon

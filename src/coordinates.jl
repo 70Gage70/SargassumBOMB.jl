@@ -44,8 +44,8 @@ struct EquirectangularReference{T<:AbstractFloat, U<:Unitful.AbstractQuantity}
     R::U
 
     function EquirectangularReference(; lon0::Real = -75.0, lat0::Real = 10.0, units::Unitful.Unitlike = UNITS["distance"])
-        @assert -180.0 <= lon0 <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
-        @assert -90 <= lat0 <= 90 "The latitude must be between -90 degrees and 90 degrees."
+        @argcheck -180.0 <= lon0 <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
+        @argcheck -90 <= lat0 <= 90 "The latitude must be between -90 degrees and 90 degrees."
     
         lon0, lat0 = promote(float(lon0), float(lat0))
         R = uconvert(units, EARTH_RADIUS)
@@ -85,8 +85,8 @@ entries of the form `[lon1, lat1, lon2, lat2 ... lonN, latN]`. Returns a result 
 - `lat`: Latitude in degrees (North/South).
 """
 function sph2xy(lon::Real, lat::Real; eqr::EquirectangularReference = EQR.x)
-    @assert -180.0 <= lon <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
-    @assert -90 <= lat <= 90 "The latitude must be between -90 degrees and 90 degrees."
+    @argcheck -180.0 <= lon <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
+    @argcheck -90 <= lat <= 90 "The latitude must be between -90 degrees and 90 degrees."
 
     lon0, lat0, R = (eqr.lon0, eqr.lat0, eqr.R.val)
     deg2rad = π/180
@@ -109,7 +109,7 @@ function sph2xy(lon_range::AbstractRange, lat_range::AbstractRange; eqr::Equirec
 end
 
 function sph2xy(lon_lat::Matrix{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
-    @assert size(lon_lat, 2) == 2 "lon_lat should be an `N x 2` matrix"
+    @argcheck size(lon_lat, 2) == 2 "lon_lat should be an `N x 2` matrix"
     xy = zeros(T, size(lon_lat))
     
     for i = 1:size(lon_lat, 1)
@@ -120,7 +120,7 @@ function sph2xy(lon_lat::Matrix{T}; eqr::EquirectangularReference = EQR.x) where
 end
 
 function sph2xy(lon_lat::Vector{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
-    @assert iseven(length(lon_lat)) "lon_lat should be of the form `[lon1, lat1, lon2, lat2 ... lon3, lat3]`."
+    @argcheck iseven(length(lon_lat)) "lon_lat should be of the form `[lon1, lat1, lon2, lat2 ... lon3, lat3]`."
 
     xy = zeros(T, length(lon_lat))
     
@@ -172,7 +172,7 @@ function xy2sph(xy::Vector{<:Vector{T}}; eqr::EquirectangularReference = EQR.x) 
 end
 
 function xy2sph(xy::Matrix{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
-    @assert size(xy, 2) == 2 "xy should be an `N x 2` matrix"
+    @argcheck size(xy, 2) == 2 "xy should be an `N x 2` matrix"
     lonlat = zeros(T, size(xy))
     
     for i = 1:size(xy, 1)
@@ -194,7 +194,7 @@ function xy2sph(x_range::AbstractRange, y_range::AbstractRange; eqr::Equirectang
 end
 
 function xy2sph(xy::Vector{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
-    @assert iseven(length(xy)) "xy should be of the form `[x1, y1, x2, y2 ... x3, y3]`."
+    @argcheck iseven(length(xy)) "xy should be of the form `[x1, y1, x2, y2 ... x3, y3]`."
 
     lon_lat = zeros(T, length(xy))
     

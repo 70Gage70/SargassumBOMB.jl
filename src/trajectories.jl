@@ -20,14 +20,14 @@ struct Trajectory{T<:Real}
 
     function Trajectory(xy::Union{Matrix{T}, Vector{<:Vector{T}}}, t::Vector{T}; to_sph::Bool = false) where {T<:Real}
         if xy isa Matrix
-            @assert length(t) == size(xy, 1) "`t` and `xy` must have the same length."
-            @assert size(xy, 2) == 2 "`xy` must have two columns."
+            @argcheck length(t) == size(xy, 1) "`t` and `xy` must have the same length."
+            @argcheck size(xy, 2) == 2 "`xy` must have two columns."
         
             inds = unique(i -> t[i], eachindex(t))
 
             return to_sph ? new{T}(xy2sph(xy[inds,:]), t[inds]) : new{T}(xy[inds,:], t[inds])
         else
-            @assert length(t) == length(xy) "`t` and `xy` must have the same length."
+            @argcheck length(t) == length(xy) "`t` and `xy` must have the same length."
 
             inds = unique(i -> t[i], eachindex(t))
         

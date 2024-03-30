@@ -78,8 +78,8 @@ function add_spatial_dimension!(
     force::Bool = false)
 
     extension = infile[findlast(==('.'), infile)+1:end]
-    @assert extension in ["nc"] "Require a .nc file."
-    @assert dim_units_out in keys(UNITS) "unit type not recognized, type `UNITS` to see options"
+    @argcheck extension in ["nc"] "Require a .nc file."
+    @argcheck dim_units_out in keys(UNITS) "unit type not recognized, type `UNITS` to see options"
 
     u_out = UNITS[dim_units_out]
 
@@ -126,7 +126,7 @@ function add_temporal_dimension!(
     force::Bool = false)
 
     extension = infile[findlast(==('.'), infile)+1:end]
-    @assert extension in ["nc"] "Require a .nc file."
+    @argcheck extension in ["nc"] "Require a .nc file."
 
     u_out = UNITS["time"]
 
@@ -184,8 +184,8 @@ function add_field!(
     missings_replacement::Real = 0.0) where {N, I<:Integer}
 
     extension = infile[findlast(==('.'), infile)+1:end]
-    @assert extension in ["nc"] "Require a .nc file."
-    @assert field_units_out in keys(UNITS) "unit type not recognized, type `UNITS` to see options"
+    @argcheck extension in ["nc"] "Require a .nc file."
+    @argcheck field_units_out in keys(UNITS) "unit type not recognized, type `UNITS` to see options"
 
     u_out = UNITS[field_units_out]
 
@@ -306,7 +306,7 @@ struct InterpolatedField{N, T<:Real, U<:Integer, I<:AbstractInterpolation}
         extrapolate_value::Real = 0.0)
 
         if interpolant_type isa String
-            @assert interpolant_type in ["cubic", "nearest"] "kwarg `interpolant_type` should be either $("cubic"), $("nearest") or an `Interpolations.InterpolationType`."
+            @argcheck interpolant_type in ["cubic", "nearest"] "kwarg `interpolant_type` should be either $("cubic"), $("nearest") or an `Interpolations.InterpolationType`."
 
             if interpolant_type == "cubic"
                 spline = BSpline(Cubic(Interpolations.Line(OnGrid())))
@@ -365,7 +365,7 @@ function add_derivatives!(
     Dx_Dy_vort_names::NTuple{3, Symbol} = (:DDt_x, :DDt_y, :vorticity))
 
     if interpolant_type isa String
-        @assert interpolant_type in ["cubic", "nearest"] "kwarg `interpolant_type` should be either $("cubic"), $("nearest") or an `Interpolations.InterpolationType`."
+        @argcheck interpolant_type in ["cubic", "nearest"] "kwarg `interpolant_type` should be either $("cubic"), $("nearest") or an `Interpolations.InterpolationType`."
 
         if interpolant_type == "cubic"
             spline = BSpline(Cubic(Interpolations.Line(OnGrid())))

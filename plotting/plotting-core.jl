@@ -286,7 +286,7 @@ function trajectory_hist!(
     log_scale::Bool = false
     )
 
-    @assert week in [1, 2, 3, 4]
+    @argcheck week in [1, 2, 3, 4]
 
     lon_centers = dist.lon
     lat_centers = dist.lat

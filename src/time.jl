@@ -43,7 +43,7 @@ The days of the four weeks per month are defined as the 7th, 14th, 21nd and 28th
 """
 function ymw2time(year::Integer, month::Integer, week::Integer)
 
-    @assert week in [1, 2, 3, 4]
+    @argcheck week in [1, 2, 3, 4]
 
     return datetime2time(DateTime(year, month, 7*week))
 end
@@ -57,9 +57,9 @@ Return a vector list of all `(year, month, week)` tuples between `ym1 = (year1, 
 """
 function ymwspan2weekspan(ymw1::NTuple{3, Integer}, ymw2::NTuple{3, Integer})
 
-    @assert ymw1[3] in [1, 2, 3, 4]
-    @assert ymw2[3] in [1, 2, 3, 4]
-    @assert ymw1 < ymw2
+    @argcheck ymw1[3] in [1, 2, 3, 4]
+    @argcheck ymw2[3] in [1, 2, 3, 4]
+    @argcheck ymw1 < ymw2
 
     times = [ymw1]
     cur_time = ymw1

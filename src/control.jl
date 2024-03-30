@@ -150,7 +150,7 @@ function grow!(
     resize!(integrator, length(u) + 2)
 
     if location isa String 
-        @assert location in ["parent", "com"] "If `location` is a string, it must be either $("parent") or $("com")."
+        @argcheck location in ["parent", "com"] "If `location` is a string, it must be either $("parent") or $("com")."
         if location == "parent"
             parent = rand(1:n_clumps_old)
             r, θ = rp.springs.L, rand(Uniform(0, 2*π))
@@ -164,7 +164,7 @@ function grow!(
         r, θ = rp.springs.L, rand(Uniform(0, 2*π))
         u[end-1:end] = clump_i(u, parent) + [r*cos(θ), r*sin(θ)]
     elseif location isa Vector 
-        @assert length(location) == 2 "The location vector must be [x, y] coordinates."
+        @argcheck length(location) == 2 "The location vector must be [x, y] coordinates."
         u[end-1:end] .= location
     end
 

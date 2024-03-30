@@ -11,8 +11,8 @@ This writes the raw, unbinned trajectory data.
 """
 function rtr2mat(rtr::RaftTrajectory, outfile::String; force::Bool = false)
 
-    @assert endswith(outfile, ".mat") "Must output a .mat file."
-    !force && @assert !isfile(outfile) "This file already exists. Pass `force = true` to overwrite it."
+    @argcheck endswith(outfile, ".mat") "Must output a .mat file."
+    !force && @argcheck !isfile(outfile) "This file already exists. Pass `force = true` to overwrite it."
 
     matdict_t = rtr.t
     matdict_n_clumps = rtr.n_clumps
@@ -66,8 +66,8 @@ function rtr2nc(rtr::RaftTrajectory, outfile::String, lon_bins::StepRangeLen, la
         error("`rtr.t` must be linearly spaced.")
     end
 
-    @assert endswith(outfile, ".nc") "Must output a .nc file."
-    !force && @assert !isfile(outfile) "This file already exists. Pass `force = true` to overwrite it."
+    @argcheck endswith(outfile, ".nc") "Must output a .nc file."
+    !force && @argcheck !isfile(outfile) "This file already exists. Pass `force = true` to overwrite it."
 
     times = rtr.t
     data = zeros(UInt16, length(lon_bins)-1, length(lat_bins)-1, length(times))

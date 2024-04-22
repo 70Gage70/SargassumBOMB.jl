@@ -7,16 +7,19 @@ using LinearAlgebra: norm, ⋅
 using ArgCheck
 
 # i/o
-using MAT, NetCDF, JLD2, RemoteFiles
+using MAT, NetCDF, JLD2
+
+# downloading interpolants
+using RemoteFiles
 
 # probability/statistics
 using StatsBase, Distributions 
 using Random: seed!
 
 # plotting/geography
-using Makie, CairoMakie, GeoMakie
+using Makie
 using SargassumColors
-using GeoMakie, GeoMakie.GeoJSON, GeoDatasets, GeoInterface
+using GeoDatasets # landseamask
 
 # printing
 using Crayons.Box
@@ -78,10 +81,10 @@ include("optimization.jl")
 export OPTIMIZATION_PARAMETER_NAMES, LossFunction, OptimizationParameter, BOMBOptimizationProblem
 export optimizable, optimize!, sample!
 
-include(joinpath(@__DIR__, "..", "plotting", "plotting-core.jl"))
-export default_fig, geo_axis, land!, data_legend!, trajectory!, trajectory_hist!, plot
+include("plotting-core.jl")
+export trajectory!, trajectory_hist!, plot
 
-include(joinpath(@__DIR__, "..", "plotting", "plotting-itp.jl"))
+include("plotting-itp.jl")
 export check_land, check_itp
 
 include("io.jl")

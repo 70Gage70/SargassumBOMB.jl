@@ -21,8 +21,9 @@ function check_land(
     ys = range(start=limits[3], stop=limits[4], length=n_points)
     zs = [land_itp.fields[:land](sph2xy(x, y)...) for x in xs, y in ys]
 
-    fig = default_fig()
-    ax = geo_axis(fig[1, 1], title="Land", limits=limits)
+    set_theme!(GEO_THEME())
+    fig = Figure()
+    ax = Axis(fig[1, 1], title="Land", limits=limits)
     heatmap!(ax, xs, ys, zs)
 
     return fig
@@ -56,7 +57,8 @@ function check_itp(
     u_name::Symbol = :u,
     v_name::Symbol = :v)
 
-    fig = default_fig()
+    set_theme!(GEO_THEME())
+    fig = Figure()
 
     xs = range(start=limits[1], stop=limits[2], length = n_points)
     ys = range(start=limits[3], stop=limits[4], length = n_points)
@@ -64,10 +66,10 @@ function check_itp(
     us = [itp.fields[u_name](sph2xy(x, y)..., time) for x in xs, y in ys]
     vs = [itp.fields[v_name](sph2xy(x, y)..., time) for x in xs, y in ys]
 
-    ax_u = geo_axis(fig[1, 1], title = "$(title) u", limits = limits)
+    ax_u = Axis(fig[1, 1], title = "$(title) u", limits = limits)
     heatmap!(ax_u, xs, ys, us)
 
-    ax_v = geo_axis(fig[1, 2], title = "$(title) v", limits = limits)
+    ax_v = Axis(fig[1, 2], title = "$(title) v", limits = limits)
     heatmap!(ax_v, xs, ys, vs)
 
     return fig

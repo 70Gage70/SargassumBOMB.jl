@@ -77,6 +77,8 @@ are preprocessed, the actual interpolants may be constructed using the `itp-cons
 
 ## Rick's Data
 
+https://www.aoml.noaa.gov/ftp/phod/lumpkin/decomp/
+
 Data: data are stored in files with the naming convention “merged_YYYY.mat” where YYYY is the year, starting with 1993.  Variables contained within are:
 
 (The following are identical for each year, and need only be loaded once)

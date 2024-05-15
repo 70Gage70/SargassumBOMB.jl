@@ -248,7 +248,7 @@ function plot(
     # initial distribution 
     dist_initial = dists[ymw1[1:2]]
     ax = Axis(fig[1, 1], limits = limits, title = "AFAI initial $(monthname(ymw1[2])), week $(ymw1[3])")
-    SargassumFromAFAI.plot!(ax, dist_initial, ymw1[3], log_scale = log_scale)
+    SargassumFromAFAI.sarg!(ax, dist_initial, ymw1[3], log_scale = log_scale)
     show_coast ? coast!(ax, dist_initial) : nothing
     show_clouds ? clouds!(ax, dist_initial, ymw1[3]) : nothing
     land!(ax)
@@ -256,7 +256,7 @@ function plot(
     # final distribution
     dist_final = dists[ymw2[1:2]]
     ax = Axis(fig[1, 2], limits = limits, title = "AFAI final $(monthname(ymw2[2])), week $(ymw2[3])")
-    SargassumFromAFAI.plot!(ax, dist_final, ymw2[3], log_scale = log_scale)
+    SargassumFromAFAI.sarg!(ax, dist_final, ymw2[3], log_scale = log_scale)
     show_coast ? coast!(ax, dist_final) : nothing
     show_clouds ? clouds!(ax, dist_final, ymw2[3]) : nothing
     land!(ax)

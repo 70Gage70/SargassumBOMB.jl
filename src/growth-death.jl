@@ -171,6 +171,7 @@ function (model::BrooksModel)(u, t, integrator)
             push!(model.deaths, i)
         elseif model.S[i] > 2 && n_clumps(u) + length(model.growths) <= model.params.clumps_limits[2]
             push!(model.growths, i)
+            model.S[i] = rand(model.S0) # "refresh" parent clump
         end
     end
 

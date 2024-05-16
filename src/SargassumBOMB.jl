@@ -45,9 +45,13 @@ include(joinpath(@__DIR__, "..", "interpolants", "itps-core.jl"))
 export GriddedField, InterpolatedField
 export add_spatial_dimension!, add_temporal_dimension!, add_field!, ranges_increasing!, sph2xy!, add_derivatives!
 
-include(joinpath(@__DIR__, "..", "interpolants", "itps-construct.jl"))
+include(joinpath(@__DIR__, "..", "interpolants", "itps-definitions.jl"))
+export ITPS_DEFAULT_DIR
 export WATER_ITP, WIND_ITP, WAVES_ITP, STOKES_ITP, LAND_ITP, TEMPERATURE_ITP, NUTRIENTS_ITP
-export itps_default_construct, itps_default_assign
+export itps_load
+
+include(joinpath(@__DIR__, "..", "interpolants", "default", "itps-default.jl"))
+export itps_default_construct
 
 include("land.jl")
 export AbstractLand, NoLand, Land
@@ -95,9 +99,13 @@ export length, show, iterate # various Base extensions
 
 # initialize interpolants
 function __init__()
-    include(joinpath(@__DIR__, "..", "interpolants", "data", "data.jl"))
-    itps_default_construct()
-    itps_default_assign()
+    try
+        itps_load(ITPS_DEFAULT_DIR)
+    catch
+        @warn "Default interpolants could not be loaded."
+    end
+
+    return nothing
 end
 
 end # module

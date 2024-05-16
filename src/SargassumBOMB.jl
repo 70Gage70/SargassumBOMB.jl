@@ -103,11 +103,6 @@ function __init__()
         itps_load(ITPS_DEFAULT_DIR)
     catch
         @warn "Default interpolants could not be loaded."
-        try
-            itps_load(abspath(joinpath("~", "Desktop", "Repositories", "SargassumBOMB.jl", "interpolants", "itps")))
-        catch
-            nothing
-        end
     end
 
     return nothing

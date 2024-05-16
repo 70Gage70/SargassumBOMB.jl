@@ -305,7 +305,7 @@ function plot(
 
     loss_ltx = ltx(bop.opt)
     p_vals = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in OPTIMIZATION_PARAMETER_NAMES]
-    δ_opt, a_opt, σ_opt, A_spring_opt, λ_opt, μ_max_opt, m_opt, k_N_opt = ltx.(p_vals)
+    δ_opt, a_opt, σ_opt, A_spring_opt, λ_opt, μ_max_opt, m_opt, k_N_opt, T_min_opt, T_max_opt = ltx.(p_vals)
 
     loss_ltx_comp = ltx(bop.loss_func.f(rtr_waterwind))
     
@@ -319,7 +319,7 @@ function plot(
     
     fig[-2,:] = Label(fig, L"Optimals (clumps): $\delta =$ %$(δ_opt), $\tau =$ %$(a_opt), $\sigma =$ %$(σ_opt)")
     fig[-1,:] = Label(fig, L"Optimals (springs): $A_\text{spring} =$ %$(A_spring_opt), $λ =$ %$(λ_opt), $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
-    fig[0,:] = Label(fig, L"Optimals (biology): $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt)")
+    fig[0,:] = Label(fig, L"Optimals (biology): $\mu_\text{max} =$ %$(μ_max_opt), $m =$ %$(m_opt), $k_N =$ %$(k_N_opt), $T_\text{min} =$ %$(T_min_opt), $T_\text{max} =$ %$(T_max_opt)")
 
 
     return fig

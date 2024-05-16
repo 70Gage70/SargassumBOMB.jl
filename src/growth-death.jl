@@ -51,11 +51,9 @@ A container for the parameters of the model of [Brooks et al. (2018)](https://ww
 - `no3` [mmol N/m^3]: An [`InterpolatedField`](@ref) for the Nitrogen content of the water. `NUTRIENTS_ITP.x`.
 - `μ_max` [1/d]: Sargassum maximum growth rate. Value: `0.1`
 - `m` [1/d]: Sargassum mortality rate. Value: `0.05`
-- `I_k` [W/m^2]: Sargassum growth-irradiance parameter. Value: `70.0`
-- `a_ref` [d]: Reference age for Sargassum light limitation. Value: `55.0`
 - `k_N` [mmol N/m^3]: Sargassum nutrient (N) uptake half saturation. Value: `0.012`
-- `T_ref` [°C]: Minimum temperature for Sargassum growth. Value: `18.0`
-- `z_max` [m]: Maximum depth before Sargassum buoyancy is compromised. Value: `120.0`.
+- `T_min` [°C]: Minimum temperature for Sargassum growth. Value: `10.0`
+- `T_max` [°C]: Minimum temperature for Sargassum growth. Value: `40.0`
 - `clumps_limits`: A `Tuple` of the form `(n_clumps_min, n_clumps_max)`. These impose hard lower \
 and upper limits on the total number of clumps that can exist at any specific time (the total number \
 of clumps that can have ever existed - i.e. `n_clumps_tot` of [`RaftParameters`](@ref) - may be higher.) Default: `(0, 3000)`.
@@ -64,7 +62,7 @@ of clumps that can have ever existed - i.e. `n_clumps_tot` of [`RaftParameters`]
 ### dSdt
 
 This function is of the form `dSdt = growth_factors  - death_factors`.
-- `growth_factors = μ_max * light_factor * age_factor * temperature_factor * nutrients_factor`
+- `growth_factors = μ_max * temperature_factor * nutrients_factor`
 - `death_factors = m`
 
 ### Constructors 
@@ -77,11 +75,9 @@ struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real, F<:Funct
     no3::I
     μ_max::T
     m::T
-    I_k::T
-    a_ref::T
     k_N::T
-    T_ref::T
-    z_max::T
+    T_min::T
+    T_max::T
     clumps_limits::Tuple{U, U}
     dSdt::F
 
@@ -90,28 +86,35 @@ struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real, F<:Funct
         no3::I = NUTRIENTS_ITP.x,
         μ_max::Real = 0.1, 
         m::Real = 0.05,
-        I_k::Real = 70.0,
-        a_ref::Real = 55.0,
         k_N::Real = 0.012,
-        T_ref::Real = 18.0,
-        z_max::Real = 120.0,
+        T_min::Real = 10.0,
+        T_max::Real = 40.0,
         clumps_limits::Tuple{Integer, Integer} = (0, 3000)) where {I<:InterpolatedField}
 
-        μ_max, m, I_k, a_ref, k_N, T_ref, z_max = promote(μ_max, m, I_k, a_ref, k_N, T_ref, z_max)
+        μ_max, m, k_N, T_min, T_max = promote(μ_max, m, k_N, T_min, T_max)
 
         function brooks_dSdt_clump(x::Real, y::Real, t::Real)
-            light_factor = 1.0 # 1 - exp(I/I_k)
-            age_factor = 1.0 # exp(-t/params.a_ref)
-            temp_factor = temp.fields[:temp](x, y, t) > T_ref ? 1.0 : 0.0
+            temp_factor = begin
+                T = temp.fields[:temp](x, y, t)
+                T_opt = (T_min + T_max)/2
+                if T_min <= T <= T_opt
+                    exp(-0.5*((T - T_opt)/(T - T_min))^2)
+                elseif T_opt < T <= T_max
+                    exp(-0.5*((T - T_opt)/(T - T_max))^2)
+                else
+                    0.0
+                end
+            end
+
             N_factor = 1.0/(k_N/no3.fields[:no3](x, y, t) + 1.0)
-            return μ_max*light_factor*age_factor*temp_factor*N_factor - m
+            return μ_max*temp_factor*N_factor - m
         end
     
         return new{
             typeof(temp), 
             eltype(clumps_limits), 
             typeof(μ_max), 
-            typeof(brooks_dSdt_clump)}(temp, no3, μ_max, m, I_k, a_ref, k_N, T_ref, z_max, clumps_limits, brooks_dSdt_clump)
+            typeof(brooks_dSdt_clump)}(temp, no3, μ_max, m, k_N, T_min, T_max, clumps_limits, brooks_dSdt_clump)
     end
 end
 

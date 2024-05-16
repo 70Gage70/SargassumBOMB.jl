@@ -3,7 +3,7 @@
 
 A `Vector` of `String`s giving the names of all the parameters it is possible to optimize by default.
 
-Equal to `["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]`.
+Equal to `["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N", "T_min", "T_max"]`.
 
 ### Definitions
 
@@ -15,8 +15,10 @@ Equal to `["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]`.
 - `μ_max`:  Sargassum maximum growth rate.
 - `m`: Sargassum mortality rate.
 - `k_N`: Sargassum nutrient (N) uptake half saturation.
+- `T_min:` Minimum temperature for Sargassum growth.
+- `T_max`: Maximum temperature for Sargassum growth.
 """
-const OPTIMIZATION_PARAMETER_NAMES = ["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N"]
+const OPTIMIZATION_PARAMETER_NAMES = ["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N", "T_min", "T_max"]
 
 
 """
@@ -228,13 +230,13 @@ function RaftParameters(bop::BOMBOptimizationProblem, type::Union{String, Vector
         @argcheck type in ["default", "opt"]   
 
         if type == "default"
-            δ, τ, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].default for param in ps]
+            δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max = [bop.params[param].default for param in ps]
         elseif type == "opt"
             if bop.opt === nothing
                 @warn "The `opt` parameter value has been selected, but `bop` has not been optimized. The default parameters will be used."
-                δ, τ, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].default for param in ps]
+                δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max = [bop.params[param].default for param in ps]
             else
-                δ, τ, σ, A_spring, λ, μ_max, m, k_N = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in ps]
+                δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in ps]
             end
         end
     elseif type isa Vector
@@ -252,7 +254,7 @@ function RaftParameters(bop::BOMBOptimizationProblem, type::Union{String, Vector
             end
         end
 
-        δ, τ, σ, A_spring, λ, μ_max, m, k_N = vs
+        δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max = vs
     end
     
     # ics
@@ -276,7 +278,9 @@ function RaftParameters(bop::BOMBOptimizationProblem, type::Union{String, Vector
             clumps_limits = (floor(Int64, n_clumps(ics.ics)/2), 2*n_clumps(ics.ics)), # the number of clumps can at most double and at least half
             μ_max = μ_max,
             m = m,
-            k_N = k_N)
+            k_N = k_N,
+            T_min = T_min,
+            T_max = T_max)
         gd_model = BrooksModel(ics, params = bmp)
     end
 

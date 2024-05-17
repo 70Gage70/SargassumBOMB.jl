@@ -174,7 +174,7 @@ function grow!(
     rp.loc2label[t][n_clumps_new] = rp.n_clumps_tot 
 
     # update rp.gd_model.S
-    push!(rp.gd_model.S, rand(rp.gd_model.S0))
+    push!(rp.gd_model.S, 0.0)
     
     return nothing
 end

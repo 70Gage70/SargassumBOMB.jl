@@ -4,10 +4,6 @@
 The abstract type for growth and death models.
     
 Subtypes must have a field `S`, a vector of length `n_clumps(u)` representing an "amount" or "mass" for each clump.
-
-Subtypes must have a field `S0`, a vector of possible initialization values for `S`. For example, if `S0 = [1.0]`, then
-each new clump will start with `S[i] = 1.0`. If `S0 = [1.0, 2.0]` then each new clump will start with one of `1.0` or 
-`2.0` chosen uniformly at random.
 """
 abstract type AbstractGrowthDeathModel end 
 
@@ -16,17 +12,20 @@ abstract type AbstractGrowthDeathModel end
 
 An `AbstractGrowthDeathModel` such that no growth or death occurs.
 
+### Fields
+
+- `S`: The amount parameter. Unused for an `ImmortalModel`.
+
 ### Constructors 
 
-Use `ImmortalModel(ics::InitialConditions; S0 = [0.0]).`
+Use `ImmortalModel(ics::InitialConditions).`
 """
 struct ImmortalModel{T<:Real} <: AbstractGrowthDeathModel
     S::Vector{T}
-    S0::Vector{T}
 
-    function ImmortalModel(ics::I; S0::Vector{T} = [0.0]) where {I<:InitialConditions, T<:Real}
-        S = fill(rand(S0), length(ics.ics))
-        return new{eltype(ics.ics)}(S, S0)
+    function ImmortalModel(ics::I) where {I<:InitialConditions}
+        S = fill(0.0, length(ics.ics))
+        return new{eltype(ics.ics)}(S)
     end
 end
 
@@ -57,6 +56,8 @@ A container for the parameters of the model of [Brooks et al. (2018)](https://ww
 - `clumps_limits`: A `Tuple` of the form `(n_clumps_min, n_clumps_max)`. These impose hard lower \
 and upper limits on the total number of clumps that can exist at any specific time (the total number \
 of clumps that can have ever existed - i.e. `n_clumps_tot` of [`RaftParameters`](@ref) - may be higher.) Default: `(0, 3000)`.
+- `S_min`: A clump dies when `S < S_min`. Default `0.0`.
+- `S_max`: A clump grows when `S > S_max`. Default `1.0`.
 - `dSdt`: Compute the rate of change of the "amount" `S` according to the Brooks model.
 
 ### dSdt
@@ -79,6 +80,8 @@ struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real, F<:Funct
     T_min::T
     T_max::T
     clumps_limits::Tuple{U, U}
+    S_min::T
+    S_max::T
     dSdt::F
 
     function BrooksModelParameters(;
@@ -89,7 +92,9 @@ struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real, F<:Funct
         k_N::Real = 0.012,
         T_min::Real = 10.0,
         T_max::Real = 40.0,
-        clumps_limits::Tuple{Integer, Integer} = (0, 3000)) where {I<:InterpolatedField}
+        clumps_limits::Tuple{Integer, Integer} = (0, 3000),
+        S_min::Real = -1.0,
+        S_max::Real = 1.0) where {I<:InterpolatedField}
 
         μ_max, m, k_N, T_min, T_max = promote(μ_max, m, k_N, T_min, T_max)
 
@@ -114,7 +119,7 @@ struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real, F<:Funct
             typeof(temp), 
             eltype(clumps_limits), 
             typeof(μ_max), 
-            typeof(brooks_dSdt_clump)}(temp, no3, μ_max, m, k_N, T_min, T_max, clumps_limits, brooks_dSdt_clump)
+            typeof(brooks_dSdt_clump)}(temp, no3, μ_max, m, k_N, T_min, T_max, clumps_limits, S_min, S_max, brooks_dSdt_clump)
     end
 end
 
@@ -126,6 +131,7 @@ The growth/death model of [Brooks et al. (2018)](https://www.int-res.com/abstrac
 
 ### Fields 
 
+- `S`: The amount parameter.
 - `params`: The [`BrooksModelParameters`](@ref) parameters of the model.
 - `growths`:A `Vector` of indices of clumps that are to be grown (if any).
 - `deaths`: A `Vector` of indices of clumps that are to be killed (if any).
@@ -133,7 +139,7 @@ The growth/death model of [Brooks et al. (2018)](https://www.int-res.com/abstrac
 
 ### Constructors
 
-Use `BrooksModel(ics::InitialConditions; S0 = [1.0], params = BrooksModelParameters(), verbose = false)`.
+Use `BrooksModel(ics::InitialConditions; params = BrooksModelParameters(), verbose = false)`.
 
 ### Callbacks
 
@@ -143,7 +149,6 @@ At each time step ...
 """
 mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, T<:Real} <: AbstractGrowthDeathModel
     S::Vector{T}
-    S0::Vector{T}
     params::B
     growths::Vector{U}
     deaths::Vector{U}
@@ -151,13 +156,12 @@ mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, T<:Real} <: Abs
 
     function BrooksModel(
         ics::InitialConditions; 
-        S0::Vector{T} = [1.0], 
         params::B = BrooksModelParameters(), 
-        verbose = false) where {B<:BrooksModelParameters, T<:Real}
+        verbose = false) where {B<:BrooksModelParameters}
 
-        S = fill(rand(S0), length(ics.ics))
+        S = fill(0.0, length(ics.ics))
 
-        return new{B, Int64, T}(S, S0, params, Int64[], Int64[], verbose)
+        return new{B, Int64, eltype(ics.ics)}(S, params, Int64[], Int64[], verbose)
     end
 end
     
@@ -170,11 +174,11 @@ function (model::BrooksModel)(u, t, integrator)
         rhs = model.params.dSdt(clump_i(u, i)..., t)*(t - integrator.tprev)#*model.S[i]*n_clumps(u)
         model.S[i] += rhs
 
-        if model.S[i] < 0 && n_clumps(u) - length(model.deaths) >= model.params.clumps_limits[1]
+        if model.S[i] < model.params.S_min && n_clumps(u) - length(model.deaths) >= model.params.clumps_limits[1]
             push!(model.deaths, i)
-        elseif model.S[i] > 2 && n_clumps(u) + length(model.growths) <= model.params.clumps_limits[2]
+        elseif model.S[i] > model.params.S_max && n_clumps(u) + length(model.growths) <= model.params.clumps_limits[2]
             push!(model.growths, i)
-            model.S[i] = rand(model.S0) # "refresh" parent clump
+            model.S[i] = 0.0 # "refresh" parent clump
         end
     end
 

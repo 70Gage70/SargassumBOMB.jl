@@ -3,7 +3,7 @@
 
 A `Vector` of `String`s giving the names of all the parameters it is possible to optimize by default.
 
-Equal to `["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N", "T_min", "T_max"]`.
+Equal to `["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N", "T_min", "T_max", "S_min", "S_max"]`.
 
 ### Definitions
 
@@ -17,8 +17,10 @@ Equal to `["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N", "T_min", "T
 - `k_N`: Sargassum nutrient (N) uptake half saturation.
 - `T_min:` Minimum temperature for Sargassum growth.
 - `T_max`: Maximum temperature for Sargassum growth.
+- `S_min:` Minimum threshold for Sargassum death.
+- `S_max`: Maximum threshold for Sargassum growth.
 """
-const OPTIMIZATION_PARAMETER_NAMES = ["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N", "T_min", "T_max"]
+const OPTIMIZATION_PARAMETER_NAMES = ["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N", "T_min", "T_max", "S_min", "S_max"]
 
 
 """
@@ -188,7 +190,7 @@ mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer, C<:AbstractConnectio
         loss_func::LossFunction,
         seed::U = 1234) where {T<:Real, U<:Integer, C<:AbstractConnections}
 
-        if length(params) > 0 
+        if length(params) == 0 
             @warn "No parameters are set to be optimized."
         end
         @argcheck rhs in [Raft!, Leeway!]
@@ -230,13 +232,13 @@ function RaftParameters(bop::BOMBOptimizationProblem, type::Union{String, Vector
         @argcheck type in ["default", "opt"]   
 
         if type == "default"
-            δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max = [bop.params[param].default for param in ps]
+            δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max, S_min, S_max = [bop.params[param].default for param in ps]
         elseif type == "opt"
             if bop.opt === nothing
                 @warn "The `opt` parameter value has been selected, but `bop` has not been optimized. The default parameters will be used."
-                δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max = [bop.params[param].default for param in ps]
+                δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max, S_min, S_max = [bop.params[param].default for param in ps]
             else
-                δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in ps]
+                δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max, S_min, S_max = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in ps]
             end
         end
     elseif type isa Vector
@@ -254,7 +256,7 @@ function RaftParameters(bop::BOMBOptimizationProblem, type::Union{String, Vector
             end
         end
 
-        δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max = vs
+        δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max, S_min, S_max = vs
     end
     
     # ics
@@ -280,7 +282,9 @@ function RaftParameters(bop::BOMBOptimizationProblem, type::Union{String, Vector
             m = m,
             k_N = k_N,
             T_min = T_min,
-            T_max = T_max)
+            T_max = T_max,
+            S_min = S_min,
+            S_max = S_max)
         gd_model = BrooksModel(ics, params = bmp)
     end
 
@@ -414,6 +418,8 @@ Optimize the [`BOMBOptimizationProblem`](@ref) in `bop` using the `QuasiMonteCar
 take `n_samples` using `QuasiMonteCarlo.SobolSample()` over all optimizable parameters so that the optimal 
 value is just the sample with the lowest loss function.
 
+Return (samples, losses).
+
 ### Arguments 
 
 - `bop`: An unoptimized [`BOMBOptimizationProblem`](@ref).
@@ -485,5 +491,5 @@ function sample!(
 
     bop.opt_rtr = simulate(bop, "opt", high_accuracy = high_accuracy, showprogress = false)
 
-    return nothing 
+    return (samps, fitness)
 end

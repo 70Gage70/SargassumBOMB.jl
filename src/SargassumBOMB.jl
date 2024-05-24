@@ -2,6 +2,7 @@ module SargassumBOMB
 
 # core functionality
 using OrdinaryDiffEq, SargassumFromAFAI, NearestNeighbors, Interpolations
+using SparseArrays
 using Unitful, Dates
 using LinearAlgebra: norm, ⋅
 using ArgCheck
@@ -61,7 +62,7 @@ export InitialConditions
 
 include("springs.jl")
 export AbstractSpring, HookeSpring, BOMBSpring, ΔL, spring_force
-export AbstractConnections, ConnectionsNone, ConnectionsFull, ConnectionsRadius, ConnectionsNearest, form_connections!
+export AbstractConnections, ConnectionsNone, ConnectionsFull, ConnectionsRadius, ConnectionsNearest, form_connections
 
 include("growth-death.jl")
 export AbstractGrowthDeathModel, ImmortalModel, BrooksModelParameters, BrooksModel
@@ -70,13 +71,13 @@ include("rafts-clumps.jl")
 export ClumpParameters, RaftParameters
 
 include("physics.jl")
-export Raft!, Leeway!
+export FastRaft!, Raft!, Leeway!
 
 include("control.jl")
-export cb_update, cb_land, cb_growth_death, cb_connections, kill!, grow!
+export kill!, grow!
 
 include("trajectories.jl")
-export Trajectory, time_slice, RaftTrajectory, uniformize, bins
+export Trajectory, time_slice, RaftTrajectory, bins
 
 include("main.jl")
 export simulate

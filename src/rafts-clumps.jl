@@ -1,5 +1,5 @@
 """
-    struct ClumpParameters{T}
+    struct ClumpParameters
 
 A container for the high-level parameters of the BOM equations.
 
@@ -11,12 +11,12 @@ A container for the high-level parameters of the BOM equations.
 - `σ` []: The Stokes drift parameter; this applies an additional fraction of the Stokes drift to the water velocity 
     component of the particle.
 """
-struct ClumpParameters{T<:Real}
-    α::T
-    τ::T
-    R::T
-    f::T
-    σ::T
+struct ClumpParameters
+    α::Float64
+    τ::Float64
+    R::Float64
+    f::Float64
+    σ::Float64
 end
 
 """
@@ -64,54 +64,134 @@ function ClumpParameters(;
 end
 
 """
-    mutable struct RaftParameters{T, U, F, C, G, L}
+    struct RaftParameters{S, C, G, L, I}
 
 A container for the parameters defining a raft. Each clump and spring are identical.
 
 ### Structure 
 
-`RaftParameters` acts as the parameter container for [`Raft!`](@ref). The solution vector `u` is a vector of length `2n_clumps ` 
-of the form `[x1, y1, x2, y2, ...]` giving the `x, y` coordinates of each clump.
+`RaftParameters` acts as the parameter container for [`Raft!`](@ref). The solution vector `u` is \
+a `2 x N` `Matrix` of the form `[x1 x2 ... xN ; y1 y2 ... yN]` giving the initial coordinates of each clump.
 
 ### Fields
 - `ics`: An [`InitialConditions`](@ref).
 - `clumps`: The [`ClumpParameters`](@ref) shared by each clump in the raft.
-- `springs`: A subtybe of [`AbstractSpring`](@ref).
-- `n_clumps_tot`: An `Integer` equal to the total number of clumps that have ever existed (i.e. it is at least the number of clumps that exist at any specific time.)
-- `connections`: A subtybe of [`AbstractConnections`](@ref).
-- `loc2label`: A `Dict` such that `loc2label[t]` is itself a `Dict` mapping vector indices to the absolute label of the clump in that location at
-the `i`th time step. For example, `loc2label[t0][j] = j` since, at the initial time `t0`, the `j`th location contains the `j`th clump. If 
-clump 1 dies at some later time `t`, then `loc2label[t][1] = 2`, `loc2label[t][2] = 3` since every clump is shifted by one to the left.
+- `springs`: A subtype of [`AbstractSpring`](@ref).
+- `connections`: A subtype of [`AbstractConnections`](@ref).
 - `gd_model`: A subtype of [`AbstractGrowthDeathModel`](@ref). 
-- `land`:: A subtype of [`AbstractLand`](@ref).
+- `land`: A subtype of [`AbstractLand`](@ref).
+- `n_clumps_max`: An `Integer` equal to the maximum allowed number of clumps. The number of clumps \
+will not exceed this for any reason.
+- `living`: A `BitVector` such that `living[i] == true` if the clump with index `i` is alive.
+- `n_clumps_tot`: An `Base.RefValue{Int64}` whose reference is equal to the total number of \
+clumps that have ever existed (i.e. it is at least the number of clumps that exist at any specific time.)
+- `dx_MR`: `dx` of the Maxey-Riley equation. When provided, integration is done using [`FastRaft!`](@ref).
+- `dy_MR`: `dy` of the Maxey-Riley equation. When provided, integration is done using [`FastRaft!`](@ref).
 
 ### Constructors 
 
-Use `RaftParameters(; ics, clumps, springs, connections, gd_model, land)`.
-The quantities `n_clumps_tot` and `loc2label` are computed automatically.
+Use `RaftParameters(; ics, clumps, springs, connections, gd_model, land, n_clumps_max, fast_raft)`.
+
+The quantities `living` and `n_clumps_tot` are computed automatically under the assumping that \
+the clumps initially provided are all alive.
+
+### Fast Raft
+
+If `fast_raft == true` in the above constructor, then the equations will be integrated using [`FastRaft!`](@ref).
+This is faster than [`Raft!`](@ref) at the expense of a more front-loaded computation since the interpolants must
+be computed. Using fast raft is advisable when the number of clumps is large. Default `false`.
 """
-mutable struct RaftParameters{T<:Real, U<:Integer, S<:AbstractSpring, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
-    ics::InitialConditions{T}
-    clumps::ClumpParameters{T}
+struct RaftParameters{
+    S<:AbstractSpring, 
+    C<:AbstractConnections, 
+    G<:AbstractGrowthDeathModel, 
+    L<:AbstractLand,
+    I<:Union{Interpolations.AbstractInterpolation, Nothing}}
+
+    ics::InitialConditions
+    clumps::ClumpParameters
     springs::S
-    n_clumps_tot::U
     connections::C
-    loc2label::Dict{T, Dict{U, U}}
     gd_model::G
     land::L
+    n_clumps_max::Int64
+    living::BitVector
+    n_clumps_tot::Base.RefValue{Int64}
+    dx_MR::I
+    dy_MR::I
 
     function RaftParameters(;
-        ics::InitialConditions{T},
-        clumps::ClumpParameters{T},
+        ics::InitialConditions,
+        clumps::ClumpParameters,
         springs::S,
         connections::C,
         gd_model::G,
-        land::L) where {T<:Real, S<:AbstractSpring, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
+        land::L,
+        n_clumps_max::Int64,
+        fast_raft::Bool = false) where {S<:AbstractSpring, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
 
-        n_c = n_clumps(ics.ics)
-        loc2label = Dict(ics.tspan[1] => Dict(i => i for i = 1:n_c))
-        form_connections!(connections, ics.ics)
+        @argcheck n_clumps_max >= size(ics.ics, 2) "Maximum number of clumps must be at least as large as number of initial clumps"
 
-        return new{T, Int64, S, C, G, L}(ics, clumps, springs, n_c, connections, loc2label, gd_model, land)
+        n_clumps_tot = Ref(size(ics.ics, 2))
+        living = [trues(n_clumps_tot.x) ; falses(n_clumps_max - n_clumps_tot.x)]
+        ics = InitialConditions(tspan = ics.tspan, ics = [ics.ics ;; zeros(2, n_clumps_max - n_clumps_tot.x)])
+        
+        # connections for initial distribution of clumps
+        conns = form_connections(connections, view(ics.ics, :, living))
+        conns2living = (1:size(ics.ics, 2))[living]
+        connections.connections[living] .= conns .|> x -> map(y -> conns2living[y], x)
+
+        # fast_raft
+        dx_MR, dy_MR = fast_raft ? _dxdy_MR(ics.tspan, clumps) : (nothing, nothing)
+        
+        return new{S, C, G, L, typeof(dx_MR)}(ics, clumps, springs, connections, gd_model, land, n_clumps_max, living, n_clumps_tot, dx_MR, dy_MR)
     end
+end
+
+
+"""
+    _dxdy_MR(tspan, clumps)
+
+Compute `(dx, dy)` where `dx` and `dy` are interpolants evaluable at `(x, y, t)` equal to the right-hand-side
+of the Maxey-Riley equations (spring force excluded).
+
+This is automatically applies when a fast raft is selected in [`Raft!`](@ref).
+"""
+function _dxdy_MR(tspan::Tuple{Real, Real}, clumps::ClumpParameters)
+    α, τ, R, f, σ = clumps.α, clumps.τ, clumps.R, clumps.f, clumps.σ
+
+    dt = step(WATER_ITP.x.dims[:t])
+    xs, ys, ts = WATER_ITP.x.dims[:x], WATER_ITP.x.dims[:y], range(tspan..., step = dt)
+    dx = zeros(length(xs), length(ys), length(ts))
+    dy = zeros(length(xs), length(ys), length(ts))
+
+    for i = 1:length(xs), j = 1:length(ys), k = 1:length(ts)
+        x, y, t = xs[i], ys[j], ts[k]
+        v_x     = WATER_ITP.x.fields[:u](x, y, t) + σ * STOKES_ITP.x.fields[:u](x, y, t)
+        v_y     = WATER_ITP.x.fields[:v](x, y, t) + σ * STOKES_ITP.x.fields[:v](x, y, t)
+        Dv_xDt  = WATER_ITP.x.fields[:DDt_x](x, y, t) + σ * STOKES_ITP.x.fields[:DDt_x](x, y, t)
+        Dv_yDt  = WATER_ITP.x.fields[:DDt_y](x, y, t) + σ * STOKES_ITP.x.fields[:DDt_y](x, y, t)
+        u_x     = (1 - α) * v_x + α * WIND_ITP.x.fields[:u](x, y, t)
+        u_y     = (1 - α) * v_y + α * WIND_ITP.x.fields[:v](x, y, t)
+        Du_xDt  = (1 - α) * Dv_xDt + α * WIND_ITP.x.fields[:DDt_x](x, y, t)
+        Du_yDt  = (1 - α) * Dv_yDt + α * WIND_ITP.x.fields[:DDt_y](x, y, t)
+        ω       = WATER_ITP.x.fields[:vorticity](x, y, t)        
+
+        dx[i, j, k] = u_x + τ * (R*Dv_xDt - R*(f + ω/3)*v_y - Du_xDt + (f + R*ω/3)*u_y)
+        dy[i, j, k] = u_y + τ * (R*Dv_yDt + R*(f + ω/3)*v_x - Du_yDt - (f + R*ω/3)*u_x)
+    end
+
+    spline = BSpline(Cubic(Interpolations.Line(OnGrid())))
+    dx = extrapolate(
+        Interpolations.scale(
+                Interpolations.interpolate(dx, spline), 
+            xs, ys, ts), 
+        0.0)
+    dy = extrapolate(
+        Interpolations.scale(
+                Interpolations.interpolate(dy, spline), 
+            xs, ys, ts), 
+        0.0)     
+
+    return (dx, dy)
 end

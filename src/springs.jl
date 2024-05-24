@@ -3,104 +3,105 @@
 
 A supertype for all connections between clumps.
 
-Every subtype of `AbstractConnections` should be mutable with a field `connections::Dict{U, Vector{U}} where {U<:Integer}` such 
-that `connections[idx]` for an index `idx` is a vector of indices `[i1, i2, ...]` where a spring is connected 
-between clumps `idx` and `[i1, i2, ...]`. This should be updated in-place as clumps grow and die, i.e. `connections` 
-only shows the current connections and refers to vector indices, not absolute clump labels.
+Every subtype of `AbstractConnections` should be mutable with a field `connections` which is similar to a vector
+of vectors an array-like objectsuch that that `connections[i]` is a list of clump indices that
+are connected to clump `i`.
 
-Every subtype of `AbstractConnections` should implement a `form_connections!(con::Connections, u)` method which
-updates `con.connections` in place with the solution vector `u` and returns `nothing`.
+This should be updated in-place during the integration, i.e. it only shows the connections at the current time.
+
+Every subtype of `AbstractConnections` should implement a `form_connections(con::Connections, u)` method which
+returns what `con.connections` should be updated with, assuming that `u` is the solution vector. The correction
+of indices due to living clumps is provided automatically later, so here it can be assumed that `u` contains
+only living clumps.
+
+Any subtype of `AbstractConnections` can be evaluated at an `OrdinaryDiffEq.integrator` for callback purposes.
 """
 abstract type AbstractConnections end
 
+# callback helper
+function (::AbstractConnections)(integrator)
+    living = integrator.p.living
+    conns = form_connections(integrator.p.connections, view(integrator.u, :, living))
+    conns2living = (1:integrator.p.n_clumps_max)[living]
+    integrator.p.connections.connections[living] .= conns .|> x -> map(y -> conns2living[y], x)
+
+    return nothing
+end
+
+
 """
-    mutable struct ConnectionsNone
+    struct ConnectionsNone
 
 A connection type such that no clumps are connected.
 
 ### Constructors
 
-`ConnectionsNone()` creates an instance with no connections.
+`ConnectionsNone(n_clumps_max)` creates an instance with no connections.
 """
-mutable struct ConnectionsNone{U<:Integer} <: AbstractConnections
-    connections::Dict{U, Vector{U}}
+struct ConnectionsNone <: AbstractConnections
+    connections::Vector{Vector{Int64}}
 
-    function ConnectionsNone()
-        return new{Int64}(Dict(0 => Int64[]))
+    function ConnectionsNone(n_clumps_max::Integer)
+        return new([Int64[] for _ = 1:n_clumps_max]) # 1:0 gives empty range
     end
 end
 
-function form_connections!(con::ConnectionsNone, u::Vector{<:Real})
-    n_c = n_clumps(u)
-
-    con.connections = Dict(1:n_c .=> [Int64[] for i = 1:n_c])    
-
-    return nothing
+function form_connections(con::ConnectionsNone, u)
+    return [Int64[] for i = 1:size(u, 2)]
 end
 
 """
-    mutable struct ConnectionsFull
+    struct ConnectionsFull
 
 A connection type such that every clump is connected to every other clump.
 
 ### Constructors
 
-`ConnectionsFull()` creates an instance with no connections.
+`ConnectionsFull(n_clumps_max)` creates an instance with no connections.
 """
-mutable struct ConnectionsFull{U<:Integer} <: AbstractConnections
-    connections::Dict{U, Vector{U}}  
+struct ConnectionsFull <: AbstractConnections
+    connections::Vector{Vector{Int64}}
     
-    function ConnectionsFull()
-        return new{Int64}(Dict(0 => Int64[]))
+    function ConnectionsFull(n_clumps_max::Integer)
+        return new([Int64[] for _ = 1:n_clumps_max]) 
     end
 end
 
-function form_connections!(con::ConnectionsFull, u::Vector{<:Real})
-    n_c = n_clumps(u)
-
-    con.connections = Dict(1:n_c .=> [[j for j = 1:n_c if j != i] for i = 1:n_c])    
-
-    return nothing
+function form_connections(con::ConnectionsFull, u)
+    return [collect(1:size(u,2)) for i = 1:size(u,2)]
 end
 
 """
-    mutable struct ConnectionsRadius{T}
+    struct ConnectionsRadius
 
 A connection type such that every clump is connected to every clump within a given radius.
 
 ### Fields 
 
-- `radius`: A distance in km such that each clump is connected to every clump whose distance is at most `radius` from it.
+- `radius`: A distance (assumed in `UNITS["distance"]`) such that each clump is connected \
+to every clump whose distance is at most `radius` from it.
 
 ### Constructors
 
-`ConnectionsRadius(radius)` creates an instance with no connections.
+`ConnectionsRadius(n_clumps_max, radius)` creates an instance with no connections.
 """
-mutable struct ConnectionsRadius{U<:Integer, T<:Real} <: AbstractConnections
-    connections::Dict{U, Vector{U}}  
-    radius::T
+struct ConnectionsRadius <: AbstractConnections
+    connections::Vector{Vector{Int64}}
+    radius::Float64
 
-    function ConnectionsRadius(radius::Real)
+    function ConnectionsRadius(n_clumps_max::Integer, radius::Real)
         @argcheck radius > 0 "`radius` must be positive"
 
-        return new{Int64, typeof(radius)}(Dict(0 => Int64[]), radius)
+        return new([Int64[] for _ = 1:n_clumps_max], radius)
     end
 end
 
-function form_connections!(con::ConnectionsRadius, u::Vector{<:Real})
-    n_c = n_clumps(u)
-    xy = reshape(view(u,:), 2, n_c)
-    
-    balltree = BallTree(xy)
-    idx = inrange(balltree, xy, con.radius, true)
-    idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]
-    con.connections = Dict(1:n_c .=> idx) 
-
-    return nothing
+function form_connections(con::ConnectionsRadius, u)    
+    return inrange(BallTree(u), u, con.radius, true) # sortres = true sorts the indices for us
 end
 
 """
-    mutable struct ConnectionsNearest{T}
+    struct ConnectionsNearest
 
 A connection type such that every clump is connected to a number of its nearest neighbors.
 
@@ -110,32 +111,26 @@ A connection type such that every clump is connected to a number of its nearest 
 
 ### Constructors
 
-`ConnectionsNearest(neighbors)` creates an instance with no connections.
+`ConnectionsNearest(n_clumps_max, neighbors)` creates an instance with no connections.
 """
-mutable struct ConnectionsNearest{U<:Integer} <: AbstractConnections
-    connections::Dict{U, Vector{U}}
-    neighbors::U
+struct ConnectionsNearest <: AbstractConnections
+    connections::Vector{Vector{Int64}}
+    neighbors::Int64
 
-    function ConnectionsNearest(neighbors::Integer)
-        @argcheck neighbors >= 0 "`neighbors` must be nonnegative"
+    function ConnectionsNearest(n_clumps_max::Integer, neighbors::Integer)
+        @argcheck neighbors > 0 "`neighbors` must be positive"
 
-        return new{Int64}(Dict(0 => Int64[]), neighbors)
+        return new([Int64[] for _ = 1:n_clumps_max], neighbors)
     end
 end
 
-function form_connections!(con::ConnectionsNearest, u::Vector{<:Real})
-    n_c = n_clumps(u)
-    xy = reshape(view(u,:), 2, n_c)
+function form_connections(con::ConnectionsNearest, u)
+    k = con.neighbors + 1   # each point is considered one of its own nearest neighbors, so have to add 1     
+    k = min(size(u, 2), k)  # there can not be more neighbors than there are clumps
 
-    k = con.neighbors + 1 # each point is considered one of its own nearest neighbors, so have to add 1     
-    k = min(n_c, k) # there can not be more neighbors than there are clumps
+    idx, dists = knn(KDTree(u), u, k)
 
-    kdtree = KDTree(xy)
-    idx, dists = knn(kdtree, xy, k, true)
-    idx = [filter(x -> x != i, idx[i]) for i = 1:length(idx)]
-    con.connections = Dict(1:n_c .=> idx)
-
-    return nothing
+    return idx .|> sort # sortres = true sorts by distance, not index value so do it manually
 end
 
 
@@ -152,7 +147,7 @@ All forces are computed using `parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)`
 abstract type AbstractSpring end
 
 """
-    HookeSpring{T, Tk}
+    HookeSpring{F}
 
 A subtype of `AbstractSpring` representing a spring with a constant stiffness.
 
@@ -160,18 +155,18 @@ A subtype of `AbstractSpring` representing a spring with a constant stiffness.
 
 `HookeSpring(k::Real, L::Real)`
 """
-struct HookeSpring{T<:Real, Tk<:Function} <: AbstractSpring
-    k::Tk
-    L::T
+struct HookeSpring{F<:Function} <: AbstractSpring
+    k::F
+    L::Float64
 
     function HookeSpring(k::Real, L::Real)
         sk(x::Real; k::Real = k) = k
-        return new{typeof(L), typeof(sk)}(sk, L)
+        return new{typeof(sk)}(sk, L)
     end
 end
 
 """
-    BOMBSpring{T, Tk}
+    BOMBSpring{F}
 
 A subtype of `AbstractSpring` representing a BOMB spring of the form `A * (exp((x - 2*L)/0.2) + 1)^(-1)`.
 
@@ -183,14 +178,14 @@ A subtype of `AbstractSpring` representing a BOMB spring of the form `A * (exp((
 
 `BOMBSpring(A::Real, L::Real)`
 """
-struct BOMBSpring{T<:Real, Tk<:Function} <: AbstractSpring
-    k::Tk
-    L::T
-    A::T
+struct BOMBSpring{F<:Function} <: AbstractSpring
+    k::F
+    L::Float64
+    A::Float64
 
     function BOMBSpring(A::Real, L::Real)
         sk(x::Real; A::Real = A, L::Real = L) = A * (exp((x - 2*L)/0.2) + 1)^(-1)
-        return new{typeof(L), typeof(sk)}(sk, L, A)
+        return new{typeof(sk)}(sk, L, A)
     end
 end
 
@@ -198,10 +193,11 @@ end
     ΔL(x_range, y_range; to_xy)
 
 Compute a spring length from a rectangular arrangement of clumps provided by `x_range` and `y_range`. This is the distance between the centers of 
-diagonally-adjacent gridpoints.
+diagonally-adjacent gridpoints. These should be equirectangular coordinates.
 
-These should be equirectangular coordinates; if `to_xy == true` the ranges are 
-converted from spherical to equirectangular coordinates. Default `false`.
+### Optional Arguments
+
+`to_xy`: If `true`, the coordinates are converted from spherical to equirectangular coordinates. Default `false`.
 """
 function ΔL(x_range::AbstractRange, y_range::AbstractRange; to_xy::Bool = false)
     if to_xy
@@ -224,16 +220,14 @@ function ΔL(dist::SargassumDistribution)
 end
 
 """
-    ΔL(ics::InitialConditions)
+    ΔL(ics::InitialConditions; k::Integer)
 
 Compute a spring length from a `InitialConditions`. This is the median among all pairwise 
-equirectangular distances between points' 5 nearest neighbors.
+equirectangular distances between points' `k` nearest neighbors. Default `k = 5`.
 """
-function ΔL(ics::InitialConditions)
-    xy = reshape(view(ics.ics,:), 2, n_clumps(ics.ics))
-
+function ΔL(ics::InitialConditions; k::Integer = 5)
+    xy = ics.ics
     kdtree = KDTree(xy)
-    k = 5
     idx, dists = knn(kdtree, xy, k, true)
     dists = [sum(d)/(k - 1) for d in dists] # k - 1 since self is included   
 

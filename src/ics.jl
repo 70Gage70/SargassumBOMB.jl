@@ -1,43 +1,50 @@
 """
-    struct InitialConditions{T}
+    struct InitialConditions
 
 A container for the initial conditions for a raft. 
 
 ### Fields
 
-- `tspan`: A `Tuple{Real, Real}` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is \
+- `tspan`: A `Tuple` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is \
 in `UNITS["time"]` since [`T_REF`](@ref).
-- `ics`: A `Vector` of the form `[x1, y1, x2, y2, ...]` giving the initial coordinates of each clump.
+- `ics`: A `2 x N` `Matrix` of the form `[x1 x2 ... xN ; y1 y2 ... yN]` giving the initial coordinates of each clump.
 
 ### Constructors 
 
 use `InitialConditions(;tspan, ics)`.
 """
-struct InitialConditions{T<:Real}
-    tspan::Tuple{T,T}
-    ics::Vector{T}
+struct InitialConditions
+    tspan::Tuple{Float64, Float64}
+    ics::Matrix{Float64}
 
-    function InitialConditions(;tspan::Tuple{Real, Real}, ics::Vector{T}) where {T<:Real}
+    function InitialConditions(;tspan::Tuple{Real, Real}, ics::Matrix{<:Real})
         @argcheck tspan[1] < tspan[2] "initial time must be less than final time"
+        @argcheck size(ics, 1) == 2 "matrix should have size 2 x N"
+        @argcheck size(ics, 2) > 0 "ics can not be empty"
 
-        tspan_prom = (T(tspan[1]), T(tspan[2]))
-
-        return new{eltype(ics)}(tspan_prom, ics)
+        return new(tspan, ics)
     end
 end
 
 """
     InitialConditions(tspan, xy0; to_xy)
 
-Construct initial conditions suitable for use in `RaftParameters.ics` from a list of coordinates `xy0` of the form 
-`[x1, y1, x2, y2 ..., xN, yN]`. These should be equirectangular coordinates; if `to_xy == true` the ranges are 
-converted from spherical to equirectangular coordinates. Default `false`.
+Construct initial conditions suitable for use in `RaftParameters.ics` from `2 x N` `Matrix`, `xy0` which should \
+be equirectangular coordinates
 
-Can be applied as `InitialConditions(tspan, x_range, y_range; to_xy)` to generate clumps in a rectangular arrangement.
+Can be applied as `InitialConditions(tspan, x_range, y_range; [kwargs])` to generate clumps in a rectangular arrangement.
 
-Can be applied as `InitialConditions(tspan, x0, y0; to_xy)` for a single clump with coordinates `(x0, y0)`.
+Can be applied as `InitialConditions(tspan, x0, y0; to_xy; [kwargs])` for a single clump with coordinates `(x0, y0)`.
+
+### Optional Arguments 
+
+`to_xy`: If `true`, the coordinates are converted from spherical to equirectangular coordinates. Default `false`.
 """
-function InitialConditions(tspan::Tuple{Real, Real}, xy0::Vector{<:Real}; to_xy::Bool = false)
+function InitialConditions(
+    tspan::Tuple{Real, Real}, 
+    xy0::Matrix{<:Real};
+    to_xy::Bool = false)
+    
     if to_xy
         ics = sph2xy(xy0)
     else
@@ -50,7 +57,7 @@ end
 function InitialConditions(
     tspan::Tuple{Real, Real},
     x_range::AbstractRange{T}, 
-    y_range::AbstractRange{T}; 
+    y_range::AbstractRange{T};
     to_xy::Bool = false) where {T<:Real}
 
     @argcheck allunique(x_range) "`x_range` can not have repeated entries"
@@ -62,27 +69,28 @@ function InitialConditions(
         ics_x, ics_y = x_range, y_range
     end
 
-    ics = T[]
-
-    for x in ics_x, y in ics_y
-        push!(ics, x, y)
-    end
+    ics = Iterators.product(ics_x, ics_y) |> collect |> vec |> stack
 
     return InitialConditions(tspan = tspan, ics = ics)
 end
 
-function InitialConditions(tspan::Tuple{Real, Real}, x0::Real, y0::Real; to_xy::Bool = false)
+function InitialConditions(
+    tspan::Tuple{Real, Real}, 
+    x0::Real, 
+    y0::Real;
+    to_xy::Bool = false)
+
     if to_xy
         ics = sph2xy(x0, y0)
     else
         ics = [x0, y0]
     end
 
-    return InitialConditions(tspan = tspan, ics = ics)
+    return InitialConditions(tspan = tspan, ics = reshape(ics, 2, 1))
 end
 
 """
-    InitialConditions(tspan, dist, weeks, number, sample_type; seed)
+    InitialConditions(tspan, dist, weeks, number, sample_type; n_clumps_max, seed)
 
 Construct [`InitialConditions`](@ref) from a `SargassumDistribution`.
 
@@ -128,7 +136,8 @@ function InitialConditions(
     δ_x = abs(lons[2] - lons[1])
     δ_y = abs(lats[2] - lats[1])
 
-    xy0 = Float64[]
+    x0 = Float64[]
+    y0 = Float64[]
 
     pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x)) # vector of (lon, lat)
     wts = sarg |> x -> reduce(vcat, x) # vector of sarg, matched with pts
@@ -137,8 +146,8 @@ function InitialConditions(
         samples = Distributions.sample(pts, Weights(wts), number)
 
         for samp in samples
-            push!(xy0, rand(Uniform(samp[1] - δ_x/2, samp[1] + δ_x/2)))
-            push!(xy0, rand(Uniform(samp[2] - δ_y/2, samp[2] + δ_y/2)))
+            push!(x0, rand(Uniform(samp[1] - δ_x/2, samp[1] + δ_x/2)))
+            push!(y0, rand(Uniform(samp[2] - δ_y/2, samp[2] + δ_y/2)))
         end
     elseif sample_type == "sorted"
         idx = findall(x -> x > 0, wts)
@@ -152,8 +161,8 @@ function InitialConditions(
             idx = mod(n_c, length(pts)) == 0 ? length(pts) : mod(n_c, length(pts))
             pt = pts[idx]
 
-            push!(xy0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))
-            push!(xy0, rand(Uniform(pt[2] - δ_y/2, pt[2] + δ_y/2)))       
+            push!(x0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))
+            push!(y0, rand(Uniform(pt[2] - δ_y/2, pt[2] + δ_y/2)))       
 
             n_c = n_c + 1
         end
@@ -162,8 +171,8 @@ function InitialConditions(
         pts = pts[idx]
 
         for pt in pts
-            push!(xy0, pt[1])
-            push!(xy0, pt[2])  
+            push!(x0, pt[1])
+            push!(y0, pt[2])  
         end
     elseif sample_type == "levels"
         idx = findall(x -> x > 0, wts)
@@ -176,13 +185,14 @@ function InitialConditions(
             pt = pts[i]
             n_c = number*(wts[i] - wtsmin)/(wtsmax - wtsmin) |> x -> round(Integer, x, RoundUp)
             for _ = 1:n_c
-                push!(xy0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))
-                push!(xy0, rand(Uniform(pt[2] - δ_y/2, pt[2] + δ_y/2)))       
+                push!(x0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))
+                push!(y0, rand(Uniform(pt[2] - δ_y/2, pt[2] + δ_y/2)))       
             end
         end           
     end
 
-    xy0 = sph2xy(xy0)
+    ics = [x0' ; y0']
+    ics = sph2xy(ics)
     
-    return InitialConditions(tspan = tspan, ics = xy0)
+    return InitialConditions(tspan = tspan, ics = ics)
 end

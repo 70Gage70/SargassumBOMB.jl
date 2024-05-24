@@ -24,7 +24,7 @@ function (land::NoLand)(integrator)
 end
 
 """
-    mutable struct Land{I, U}
+    mutable struct Land{I}
 
 A container for data handling death of clumps upon reaching the shore.
 
@@ -38,27 +38,31 @@ A container for data handling death of clumps upon reaching the shore.
 
 Use `Land(;land_itp::InterpolatedField = land_itp, verbose = false)` to create a new `Land` object.
 """
-mutable struct Land{I<:InterpolatedField, U<:Integer} <: AbstractLand
+mutable struct Land{I<:InterpolatedField} <: AbstractLand
     land_itp::I
-    deaths::Vector{U}
+    deaths::Vector{Int64}
     verbose::Bool
 
     function Land(;land_itp::InterpolatedField = LAND_ITP.x, verbose = false)
-        return new{typeof(land_itp), Int64}(land_itp, Int64[], verbose)
+        return new{typeof(land_itp)}(land_itp, Int64[], verbose)
     end
 end
 
 # condition 
 function (land::Land)(u, t, integrator)
-    land.deaths = [i for i = 1:n_clumps(u) if land.land_itp.fields[:land](clump_i(u, i)...) == 1.0]
+    n_clumps_max = integrator.p.n_clumps_max
+    idx = (1:n_clumps_max)[integrator.p.living]
+    land.deaths = Int64[]
+    for i in idx
+        land.land_itp.fields[:land](clump_i(u, i)...) == 1.0 && push!(land.deaths, i)
+    end
     return length(land.deaths) > 0
 end
 
 # affect!
 function (land::Land)(integrator)
     if land.verbose
-        deaths = [integrator.p.loc2label[integrator.t][i] for i in land.deaths]
-        @info "Land [t = $(integrator.t)]: $(deaths)"
+        @info "Land [t = $(integrator.t)]: $(land.deaths)"
     end
     
     kill!(integrator, land.deaths)

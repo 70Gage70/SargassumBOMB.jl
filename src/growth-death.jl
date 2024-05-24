@@ -3,7 +3,7 @@
 
 The abstract type for growth and death models.
     
-Subtypes must have a field `S`, a vector of length `n_clumps(u)` representing an "amount" or "mass" for each clump.
+Subtypes must have a field `S`, a `Vector{Float64}` of length `n_clumps_max` representing an "amount" or "mass" for each clump.
 """
 abstract type AbstractGrowthDeathModel end 
 
@@ -18,14 +18,13 @@ An `AbstractGrowthDeathModel` such that no growth or death occurs.
 
 ### Constructors 
 
-Use `ImmortalModel(ics::InitialConditions).`
+Use `ImmortalModel(n_clumps_max::Integer).`
 """
-struct ImmortalModel{T<:Real} <: AbstractGrowthDeathModel
-    S::Vector{T}
+struct ImmortalModel <: AbstractGrowthDeathModel
+    S::Vector{Float64}
 
-    function ImmortalModel(ics::I) where {I<:InitialConditions}
-        S = fill(0.0, length(ics.ics))
-        return new{eltype(ics.ics)}(S)
+    function ImmortalModel(n_clumps_max::Integer)
+        return new(zeros(n_clumps_max))
     end
 end
 
@@ -40,7 +39,7 @@ function (model::ImmortalModel)(integrator)
 end
 
 """
-    struct BrooksModelParameters{I, U, T, F}
+    struct BrooksModelParameters{I, F}
 
 A container for the parameters of the model of [Brooks et al. (2018)](https://www.int-res.com/abstracts/meps/v599/p1-18/).
 
@@ -55,7 +54,7 @@ A container for the parameters of the model of [Brooks et al. (2018)](https://ww
 - `T_max` [°C]: Minimum temperature for Sargassum growth. Value: `40.0`
 - `clumps_limits`: A `Tuple` of the form `(n_clumps_min, n_clumps_max)`. These impose hard lower \
 and upper limits on the total number of clumps that can exist at any specific time (the total number \
-of clumps that can have ever existed - i.e. `n_clumps_tot` of [`RaftParameters`](@ref) - may be higher.) Default: `(0, 3000)`.
+of clumps that can have ever existed - i.e. `n_clumps_tot` of [`RaftParameters`](@ref) - may be higher.) Default: `(0, 10000)`.
 - `S_min`: A clump dies when `S < S_min`. Default `0.0`.
 - `S_max`: A clump grows when `S > S_max`. Default `1.0`.
 - `dSdt`: Compute the rate of change of the "amount" `S` according to the Brooks model.
@@ -71,17 +70,17 @@ This function is of the form `dSdt = growth_factors  - death_factors`.
 The function `BrooksModelParameters(; parameters...)` is provided, where each parameters is a kwarg 
 with the default values given above.
 """
-struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real, F<:Function} 
+struct BrooksModelParameters{I<:InterpolatedField, F<:Function} 
     temp::I
     no3::I
-    μ_max::T
-    m::T
-    k_N::T
-    T_min::T
-    T_max::T
-    clumps_limits::Tuple{U, U}
-    S_min::T
-    S_max::T
+    μ_max::Float64
+    m::Float64
+    k_N::Float64
+    T_min::Float64
+    T_max::Float64
+    clumps_limits::Tuple{Int64, Int64}
+    S_min::Float64
+    S_max::Float64
     dSdt::F
 
     function BrooksModelParameters(;
@@ -92,11 +91,9 @@ struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real, F<:Funct
         k_N::Real = 0.012,
         T_min::Real = 10.0,
         T_max::Real = 40.0,
-        clumps_limits::Tuple{Integer, Integer} = (0, 3000),
+        clumps_limits::Tuple{Integer, Integer} = (0, 10000),
         S_min::Real = -1.0,
         S_max::Real = 1.0) where {I<:InterpolatedField}
-
-        μ_max, m, k_N, T_min, T_max = promote(μ_max, m, k_N, T_min, T_max)
 
         function brooks_dSdt_clump(x::Real, y::Real, t::Real)
             temp_factor = begin
@@ -115,17 +112,13 @@ struct BrooksModelParameters{I<:InterpolatedField, U<:Integer, T<:Real, F<:Funct
             return μ_max*temp_factor*N_factor - m
         end
     
-        return new{
-            typeof(temp), 
-            eltype(clumps_limits), 
-            typeof(μ_max), 
-            typeof(brooks_dSdt_clump)}(temp, no3, μ_max, m, k_N, T_min, T_max, clumps_limits, S_min, S_max, brooks_dSdt_clump)
+        return new{typeof(temp), typeof(brooks_dSdt_clump)}(temp, no3, μ_max, m, k_N, T_min, T_max, clumps_limits, S_min, S_max, brooks_dSdt_clump)
     end
 end
 
 
 """
-    mutable struct BrooksModel{B, U, T}
+    mutable struct BrooksModel{B}
 
 The growth/death model of [Brooks et al. (2018)](https://www.int-res.com/abstracts/meps/v599/p1-18/). 
 
@@ -147,39 +140,51 @@ Use [`cb_growth_death`](@ref) to create a `DiscreteCallback` suitable for use wi
 
 At each time step ...
 """
-mutable struct BrooksModel{B<:BrooksModelParameters, U<:Integer, T<:Real} <: AbstractGrowthDeathModel
-    S::Vector{T}
+mutable struct BrooksModel{B<:BrooksModelParameters} <: AbstractGrowthDeathModel
+    S::Vector{Float64}
     params::B
-    growths::Vector{U}
-    deaths::Vector{U}
+    growths::Vector{Int64}
+    deaths::Vector{Int64}
     verbose::Bool
 
     function BrooksModel(
-        ics::InitialConditions; 
+        n_clumps_max::Integer; 
         params::B = BrooksModelParameters(), 
         verbose = false) where {B<:BrooksModelParameters}
 
-        S = fill(0.0, length(ics.ics))
+        S = fill(0.0, n_clumps_max)
 
-        return new{B, Int64, eltype(ics.ics)}(S, params, Int64[], Int64[], verbose)
+        return new{B}(S, params, Int64[], Int64[], verbose)
     end
 end
     
 # condition 
 function (model::BrooksModel)(u, t, integrator)
+    n_clumps_max = integrator.p.n_clumps_max
     model.growths = Int64[]
     model.deaths = Int64[]
 
-    for i = 1:n_clumps(u)
-        rhs = model.params.dSdt(clump_i(u, i)..., t)*(t - integrator.tprev)#*model.S[i]*n_clumps(u)
-        model.S[i] += rhs
+    for i in (1:n_clumps_max)[integrator.p.living]
+        model.S[i] += model.params.dSdt(clump_i(u, i)..., t)*(t - integrator.tprev)
 
-        if model.S[i] < model.params.S_min && n_clumps(u) - length(model.deaths) >= model.params.clumps_limits[1]
+        if model.S[i] < model.params.S_min
             push!(model.deaths, i)
-        elseif model.S[i] > model.params.S_max && n_clumps(u) + length(model.growths) <= model.params.clumps_limits[2]
+        elseif model.S[i] > model.params.S_max
             push!(model.growths, i)
             model.S[i] = 0.0 # "refresh" parent clump
         end
+    end
+
+    clumps_limits = model.params.clumps_limits
+    clumps_overflow = integrator.p.n_clumps_tot.x + length(model.growths) - min(clumps_limits[2], n_clumps_max)
+    if clumps_overflow > 0
+        model.growths = model.growths[1:end-clumps_overflow] # hard growth cutoff
+    end
+
+    delta = length(model.growths) - length(model.deaths)
+    clumps_underflow = sum(integrator.p.living) - length(model.deaths) - clumps_limits[1]
+    if delta < 0 && clumps_underflow < 0
+        model.deaths = model.deaths[1:end+clumps_underflow] # hard death cutoff
     end
 
     if length(model.growths) > 0 || length(model.deaths) > 0
@@ -192,18 +197,16 @@ end
 # affect!
 function (model::BrooksModel)(integrator)
     if model.verbose
-        growths = [integrator.p.n_clumps_tot + i for i = 1:length(model.growths)]
-        deaths = [integrator.p.loc2label[integrator.t][i] for i in model.deaths]
-        if length(growths) > 0
-            @info "Growth [t = $(integrator.t)]: $(growths)"
+        if length(model.growths) > 0
+            @info "Bio Growth [t = $(integrator.t)]: $(model.growths)"
         end
 
-        if length(deaths) > 0
-            @info "Death [t = $(integrator.t)]: $(deaths)"
+        if length(model.deaths) > 0
+            @info "Bio Death [t = $(integrator.t)]: $(model.deaths)"
         end
     end
 
-    ### growth/death specific
+    # do growths first, since kill! has the possibility of terminating the integration
     for i in model.growths
         grow!(integrator, location = i)
     end

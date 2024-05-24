@@ -60,7 +60,7 @@ end
 function Base.show(io::IO, x::InitialConditions)
     print(io, "InitialConditions[")
     print(io, "time ∈ ($(time2datetime(x.tspan[1])), $(time2datetime(x.tspan[2]))), ")
-    print(io, "n_clumps = $(n_clumps(x.ics)), ")
+    print(io, "n_clumps = $(size(x.ics, 2)), ")
     xmin, xmax = extrema(x.ics[1:2:end])
     ymin, ymax = extrema(x.ics[2:2:end])
     lon_min, lat_min = xy2sph(xmin, ymin) .|> x -> round(x, sigdigits = 4)
@@ -73,7 +73,7 @@ function Base.show(io::IO, x::RaftParameters)
     println(io, "ICS = $(x.ics)")
     println(io, "Clumps = $(x.clumps)")
     println(io, "Springs = $(x.springs)")
-    println(io, "Connections = $(typeof(ConnectionsNearest(3)).name.name)")
+    println(io, "Connections = $(typeof(x.connections).name.name)")
     println(io, "GrowthDeath = $(x.gd_model)")
 end
 

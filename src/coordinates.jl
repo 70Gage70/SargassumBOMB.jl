@@ -24,7 +24,7 @@ The radius of the Earth, equal to 6371 km.
 const EARTH_RADIUS = 6371.0 * u"km"
 
 """
-    EquirectangularReference{T, U}
+    EquirectangularReference{U}
 
 A container for the reference longitude and latitude of an equirectangular projection.
 
@@ -37,20 +37,21 @@ A container for the reference longitude and latitude of an equirectangular proje
 ### Constructor
 
 Use `EquirectangularReference(; lon0 = -75.0, lat0 = 10.0, units = UNITS["distance"])`.
+
+Example: to measure distances in meters, use `eqr = EquirectangularReference(units = u"m")`.
 """
-struct EquirectangularReference{T<:AbstractFloat, U<:Unitful.AbstractQuantity}
-    lon0::T
-    lat0::T
+struct EquirectangularReference{U<:Unitful.AbstractQuantity}
+    lon0::Float64
+    lat0::Float64
     R::U
 
     function EquirectangularReference(; lon0::Real = -75.0, lat0::Real = 10.0, units::Unitful.Unitlike = UNITS["distance"])
         @argcheck -180.0 <= lon0 <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
         @argcheck -90 <= lat0 <= 90 "The latitude must be between -90 degrees and 90 degrees."
     
-        lon0, lat0 = promote(float(lon0), float(lat0))
         R = uconvert(units, EARTH_RADIUS)
     
-        return new{typeof(lon0), typeof(R)}(lon0, lat0, R)
+        return new{typeof(R)}(lon0, lat0, R)
     end
 end
 
@@ -76,8 +77,9 @@ The units of `x` and `y` the same as `eqr.R`.
 
 Can be applied as `sph2xy(lon_range, lat_range; eqr = EQR)` where `lon_range` and `lat_range` are `AbstractRange`. Returns `(x_range, y_range)`.
 
-Can be applied as `sph2xy(lon_lat; eqr = EQR)` where `lon_lat` is an `N x 2` `Matrix` or a `Vector` of length `2N` with 
-entries of the form `[lon1, lat1, lon2, lat2 ... lonN, latN]`. Returns a result in the same shape as the input.
+Can be applied as `sph2xy(lon_lat; eqr = EQR)` where `lon_lat` is a `2 x N` `Matrix. 
+
+Returns a result in the same shape as the input.
 
 ### Arguments
 
@@ -109,27 +111,16 @@ function sph2xy(lon_range::AbstractRange, lat_range::AbstractRange; eqr::Equirec
 end
 
 function sph2xy(lon_lat::Matrix{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
-    @argcheck size(lon_lat, 2) == 2 "lon_lat should be an `N x 2` matrix"
+    @argcheck size(lon_lat, 1) == 2 "lon_lat should be an `2 x N` matrix"
     xy = zeros(T, size(lon_lat))
     
-    for i = 1:size(lon_lat, 1)
-        xy[i,:] .= sph2xy(lon_lat[i,1], lon_lat[i,2], eqr = eqr)
+    for i = 1:size(lon_lat, 2)
+        xy[:,i] .= sph2xy(lon_lat[1,i], lon_lat[2,i], eqr = eqr)
     end
 
     return xy
 end
 
-function sph2xy(lon_lat::Vector{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
-    @argcheck iseven(length(lon_lat)) "lon_lat should be of the form `[lon1, lat1, lon2, lat2 ... lon3, lat3]`."
-
-    xy = zeros(T, length(lon_lat))
-    
-    for i = 1:2:length(lon_lat)
-        xy[i:i+1] .= sph2xy(lon_lat[i], lon_lat[i + 1], eqr = eqr)
-    end
-
-    return xy
-end
 
 """
     xy2sph(x, y, eqr = EQR.x)
@@ -138,12 +129,9 @@ Compute spherical coordinates `[lon, lat]` [deg] from rectilinear coordinates `(
 
 The units of `x` and `y` should be the same as `eqr.R`.
 
-Can be applied as `xy2sph(xy)` where `xy` is a `Vector{Vector{T}}` or an `N x 2` `Matrix`. Returns an `N x 2` `Matrix` in these cases.
-
-Can be applied as `xy2sph(xy)` where `xy` a `Vector` of length `2N` with 
-entries of the form `[lon1, lat1, lon2, lat2 ... lonN, latN]`. Returns a result in the same shape as the input.
-
 Can be applied as `xy2sph(x_range, y_range)` where `x_range` and `y_range` are `AbstractRange`. Returns `(lon_range, lat_range)`.
+
+Can be applied as `xy2sph(xy)` where `xy` is a `2 x N` `Matrix`. 
 
 ### Arguments
 
@@ -161,27 +149,6 @@ function xy2sph(x::Real, y::Real; eqr::EquirectangularReference = EQR.x)
     return [lon, lat]
 end
 
-function xy2sph(xy::Vector{<:Vector{T}}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
-    lonlat = zeros(T, length(xy), 2) 
-    
-    for i = 1:length(xy)
-        lonlat[i,:] = xy2sph(xy[i][1], xy[i][2], eqr = eqr)
-    end
-
-    return lonlat
-end
-
-function xy2sph(xy::Matrix{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
-    @argcheck size(xy, 2) == 2 "xy should be an `N x 2` matrix"
-    lonlat = zeros(T, size(xy))
-    
-    for i = 1:size(xy, 1)
-        lonlat[i,:] = xy2sph(xy[i,1], xy[i,2], eqr = eqr)
-    end
-
-    return lonlat
-end
-
 function xy2sph(x_range::AbstractRange, y_range::AbstractRange; eqr::EquirectangularReference = EQR.x)
     # uses the fact that the translation between eqr and spherical is linear
     xmin, ymin = xy2sph(first(x_range), first(y_range), eqr = eqr)
@@ -193,14 +160,36 @@ function xy2sph(x_range::AbstractRange, y_range::AbstractRange; eqr::Equirectang
             )
 end
 
-function xy2sph(xy::Vector{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
-    @argcheck iseven(length(xy)) "xy should be of the form `[x1, y1, x2, y2 ... x3, y3]`."
-
-    lon_lat = zeros(T, length(xy))
+function xy2sph(xy::Matrix{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
+    @argcheck size(xy, 1) == 2 "xy should be an `2 x N` matrix"
+    lonlat = zeros(T, size(xy))
     
-    for i = 1:2:length(xy)
-        lon_lat[i:i+1] .= xy2sph(xy[i], xy[i + 1], eqr = eqr)
+    for i = 1:size(xy, 2)
+        lonlat[:,i] .= xy2sph(xy[1,i], xy[2,i], eqr = eqr)
     end
 
-    return lon_lat
+    return lonlat
 end
+
+
+# function xy2sph(xy::Vector{<:Vector{T}}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
+#     lonlat = zeros(T, length(xy), 2) 
+    
+#     for i = 1:length(xy)
+#         lonlat[i,:] = xy2sph(xy[i][1], xy[i][2], eqr = eqr)
+#     end
+
+#     return lonlat
+# end
+
+# function xy2sph(xy::Vector{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
+#     @argcheck iseven(length(xy)) "xy should be of the form `[x1, y1, x2, y2 ... x3, y3]`."
+
+#     lon_lat = zeros(T, length(xy))
+    
+#     for i = 1:2:length(xy)
+#         lon_lat[i:i+1] .= xy2sph(xy[i], xy[i + 1], eqr = eqr)
+#     end
+
+#     return lon_lat
+# end

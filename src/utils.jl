@@ -1,28 +1,32 @@
-"""
-    n_clumps(u)
+# """
+#     n_clumps(object)
 
-Return the number of clumps in the solution vector `u`. This is `floor(Int64, length(u)/2)`.
-"""
-function n_clumps(u::Vector{<:Real})
-    return floor(Int64, length(u)/2)
-end
+# Return the number of living clumps in the `object.`
+
+# `object` can be a [`InitialConditions`](@ref). This simply returns `size(ics.ics, 2)`.
+
+# `object` can be an [`RaftParameters`](@ref).
+# """
+# function n_clumps(ics::InitialConditions)
+#     return size(ics.ics, 2)
+# end
 
 """
     clump_i(u, i)
 
-Return the `[x, y]` coordinates of the `i`th clump in the solution vector `u`. This is `u[2*i-1:2*i]`.
+Return a view to the the `[x, y]` coordinates of the `i`th clump in the solution matrix `u`. This is `view(u :,i)`.
 """
-function clump_i(u::Vector{<:Real}, i::Integer)
-    return u[2*i-1:2*i]
+function clump_i(u::Matrix{Float64}, i::Integer)
+    return view(u, :, i)
 end
 
 """
     com(u)
 
-Return the center of mass `[x, y]` coordinates of the solution vector `u`.
+Return the center of mass `[x, y]` coordinates of the solution matrix `u`.
 """
-function com(u::Vector{<:Real})
-    return [mean(u[1:2:end]), mean(u[2:2:end])]
+function com(u::Matrix{Float64})
+    return [mean(u[1,:]), mean(u[2,:])]
 end
 
 """

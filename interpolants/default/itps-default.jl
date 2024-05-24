@@ -109,7 +109,7 @@ function _construct_waves_default(infile::String, outfile::String)
     ranges_increasing!(gf)
     sph2xy!(gf)
 
-    itp = InterpolatedField(gf)
+    itp = InterpolatedField(gf, interpolant_type = "nearest")
 
     jldsave(outfile, WAVES_ITP = itp)
 
@@ -128,7 +128,7 @@ function _construct_nutrients_default(infile::String, outfile::String)
     ranges_increasing!(gf)
     sph2xy!(gf)
 
-    itp = InterpolatedField(gf)
+    itp = InterpolatedField(gf, interpolant_type = "nearest")
 
     jldsave(outfile, NUTRIENTS_ITP = itp)
 
@@ -147,7 +147,7 @@ function _construct_temperature_default(infile::String, outfile::String)
     ranges_increasing!(gf)
     sph2xy!(gf)
 
-    itp = InterpolatedField(gf)
+    itp = InterpolatedField(gf, interpolant_type = "nearest")
 
     jldsave(outfile, TEMPERATURE_ITP = itp)
 
@@ -281,6 +281,7 @@ function itps_default_construct(; download_data::Bool = false)
     elseif 0 < length(missings) < 6
         @warn "Could not construct interpolants $(missings); data missing. Try running `itps_default_construct(download_data = true)`"
     else
+        itps_load(ITPS_DEFAULT_DIR)
         @info "Default interpolants constructed."
     end
 

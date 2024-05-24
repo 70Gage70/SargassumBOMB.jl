@@ -98,7 +98,7 @@ end
 
 
 """
-    mutable struct OptimizationParameter{T}
+    mutable struct OptimizationParameter
 
 A container for the data, values and bounds for a parameter to be optimized.
 
@@ -116,11 +116,11 @@ Use
 
 `OptimizationParameter(name, default, bounds, optimizable; opt = nothing)`
 """
-mutable struct OptimizationParameter{T<:Real} 
+mutable struct OptimizationParameter
     name::String
-    default::T
-    bounds::Tuple{T, T}
-    opt::Union{Nothing, T}
+    default::Float64
+    bounds::Tuple{Float64, Float64}
+    opt::Union{Nothing, Float64}
     optimizable::Bool
 
     function OptimizationParameter(
@@ -133,16 +133,12 @@ mutable struct OptimizationParameter{T<:Real}
         @argcheck name in OPTIMIZATION_PARAMETER_NAMES "Got $(name) ∉ $(OPTIMIZATION_PARAMETER_NAMES)"
         @argcheck first(bounds) < last(bounds)
 
-        def, lb, ub = promote(default, first(bounds), last(bounds))
-
-        op_opt = opt === nothing ? nothing : promote(opt, def)[1]
-
-        return new{typeof(def)}(name, def, (lb, ub), op_opt, optimizable)
+        return new(name, def, (lb, ub), opt, optimizable)
     end
 end
 
 """
-    mutable struct BOMBOptimizationProblem{T, U, C}
+    mutable struct BOMBOptimizationProblem{C}
 
 A container for all the data defining an optimization problem.
 
@@ -150,8 +146,6 @@ A container for all the data defining an optimization problem.
 
 - `params`: A `Dict` mapping each element of `[OPTIMIZATION_PARAMETER_NAMES](@ref)` to an [`OptimizationParameter`](@ref) \
 that contains it.
-- `rhs`: The `Function` to integrate, generally should be [`Raft!`](@ref), but [`Leeway!`] can be used \
-for testing purposes.
 - `immortal`: A `Bool` such that if `true`, the [`ImmortalModel`](@ref) will be used, resulting in no clump \
 growths or deaths.
 - `ics`: The [`InitialConditions`](@ref) for the integration.
@@ -168,34 +162,34 @@ growths or deaths.
 
 The fields `opt` and `opt_rtr` are initialized to `nothing`.
 """
-mutable struct BOMBOptimizationProblem{T<:Real, U<:Integer, C<:AbstractConnections}
-    params::Dict{String, OptimizationParameter{T}}
+mutable struct BOMBOptimizationProblem{C<:AbstractConnections}
+    params::Dict{String, OptimizationParameter}
     rhs::Function
     immortal::Bool
-    ics::InitialConditions{T}
-    springs::BOMBSpring{T}
+    ics::InitialConditions
+    springs::BOMBSpring
     connections::C
     loss_func::LossFunction
-    opt::Union{Nothing, T}
-    opt_rtr::Union{Nothing, RaftTrajectory{U, T}}
-    seed::U
+    opt::Union{Nothing, Float64}
+    opt_rtr::Union{Nothing, RaftTrajectory}
+    seed::Int64
 
     function BOMBOptimizationProblem(;
-        params::Dict{String, OptimizationParameter{T}},
+        params::Dict{String, OptimizationParameter},
         rhs::Function,
         immortal::Bool,
-        ics::InitialConditions{T},
-        springs::BOMBSpring{T},
+        ics::InitialConditions,
+        springs::BOMBSpring,
         connections::C,
         loss_func::LossFunction,
-        seed::U = 1234) where {T<:Real, U<:Integer, C<:AbstractConnections}
+        seed::Integer = 1234) where {C<:AbstractConnections}
 
         if length(params) == 0 
             @warn "No parameters are set to be optimized."
         end
         @argcheck rhs in [Raft!, Leeway!]
 
-        return new{T, U, C}(params, rhs, immortal, ics, springs, connections, loss_func, nothing, nothing, seed)
+        return new{C}(params, rhs, immortal, ics, springs, connections, loss_func, nothing, nothing, seed)
     end
 end
 

@@ -89,15 +89,15 @@ Both `x_bins` and `y_bins` should be `StepRangeLen`, i.e. of the form `range(sta
 No coversion from or to spherical coordinates is done on `x_bins` and `y_bins`.
 """
 function bins(raft_trajectory::RaftTrajectory, x_bins::StepRangeLen, y_bins::StepRangeLen)
-    x = typeof(raft_trajectory).parameters[2][]
-    y = typeof(raft_trajectory).parameters[2][]
+    x = Float64[]
+    y = Float64[]
 
     for (_, tr) in raft_trajectory.trajectories
         x = vcat(x, tr.xy[:,1])
         y = vcat(y, tr.xy[:,2])
     end
 
-    mat = zeros(eltype(x), length(x_bins) - 1, length(y_bins) - 1)
+    mat = zeros(length(x_bins) - 1, length(y_bins) - 1)
 
     for i = 1:length(x)
         x_bin = ceil(Int64, (x[i] - first(x_bins))/step(x_bins))
@@ -126,13 +126,11 @@ This assumes that `dist.lon` and `dist.lat` give the central locations of the `d
 - `return_xy_bins`: A `Bool` such that, if `true`, the tuple `(x_bins, y_bins, bins)` is returned instead of just `bins`. Default `false`.
 """
 function bins(raft_trajectory::RaftTrajectory, dist::SargassumDistribution; return_xy_bins::Bool = false)
-    lons = dist.lon
-    δx = (lons[2] - lons[1])/2
-    x_bins = range(lons[1] - δx, stop = dist.lon[end] + δx, length = length(lons) + 1)
-
-    lats = dist.lat
-    δy = (lats[2] - lats[1])/2
-    y_bins = range(lats[1] - δy, stop = dist.lat[end] + δy, length = length(lats) + 1)  
+    lon = vec2range(dist.lon)
+    x_bins = range(lon[1] - step(lon)/2, lon[end] + step(lon)/2, length = length(lon) + 1)
+    
+    lat = vec2range(dist.lat)
+    y_bins = range(lat[1] - step(lat)/2, lat[end] + step(lat)/2, length = length(lat) + 1)
 
     if return_xy_bins
         return (x_bins, y_bins, bins(raft_trajectory, x_bins, y_bins))
@@ -148,5 +146,5 @@ function time_slice(traj::RaftTrajectory, tspan::NTuple{2, Real})
     t = traj.t
     idx = findall(x -> first(tspan) <= x <= last(tspan), t)
 
-    return RaftTrajectory(trajectories_new, t[idx], traj.n_clumps[idx], time_slice(traj.com, tspan))
+    return RaftTrajectory(trajectories = trajectories_new, n_clumps = traj.n_clumps[idx], com = time_slice(traj.com, tspan))
 end

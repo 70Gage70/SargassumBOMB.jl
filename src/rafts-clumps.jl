@@ -100,6 +100,8 @@ the clumps initially provided are all alive.
 If `fast_raft == true` in the above constructor, then the equations will be integrated using [`FastRaft!`](@ref).
 This is faster than [`Raft!`](@ref) at the expense of a more front-loaded computation since the interpolants must
 be computed. Using fast raft is advisable when the number of clumps is large. Default `false`.
+
+One can also set `fast_raft = (dx_MR, dy_MR)` directly if the interpolants have been computed previously using [`dxdy_MR`](@ref).
 """
 struct RaftParameters{
     S<:AbstractSpring, 
@@ -128,7 +130,7 @@ struct RaftParameters{
         gd_model::G,
         land::L,
         n_clumps_max::Int64,
-        fast_raft::Bool = false) where {S<:AbstractSpring, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand}
+        fast_raft::Union{Bool, Tuple{I, I}} = false) where {S<:AbstractSpring, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand, I<:Interpolations.AbstractInterpolation}
 
         @argcheck n_clumps_max >= size(ics.ics, 2) "Maximum number of clumps must be at least as large as number of initial clumps"
 
@@ -142,22 +144,26 @@ struct RaftParameters{
         connections.connections[living] .= conns .|> x -> map(y -> conns2living[y], x)
 
         # fast_raft
-        dx_MR, dy_MR = fast_raft ? _dxdy_MR(ics.tspan, clumps) : (nothing, nothing)
-        
+        if fast_raft isa Bool
+            dx_MR, dy_MR = fast_raft ? dxdy_MR(ics.tspan, clumps) : (nothing, nothing)
+        else
+            dx_MR, dy_MR = fast_raft
+        end
+  
         return new{S, C, G, L, typeof(dx_MR)}(ics, clumps, springs, connections, gd_model, land, n_clumps_max, living, n_clumps_tot, dx_MR, dy_MR)
     end
 end
 
 
 """
-    _dxdy_MR(tspan, clumps)
+    dxdy_MR(tspan, clumps)
 
 Compute `(dx, dy)` where `dx` and `dy` are interpolants evaluable at `(x, y, t)` equal to the right-hand-side
 of the Maxey-Riley equations (spring force excluded).
 
 This is automatically applies when a fast raft is selected in [`Raft!`](@ref).
 """
-function _dxdy_MR(tspan::Tuple{Real, Real}, clumps::ClumpParameters)
+function dxdy_MR(tspan::Tuple{Real, Real}, clumps::ClumpParameters)
     α, τ, R, f, σ = clumps.α, clumps.τ, clumps.R, clumps.f, clumps.σ
 
     dt = step(WATER_ITP.x.dims[:t])

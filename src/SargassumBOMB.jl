@@ -68,7 +68,7 @@ include("growth-death.jl")
 export AbstractGrowthDeathModel, ImmortalModel, BrooksModelParameters, BrooksModel
 
 include("rafts-clumps.jl")
-export ClumpParameters, RaftParameters
+export ClumpParameters, RaftParameters, dxdy_MR
 
 include("physics.jl")
 export FastRaft!, Raft!, Leeway!
@@ -83,11 +83,11 @@ include("main.jl")
 export simulate
 
 include("optimization.jl")
-export OPTIMIZATION_PARAMETER_NAMES, LossFunction, OptimizationParameter, BOMBOptimizationProblem
-export optimizable, optimize!, sample!
+export LossFunction
+export optimize!
 
 include("plotting-core.jl")
-export trajectory!, trajectory_hist!, plot
+export trajectory!, trajectory_hist!
 
 include("plotting-itp.jl")
 export check_land, check_itp

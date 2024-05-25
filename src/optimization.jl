@@ -1,30 +1,5 @@
 """
-    const OPTIMIZATION_PARAMETER_NAMES
-
-A `Vector` of `String`s giving the names of all the parameters it is possible to optimize by default.
-
-Equal to `["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N", "T_min", "T_max", "S_min", "S_max"]`.
-
-### Definitions
-
-- `δ`: The buoyancy of a clump. 
-- `τ`: Measures the inertial response time of the medium to the particle.
-- `σ`: A prefactor multiplying the Stokes drift term. 
-- `A_spring`: The maximum value of the spring stiffness function.
-- `λ`: A prefactor multiplying the spring natural length.
-- `μ_max`:  Sargassum maximum growth rate.
-- `m`: Sargassum mortality rate.
-- `k_N`: Sargassum nutrient (N) uptake half saturation.
-- `T_min:` Minimum temperature for Sargassum growth.
-- `T_max`: Maximum temperature for Sargassum growth.
-- `S_min:` Minimum threshold for Sargassum death.
-- `S_max`: Maximum threshold for Sargassum growth.
-"""
-const OPTIMIZATION_PARAMETER_NAMES = ["δ", "τ", "σ", "A_spring", "λ", "μ_max", "m", "k_N", "T_min", "T_max", "S_min", "S_max"]
-
-
-"""
-    struct LossFunction
+    struct LossFunction{F1, F2}
 
 A container for the function used for measuring the loss of a simulation.
 
@@ -53,9 +28,9 @@ A container for the function used for measuring the loss of a simulation.
 - `cumulative`: If `true`, the loss is added at each intermediate week of the integration rather than just at the end. Default `false`.
 - `name`: A `String` giving the name of the loss function. Default `"L1"`.
 """
-struct LossFunction
-    f::Function
-    metric::Function
+struct LossFunction{F1<:Function, F2<:Function}
+    f::F1
+    metric::F2
     name::String
 
     function LossFunction(
@@ -88,303 +63,48 @@ struct LossFunction
                 loss_total = loss_total + metric(target[lons, lats], data[lons, lats])
             end
 
-            return loss_total
+            return isnan(loss_total) ? Inf : loss_total
         end
 
 
-        return new(weekly_loss, metric, name)
+        return new{typeof(weekly_loss), typeof(metric)}(weekly_loss, metric, name)
     end
 end
 
 
 """
-    mutable struct OptimizationParameter
+    optimize!(f, param_bounds, loss_func; time_limit, verbose, seed)
 
-A container for the data, values and bounds for a parameter to be optimized.
-
-### Fields 
-
-- `name`: A `String` with the name of the parameter, must be one of [`OPTIMIZATION_PARAMETER_NAMES`](@ref).
-- `default`: The default (starting) value of the parameter.
-- `bounds`: A `Tuple` giving the upper and lower bounds of the parameter.
-- `opt`: A optimal value of the parameter.
-- `optimizable`: A `Bool` such that, if `false`, the parameter will not be optimized away from its default value.
-
-### Constructor
-
-Use 
-
-`OptimizationParameter(name, default, bounds, optimizable; opt = nothing)`
-"""
-mutable struct OptimizationParameter
-    name::String
-    default::Float64
-    bounds::Tuple{Float64, Float64}
-    opt::Union{Nothing, Float64}
-    optimizable::Bool
-
-    function OptimizationParameter(
-        name::String, 
-        default::Real, 
-        bounds::Tuple{Real, Real},
-        optimizable::Bool;
-        opt::Union{Nothing, Real} = nothing)
-
-        @argcheck name in OPTIMIZATION_PARAMETER_NAMES "Got $(name) ∉ $(OPTIMIZATION_PARAMETER_NAMES)"
-        @argcheck first(bounds) < last(bounds)
-
-        return new(name, def, (lb, ub), opt, optimizable)
-    end
-end
-
-"""
-    mutable struct BOMBOptimizationProblem{C}
-
-A container for all the data defining an optimization problem.
-
-### Fields 
-
-- `params`: A `Dict` mapping each element of `[OPTIMIZATION_PARAMETER_NAMES](@ref)` to an [`OptimizationParameter`](@ref) \
-that contains it.
-- `immortal`: A `Bool` such that if `true`, the [`ImmortalModel`](@ref) will be used, resulting in no clump \
-growths or deaths.
-- `ics`: The [`InitialConditions`](@ref) for the integration.
-- `springs`: An [`BOMBSpring`](@ref) for the integration.
-- `connections`: A subtype of [`AbstractConnections`](@ref) for the integration.
-- `loss_func`: The [`LossFunction`](@ref) used during the optimization.
-- `opt`: The minimal [`LossFunction`](@ref) obtained. If `nothing`, the problem is considered unoptimized.
-- `opt_rtr`: When optimized, the [`RaftTrajectory`](@ref) that attained the optimal loss.
-- `seed`: A `Random.seed!` used in the integration.
-
-### Constructor
-
-`BOMBOptimizationProblem(; params, rhs, immortal, ics, springs, connections, loss_func, seed = 1234)`
-
-The fields `opt` and `opt_rtr` are initialized to `nothing`.
-"""
-mutable struct BOMBOptimizationProblem{C<:AbstractConnections}
-    params::Dict{String, OptimizationParameter}
-    rhs::Function
-    immortal::Bool
-    ics::InitialConditions
-    springs::BOMBSpring
-    connections::C
-    loss_func::LossFunction
-    opt::Union{Nothing, Float64}
-    opt_rtr::Union{Nothing, RaftTrajectory}
-    seed::Int64
-
-    function BOMBOptimizationProblem(;
-        params::Dict{String, OptimizationParameter},
-        rhs::Function,
-        immortal::Bool,
-        ics::InitialConditions,
-        springs::BOMBSpring,
-        connections::C,
-        loss_func::LossFunction,
-        seed::Integer = 1234) where {C<:AbstractConnections}
-
-        if length(params) == 0 
-            @warn "No parameters are set to be optimized."
-        end
-        @argcheck rhs in [Raft!, Leeway!]
-
-        return new{C}(params, rhs, immortal, ics, springs, connections, loss_func, nothing, nothing, seed)
-    end
-end
-
-"""
-    optimizable(bop)
-
-Return a vector of names of optimizable parameters of `bop`. These are ordered as they appear in `OPTIMIZATION_PARAMETER_NAMES`.
-"""
-function optimizable(bop::BOMBOptimizationProblem)
-    return [bop.params[param].name for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
-end
-
-"""
-    RaftParameters(bop, type)
-
-Construct [`RaftParameters`](@ref) for `bop::BOMBOptimizationProblem` according to `type`.
-
-### Type
-
-Type can be a `String` or a `Vector`. If it is a string, it can take one of two values:
-
-- `"default"`: Each parameter is set equal to its `default`.
-- `"opt"`: Each parameter is set equal to its optimal value, if it is both optimizable and optimized. Otherwise, `default` is used.
-
-If it is a vector, it must have a length equal to `length(optimizable(bop))`. The `RaftParameters` is constructed 
-by setting the optimizable parameters equal to the values in the vector (ordered as in `OPTIMIZATION_PARAMETER_NAMES`)
-and leaving all other parameters equal to the defaults.
-"""
-function RaftParameters(bop::BOMBOptimizationProblem, type::Union{String, Vector{<:Real}})
-    seed!(bop.seed)
-
-    ps = OPTIMIZATION_PARAMETER_NAMES
-    if type isa String
-        @argcheck type in ["default", "opt"]   
-
-        if type == "default"
-            δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max, S_min, S_max = [bop.params[param].default for param in ps]
-        elseif type == "opt"
-            if bop.opt === nothing
-                @warn "The `opt` parameter value has been selected, but `bop` has not been optimized. The default parameters will be used."
-                δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max, S_min, S_max = [bop.params[param].default for param in ps]
-            else
-                δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max, S_min, S_max = [bop.params[param].optimizable ? bop.params[param].opt : bop.params[param].default for param in ps]
-            end
-        end
-    elseif type isa Vector
-        @argcheck length(type) == length(optimizable(bop)) "The vector `type` must have the same number of entries as the number of optimizable parameters."
-
-        ps = OPTIMIZATION_PARAMETER_NAMES
-        vs = []
-        j = 1
-        for i = 1:length(ps)
-            if bop.params[ps[i]].optimizable
-                push!(vs, type[j])
-                j = j + 1
-            else
-                push!(vs, bop.params[ps[i]].default)
-            end
-        end
-
-        δ, τ, σ, A_spring, λ, μ_max, m, k_N, T_min, T_max, S_min, S_max = vs
-    end
-    
-    # ics
-    ics = bop.ics |> deepcopy
-
-    # clumps
-    clumps = ClumpParameters(δ = δ, σ = σ)
-    clumps = ClumpParameters(clumps.α, τ, clumps.R, clumps.f, clumps.σ)
-    
-    # springs
-    springs = BOMBSpring(A_spring, λ*bop.springs.L)
-    
-    # connections
-    connections = bop.connections |> deepcopy
-    
-    # growth-death
-    if bop.immortal
-        gd_model = ImmortalModel(ics)
-    else
-        bmp = BrooksModelParameters(
-            clumps_limits = (floor(Int64, n_clumps(ics.ics)/2), 2*n_clumps(ics.ics)), # the number of clumps can at most double and at least half
-            μ_max = μ_max,
-            m = m,
-            k_N = k_N,
-            T_min = T_min,
-            T_max = T_max,
-            S_min = S_min,
-            S_max = S_max)
-        gd_model = BrooksModel(ics, params = bmp)
-    end
-
-    # land
-    land = Land()
-    
-    return RaftParameters(
-        ics = ics,
-        clumps = clumps,
-        springs = springs,
-        connections = connections,
-        gd_model = gd_model,
-        land = land)
-end
-
-"""
-    simulate(bop::BOMBOptimizationProblem, type; high_accuracy, showprogress)
-
-Integrate `bop` by constructing the [`RaftParameters`](@ref) implied by its fields and calling [`simulate(::RaftParameters)`](@ref), 
-returning a [`RaftTrajectory`](@ref).
-
-### Type
-
-Type can be a `String` or a `Vector`. If it is a string, it can take one of two values:
-
-- `"default"`: Each parameter is set equal to its `default`.
-- `"opt"`: Each parameter is set equal to its optimal value, if it is both optimizable and optimized. Otherwise, `default` is used.
-
-If it is a vector, it must have a length equal to `length(optimizable(bop))`. The `RaftParameters` is constructed 
-by setting the optimizable parameters equal to the values in the vector (ordered as in `OPTIMIZATION_PARAMETER_NAMES`)
-and leaving all other parameters equal to the defaults.
-
-### Optional Arguments
-
-- `ics`: If provided, `bop` will be integrated with these `InitialConditions` rather than `bop.ics`. This has 
-the effect of create a new `BOMBOptimizationProblem` with different `ics` and `springs`. The springs 
-are updated with `L = ΔL(ics)`.
-- `high_accuracy`: A `Bool` which, if `true`, uses higher tolerances in the integration. Default `false`.
-- `showprogress`: A `Bool` which outputs the integration progress when `true`. Default `false`.
-"""
-function simulate(
-    bop::BOMBOptimizationProblem,
-    type::Union{String, Vector{<:Real}};
-    ics::Union{InitialConditions, Nothing} = nothing,
-    high_accuracy::Bool = false, 
-    showprogress::Bool = false)
-
-    seed!(bop.seed)
-
-    if ics === nothing
-        rp = RaftParameters(bop, type)
-    else
-        if "A_spring" in optimizable(bop) && type == "opt"
-            A_spring = bop.params["A_spring"].opt
-        else
-            A_spring = bop.params["A_spring"].default
-        end
-
-        springs = BOMBSpring(A_spring, ΔL(ics)) # don't apply λ, might be nonsensical in general
-        bop_new = deepcopy(bop)
-        bop_new.ics = ics
-        bop_new.springs = springs
-
-        rp = RaftParameters(bop_new, type)
-    end
-
-    abstol = high_accuracy ? 1.0e-6 : nothing
-    reltol = high_accuracy ? 1.0e-6 : nothing
-
-    return simulate(rp, rhs = bop.rhs, abstol = abstol, reltol = reltol, showprogress = showprogress)
-end
-
-
-"""
-    optimize!(bop; time_limit, high_accuracy, verbose)
-
-Optimize the [`BOMBOptimizationProblem`](@ref) in `bop` using the `Metaheuristics` optimization package and update it
-to include the optimal results. The Evolutionary Centers Algorithm is used via `Metaheuristics.ECA`.
+Find the minimum of `f(X)` where `X ∈ param_bounds`. The Evolutionary Centers Algorithm is used via `Metaheuristics.ECA`.
 
 ### Arguments 
 
-- `bop`:: An unoptimized [`BOMBOptimizationProblem`](@ref).
+- `f`: The function to optimize. Should be evaluable at a vector whose length is equal to `length(param_bounds)` and return a `Real`.
+- `param_bounds`: A vector of tuples giving the box constraints of the optimization.
 
 ### Optional Arguments 
 
 - `time_limit`: A `Float64` giving the upper time limit in seconds on the length of the optimization. Default `300.0`.
-- `high_accuracy`: A `Bool` which, if `true`, uses higher tolerances in the integration. Default `false`.
 - `verbose`: Show simplified results each iteration of the optimization. Default `true`.
+- `seed`: An integer seed for randomness. Default `1234`.
 """
 function optimize!(
-    bop::BOMBOptimizationProblem; 
+    f::Function,
+    param_bounds::Vector{<:Tuple{Real, Real}}; 
     time_limit::Float64 = 300.0,
-    high_accuracy::Bool = false,
-    verbose = true)
+    verbose = true,
+    seed::Integer = 1234)
 
-    seed!(bop.seed)
-    @argcheck bop.opt === nothing "`bop` already has an optimal value"
+    seed!(seed)
 
-    lb = [bop.params[param].bounds[1] for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
-    ub = [bop.params[param].bounds[2] for param in OPTIMIZATION_PARAMETER_NAMES if bop.params[param].optimizable]
+    lb = [p[1] for p in param_bounds]
+    ub = [p[2] for p in param_bounds]
     bounds = Metaheuristics.boxconstraints(lb = lb, ub = ub)
 
     function f_parallel(X)
         fitness = zeros(size(X,1))
         Threads.@threads for i in 1:size(X,1)
-            fitness[i] = bop.loss_func.f(simulate(bop, X[i,:], high_accuracy = high_accuracy))
+            fitness[i] = f(X[i,:])
         end
         return fitness
     end
@@ -393,97 +113,88 @@ function optimize!(
     algorithm = Metaheuristics.ECA(options = options)
     result = Metaheuristics.optimize(f_parallel, bounds, algorithm)
 
-    bop.opt = result.best_sol.f
-    i = 1
-    for param in optimizable(bop)
-        bop.params[param].opt = result.best_sol.x[i]
-        i = i + 1
-    end
-
-    bop.opt_rtr = simulate(bop, "opt", high_accuracy = high_accuracy, showprogress = false)
-
-    return nothing
+    return result
 end
 
-"""
-    sample!(bop, n_samples; sampling_algorithm, time_limit, high_accuracy, verbose)
+# """
+#     sample!(bop, n_samples; sampling_algorithm, time_limit, high_accuracy, verbose)
 
-Optimize the [`BOMBOptimizationProblem`](@ref) in `bop` using the `QuasiMonteCarlo` package. Specifically, 
-take `n_samples` using `QuasiMonteCarlo.SobolSample()` over all optimizable parameters so that the optimal 
-value is just the sample with the lowest loss function.
+# Optimize the [`BOMBOptimizationProblem`](@ref) in `bop` using the `QuasiMonteCarlo` package. Specifically, 
+# take `n_samples` using `QuasiMonteCarlo.SobolSample()` over all optimizable parameters so that the optimal 
+# value is just the sample with the lowest loss function.
 
-Return (samples, losses).
+# Return (samples, losses).
 
-### Arguments 
+# ### Arguments 
 
-- `bop`: An unoptimized [`BOMBOptimizationProblem`](@ref).
-- `n_samples`: The number of samples to take.
+# - `bop`: An unoptimized [`BOMBOptimizationProblem`](@ref).
+# - `n_samples`: The number of samples to take.
 
-### Optional Arguments 
+# ### Optional Arguments 
 
-- `sampling_algorithm`: A `QuasiMonteCarlo.SamplingAlgorithm`. Default `SobolSample()`.
-- `time_limit`: If provided, a `Float64` giving the upper time limit in seconds on the length of the optimization. Default `nothing`.
-- `high_accuracy`: A `Bool` which, if `true`, uses lower tolerances in the integration. Default `false`.
-- `verbose`: Show the progress of the sampling. Default `true`.
-"""
-function sample!(
-    bop::BOMBOptimizationProblem,
-    n_samples::Integer;
-    sampling_algorithm::QuasiMonteCarlo.SamplingAlgorithm = SobolSample(),
-    time_limit::Union{Float64, Nothing} = nothing,
-    high_accuracy::Bool = false,
-    verbose = true)
+# - `sampling_algorithm`: A `QuasiMonteCarlo.SamplingAlgorithm`. Default `SobolSample()`.
+# - `time_limit`: If provided, a `Float64` giving the upper time limit in seconds on the length of the optimization. Default `nothing`.
+# - `high_accuracy`: A `Bool` which, if `true`, uses lower tolerances in the integration. Default `false`.
+# - `verbose`: Show the progress of the sampling. Default `true`.
+# """
+# function sample!(
+#     bop::BOMBOptimizationProblem,
+#     n_samples::Integer;
+#     sampling_algorithm::QuasiMonteCarlo.SamplingAlgorithm = SobolSample(),
+#     time_limit::Union{Float64, Nothing} = nothing,
+#     high_accuracy::Bool = false,
+#     verbose = true)
 
-    lb = [bop.params[p].bounds[1] for p in OPTIMIZATION_PARAMETER_NAMES if bop.params[p].optimizable]
-    ub = [bop.params[p].bounds[2] for p in OPTIMIZATION_PARAMETER_NAMES if bop.params[p].optimizable]
-    samps = QuasiMonteCarlo.sample(n_samples, lb, ub, sampling_algorithm)
+#     lb = [bop.params[p].bounds[1] for p in OPTIMIZATION_PARAMETER_NAMES if bop.params[p].optimizable]
+#     ub = [bop.params[p].bounds[2] for p in OPTIMIZATION_PARAMETER_NAMES if bop.params[p].optimizable]
+#     samps = QuasiMonteCarlo.sample(n_samples, lb, ub, sampling_algorithm)
 
-    fitness = zeros(n_samples)
-    cur_best = Inf
-    timedout = false
-    tstart = time()
+#     fitness = zeros(n_samples)
+#     cur_best = Inf
+#     timedout = false
+#     tstart = time()
 
-    j = 0
-    Threads.@threads for i in 1:n_samples
-        j = j + 1
-        if (time_limit !== nothing) && (time() - tstart > time_limit)
-            timedout = true
-            break
-        end
+#     j = 0
+#     Threads.@threads for i in 1:n_samples
+#         j = j + 1
+#         if (time_limit !== nothing) && (time() - tstart > time_limit)
+#             timedout = true
+#             break
+#         end
 
-        cur_loss = bop.loss_func.f(simulate(bop, samps[:,i], high_accuracy = high_accuracy))
-        fitness[i] = cur_loss
+#         cur_loss = bop.loss_func.f(simulate(bop, samps[:,i], high_accuracy = high_accuracy))
+#         fitness[i] = cur_loss
 
-        if cur_loss < cur_best
-            cur_best = cur_loss
-        end
+#         if cur_loss < cur_best
+#             cur_best = cur_loss
+#         end
 
-        if verbose
-            val = 100*j/n_samples
-            print(WHITE_BG("Sampling: $(val)%, Best: $(cur_best) \r"))
-            flush(stdout)
-        end
-    end
+#         if verbose
+#             val = 100*j/n_samples
+#             print(WHITE_BG("Sampling: $(val)%, Best: $(cur_best) \r"))
+#             flush(stdout)
+#         end
+#     end
 
-    if timedout
-        @info "Exceeded time limit of $(round(time_limit, sigdigits = 3)) seconds."
-    end
+#     if timedout
+#         @info "Exceeded time limit of $(round(time_limit, sigdigits = 3)) seconds."
+#     end
 
-    idx = findall(x -> x != 0.0, fitness)
-    fitness = fitness[idx]
-    samps = samps[:,idx]
+#     idx = findall(x -> x != 0.0, fitness)
+#     fitness = fitness[idx]
+#     samps = samps[:,idx]
 
-    best_loss, idx = findmin(fitness)
-    best_params = samps[:,idx]
+#     best_loss, idx = findmin(fitness)
+#     best_params = samps[:,idx]
 
-    bop.opt = best_loss
-    i = 1
-    for param in [name for name in OPTIMIZATION_PARAMETER_NAMES if bop.params[name].optimizable]
-        bop.params[param].opt = best_params[i]
-        i = i + 1
-    end
+#     bop.opt = best_loss
+#     i = 1
+#     for param in [name for name in OPTIMIZATION_PARAMETER_NAMES if bop.params[name].optimizable]
+#         bop.params[param].opt = best_params[i]
+#         i = i + 1
+#     end
 
-    bop.opt_rtr = simulate(bop, "opt", high_accuracy = high_accuracy, showprogress = false)
+#     bop.opt_rtr = simulate(bop, "opt", high_accuracy = high_accuracy, showprogress = false)
 
-    return (samps, fitness)
-end
+#     return (samps, fitness)
+# end

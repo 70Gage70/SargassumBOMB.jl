@@ -15,7 +15,7 @@ This function modifies the fields of `rp` significantly.
 - `alg`: The integration algorithm to use, default [`Tsit5()`](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
 - `abstol`: The absolute tolerance of integration; default `nothing`.
 - `reltol`: The relative tolerance of integration; default `nothing`.
-- `showprogress`: If `true`, print a status indicator of the progress of the integration. Default `true`.
+- `showprogress`: If `true`, print a status indicator of the progress of the integration. Default `false`.
 - `dt`: The solution trajectories are uniformized to be spaced in time by increments of `dt`. Note that the units of \
 this quantity are implicity `UNITS["time"]`. Default `0.1`.
 - `return_raw`: If true, return the result of `OrdinaryDiffEq.solve`, rather than a [`RaftTrajectory`](@ref). \
@@ -27,7 +27,7 @@ function simulate(
     alg::OrdinaryDiffEq.OrdinaryDiffEqAlgorithm = Tsit5(),
     abstol::Union{Real, Nothing} = nothing,
     reltol::Union{Real, Nothing} = nothing,
-    showprogress::Bool = true,
+    showprogress::Bool = false,
     dt::Real = 0.1,
     return_raw::Bool = false)
 
@@ -77,7 +77,7 @@ function simulate(
 
     l_idx = 1:li
     ts = collect(ts)[l_idx]
-    trajs = [Trajectory(permutedims(xy2sph(trajs[i][:,2:end])), ts[lifespans[l_idx,i]]) for i = 1:rp.n_clumps_max]
+    trajs = [Trajectory(permutedims(xy2sph(trajs[i][:,2:end])), ts[lifespans[l_idx,i]]) for i = 1:rp.n_clumps_max if size(trajs[i], 2) > 1]
     trajs = Dict(1:length(trajs) .=> trajs)
     raft_com = Trajectory(raft_com[l_idx,:], ts)
 

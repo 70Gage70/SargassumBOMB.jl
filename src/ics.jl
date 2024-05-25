@@ -90,7 +90,7 @@ function InitialConditions(
 end
 
 """
-    InitialConditions(tspan, dist, weeks, number, sample_type; n_clumps_max, seed)
+    InitialConditions(tspan, dist, weeks, number; seed)
 
 Construct [`InitialConditions`](@ref) from a `SargassumDistribution`.
 
@@ -99,31 +99,27 @@ Construct [`InitialConditions`](@ref) from a `SargassumDistribution`.
 in in `UNITS["time"]` since [`T_REF`](@ref).
 - `dist`: A `SargassumDistribution`.
 - `weeks`: A `Vector{<:Integer}` giving the weeks of the month to consider. Each entry should be between 1 and 4 and appear only once.
-- `number`: The number of clumps to initialize; interactive with `sample_type` and should be at least `1`.
-- `sample_type`: A `String` identifying one of the methods of assigning clump locations based on the distribution.
-    - `"levels"`: Boxes with nonzero Sargassum are divided into `number` levels of size `(minimum(dist.sargassum) - maximum(dist.sargassum))/number`.
-    Each box gets a number of clumps equal to its level index. For example, if `number = 2`, then the smaller half of the boxes (by Sargassum content) 
-    get 1 clump each and the larger half get 2 clumps each.
-    - `"sample"`: A number `number` of samples are drawn from `dist`. Each sample is placed uniformly at random inside the corresponding box.
-    - `"sorted"`: Boxes are filled with one clump placed uniformly at random inside them, starting from the box with the highest concentration. If `number` 
-                is greater than the total number of boxes, repeat the loop starting again from the highest concentration box.
-    - `"uniform"`: Exactly one clump is placed in the center of each box with nonzero concentration. Note that this ignores `number`.
+- `number`: The number of clump levels. Note that this is NOT equal to the number of clumps.
+
+### Levels
+
+Boxes with nonzero Sargassum are divided into `number` levels of size `(minimum(D) - maximum(D))/number` where `D = log10.(dist.sargassm[:,:,weeks])`. \
+Each box gets a number of clumps equal to its level index. For example, if `number = 2`, then the smaller half of the boxes (by Sargassum content) \
+get 1 clump each and the larger half get 2 clumps each.
 
 ### Optional Arguments 
 
-- `seed`: A `Random.seed!` used in the initialization.
+- `seed`: A `Random.seed!` used in the initialization. Default 1234.
 """
 function InitialConditions(
     tspan::Tuple{Real, Real},
     dist::SargassumDistribution, 
     weeks::Vector{<:Integer},
     number::Integer,
-    sample_type::String;
     seed::Integer = 1234)
 
     seed!(seed)
 
-    @argcheck sample_type in ["sample", "sorted", "uniform", "levels"] "`sample_type` not recognized."
     @argcheck number > 0 "Must request at least one clump"
     @argcheck length(weeks) > 0 "At least one week must be selected."
     @argcheck all(map(x -> 1 <= x <= 4, weeks)) "Each entry of `weeks` must be between 1 and 4."
@@ -142,54 +138,20 @@ function InitialConditions(
     pts = Iterators.product(lons, lats) |> x -> reduce(vcat, collect(x)) # vector of (lon, lat)
     wts = sarg |> x -> reduce(vcat, x) # vector of sarg, matched with pts
 
-    if sample_type == "sample"
-        samples = Distributions.sample(pts, Weights(wts), number)
+    idx = findall(x -> x > 0, wts)
+    pts = pts[idx]
+    wts = log10.(wts[idx])
 
-        for samp in samples
-            push!(x0, rand(Uniform(samp[1] - δ_x/2, samp[1] + δ_x/2)))
-            push!(y0, rand(Uniform(samp[2] - δ_y/2, samp[2] + δ_y/2)))
-        end
-    elseif sample_type == "sorted"
-        idx = findall(x -> x > 0, wts)
-        pts = pts[idx]
-        wts = wts[idx]
+    wtsmin, wtsmax = extrema(wts)
 
-        pts = pts[sortperm(wts, rev = true)]
-
-        n_c = 1
-        while n_c <= number
-            idx = mod(n_c, length(pts)) == 0 ? length(pts) : mod(n_c, length(pts))
-            pt = pts[idx]
-
+    for i = 1:length(pts)
+        pt = pts[i]
+        n_c = number*(wts[i] - wtsmin)/(wtsmax - wtsmin) |> x -> round(Integer, x, RoundUp)
+        for _ = 1:n_c
             push!(x0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))
             push!(y0, rand(Uniform(pt[2] - δ_y/2, pt[2] + δ_y/2)))       
-
-            n_c = n_c + 1
         end
-    elseif sample_type == "uniform"
-        idx = findall(x -> x > 0, wts)
-        pts = pts[idx]
-
-        for pt in pts
-            push!(x0, pt[1])
-            push!(y0, pt[2])  
-        end
-    elseif sample_type == "levels"
-        idx = findall(x -> x > 0, wts)
-        pts = pts[idx]
-        wts = wts[idx]
-
-        wtsmin, wtsmax = extrema(wts)
-
-        for i = 1:length(pts)
-            pt = pts[i]
-            n_c = number*(wts[i] - wtsmin)/(wtsmax - wtsmin) |> x -> round(Integer, x, RoundUp)
-            for _ = 1:n_c
-                push!(x0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))
-                push!(y0, rand(Uniform(pt[2] - δ_y/2, pt[2] + δ_y/2)))       
-            end
-        end           
-    end
+    end           
 
     ics = [x0' ; y0']
     ics = sph2xy(ics)

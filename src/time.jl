@@ -40,12 +40,38 @@ Convert the time corresponding to the year `y`, month `m` and week `w` indicated
 days since [`T_REF`](@ref).
 
 The days of the four weeks per month are defined as the 7th, 14th, 21nd and 28th.
+
+Can be applied as `ymw2time((y, m , w))`.
+
+This is the inverse of [`time2ymw`](@ref).
 """
 function ymw2time(year::Integer, month::Integer, week::Integer)
 
     @argcheck week in [1, 2, 3, 4]
 
     return datetime2time(DateTime(year, month, 7*week))
+end
+
+function ymw2time(ymw::NTuple{3, Integer})
+    ymw2time(ymw[1], ymw[2], ymw[3])
+end
+
+"""
+    time2ymw(time)
+
+Convert the time measured in days since [`T_REF`](@ref)
+to the corresponding to the year `y`, month `m` and week `w`.
+
+The days of the four weeks per month are defined as the 7th, 14th, 21nd and 28th.
+
+This is the inverse of [`ymw2time`](@ref).
+"""
+function time2ymw(time::Real)
+    y, m, d = yearmonthday(time2datetime(time))
+
+    @argcheck d in [7, 14, 21, 28]
+
+    return (y, m, Integer(d/7))
 end
 
 """

@@ -1,4 +1,95 @@
 """
+    struct TimeSeries
+
+A container for comparing simulation data to target data.
+
+### Fields
+
+- `simulation`: An array with dimensions `lon x lat x t` such that `sum(:,:,t) = 1` for all `t`. This is the Sargassum
+distribution coming from simulation, i.e. a [`RaftTrajectory`](@ref).
+- `target`: An array with dimensions `lon x lat x t` such that `sum(:,:,t) = 1` for all `t`. This is the Sargassum
+distribution coming from observation, i.e. a [`SargassumDistribution`](@ref).
+- `lon`: A vector of latitudes.
+- `lat`: A vector of longitudes.
+- `t`: A vector of week spans.
+- `exclude_clouded_bins`: If `true`, clouded bins have had their values set to 0 in both the simulation and the target.
+
+### Constructor
+
+Use `TimeSeries(rtr; corners, dists, exclude_clouded_bins)` where `rtr` is a [`RaftTrajectory`](@ref).
+
+- `corners`: Of the form `(lon_min, lon_max, lat_min, lat_max)` where the data is restricted to bins in this area. \
+Default `(-180, 180, -90, 90)`.
+- `dists`: A dictionary mapping `(year, month)` to `SargassumDistribution`. Default `DIST_1718`.
+- `exclude_clouded_bins`: Exclude clouded bins from the calculation, i.e. set their bin value equal to 0 in both the 
+simulation and the target. Default `true`.
+"""
+struct TimeSeries
+    simulation::Array{Float64, 3}
+    target::Array{Float64, 3}
+    lon::Vector{Float64}
+    lat::Vector{Float64}
+    t::Vector{Tuple{NTuple{3, Int64}, NTuple{3, Int64}}}
+    exclude_clouded_bins::Bool
+
+    function TimeSeries(
+        rtr::RaftTrajectory;
+        corners::NTuple{4, Real} = (-180, 180, -90, 90),
+        dists::Dict{Tuple{Int64, Int64}, SargassumFromAFAI.SargassumDistribution} = DIST_1718,
+        exclude_clouded_bins::Bool = true)
+    
+
+        ymw1 = time2ymw(first(rtr.t))
+        ymw2 = time2ymw(last(rtr.t))
+        ymws = ymwspan2weekspan(ymw1, ymw2)
+        tspans = [(ymw2time(ymws[i]...), ymw2time(ymws[i + 1]...)) for i = 1:length(ymws) - 1]
+
+        lons = findall(lon -> corners[1] <= lon <= corners[2], dists[ymws[1][1:2]].lon)
+        lats = findall(lat -> corners[3] <= lat <= corners[4], dists[ymws[1][1:2]].lat)
+
+        datas = []
+        targets = []
+    
+        for i = 1:length(ymws)-1
+            year, month, week = ymws[i+1]
+            target = dists[(year, month)]
+    
+            data = bins(time_slice(rtr, tspans[i]), target)
+    
+            if exclude_clouded_bins
+                data = data .* (target.clouds[:,:,week] .|> x -> ~x)
+                target = target.sargassum[:,:,week] .* (target.clouds[:, :, week] .|> x -> ~x)
+            else
+                target = target.sargassum[:,:,week]
+            end
+    
+            data = data[lons, lats]
+            target = target[lons, lats]
+    
+            if sum(data) == 0.0
+                data .= NaN
+                push!(datas, data)
+            else
+                push!(datas, data/sum(data))
+            end
+    
+            if sum(target) == 0.0
+                target .= NaN
+                push!(targets, target)
+            else
+                push!(targets, target/sum(target))
+            end
+        end
+    
+        lons = dists[ymws[1][1:2]].lon[lons]
+        lats = dists[ymws[1][1:2]].lat[lats]
+    
+        return new(stack(datas), stack(targets), lons, lats, [(ymws[i], ymws[i + 1]) for i = 1:length(ymws) - 1], exclude_clouded_bins)
+    end
+end
+
+
+"""
     struct LossFunction{F1, F2}
 
 A container for the function used for measuring the loss of a simulation.

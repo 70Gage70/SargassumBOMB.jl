@@ -88,6 +88,26 @@ struct TimeSeries
     end
 end
 
+"""
+    vec(ts::SargassumBOMB.TimeSeries)
+
+Return `(simulation, target)` where `simulation[i]` is a list of points `[lon_i, lat_i, ts.simulation[i]]` and \
+similarly for `target`.
+"""
+function Base.vec(ts::SargassumBOMB.TimeSeries)
+    simulation = Vector{Vector{Float64}}[]
+    target = Vector{Vector{Float64}}[]
+
+    for t = 1:length(ts.t)
+        pts = Iterators.product(ts.lon, ts.lat) |> x -> reduce(vcat, collect(x)) 
+        sim = ts.simulation[:,:,t] |> x -> reduce(vcat, x) 
+        tar = ts.target[:,:,t] |> x -> reduce(vcat, x)
+        push!(simulation, [[pts[i][1], pts[i][2], sim[i]] for i = 1:length(pts)]) 
+        push!(target, [[pts[i][1], pts[i][2], tar[i]] for i = 1:length(pts)]) 
+    end
+
+    return (simulation, target)
+end
 
 """
     struct LossFunction{F1, F2}

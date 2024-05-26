@@ -83,7 +83,7 @@ include("main.jl")
 export simulate
 
 include("optimization.jl")
-export TimeSeries
+export TimeSeries, vec
 export LossFunction
 export optimize!
 

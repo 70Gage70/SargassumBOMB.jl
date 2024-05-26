@@ -89,7 +89,7 @@ whose velocities are equal to `u = v_water + α v_wind`.
 The parameters `p` are given by [`RaftParameters`](@ref), but only `p.α` is used.
 """
 function Leeway!(du, u, p::RaftParameters, t)
-    α = p.clumps.α
+    α, n_clumps_max = p.clumps.α, p.n_clumps_max
 
     for i in (1:n_clumps_max)[p.living]
         x, y        = clump_i(u, i)

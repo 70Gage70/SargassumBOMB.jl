@@ -89,24 +89,18 @@ Both `x_bins` and `y_bins` should be `StepRangeLen`, i.e. of the form `range(sta
 No coversion from or to spherical coordinates is done on `x_bins` and `y_bins`.
 """
 function bins(raft_trajectory::RaftTrajectory, x_bins::StepRangeLen, y_bins::StepRangeLen)
-    x = Float64[]
-    y = Float64[]
-
-    for (_, tr) in raft_trajectory.trajectories
-        x = vcat(x, tr.xy[:,1])
-        y = vcat(y, tr.xy[:,2])
-    end
-
     mat = zeros(length(x_bins) - 1, length(y_bins) - 1)
 
-    for i = 1:length(x)
-        x_bin = ceil(Int64, (x[i] - first(x_bins))/step(x_bins))
-        y_bin = ceil(Int64, (y[i] - first(y_bins))/step(y_bins))
-
-        if (x_bin < 1) || (x_bin >= length(x_bins)) || (y_bin < 1) || (y_bin >= length(y_bins))
-            continue
-        else
-            mat[x_bin, y_bin] = mat[x_bin, y_bin] + 1
+    for (_, tr) in raft_trajectory.trajectories
+        for i = 1:size(tr.xy, 1)
+            x_bin = ceil(Int64, (tr.xy[i, 1] - first(x_bins))/step(x_bins))
+            y_bin = ceil(Int64, (tr.xy[i, 2] - first(y_bins))/step(y_bins))
+    
+            if (x_bin < 1) || (x_bin >= length(x_bins)) || (y_bin < 1) || (y_bin >= length(y_bins))
+                continue
+            else
+                mat[x_bin, y_bin] = mat[x_bin, y_bin] + 1
+            end
         end
     end
 

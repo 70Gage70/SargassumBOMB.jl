@@ -113,16 +113,14 @@ end
 
 function Base.show(io::IO, x::BrooksModelParameters)
     println(io, "BrooksModelParameters")
-    println(io, " temp = $(x.temp)")
-    println(io, " no3 = $(x.no3)")
     println(io, " μ_max = $(x.μ_max)")
     println(io, " m = $(x.m)")
-    println(io, " I_k = $(x.I_k)")
-    println(io, " a_ref = $(x.a_ref)")
     println(io, " k_N = $(x.k_N)")
-    println(io, " T_ref = $(x.T_ref)")
-    println(io, " z_max = $(x.z_max)")
+    println(io, " T_min = $(x.T_min)")
+    println(io, " T_max = $(x.T_max)")
     println(io, " clumps_limits = $(x.clumps_limits)")
+    println(io, " S_min = $(x.S_min)")
+    println(io, " S_max = $(x.S_max)")
     println(io, " dSdt = $(nameof(x.dSdt))")
 end
 

@@ -197,6 +197,7 @@ Find the minimum of `f(X)` where `X ∈ param_bounds`. The Evolutionary Centers 
 
 - `time_limit`: A `Float64` giving the upper time limit in seconds on the length of the optimization. Default `300.0`.
 - `verbose`: Show simplified results each iteration of the optimization. Default `true`.
+- `logger`: A function passed directly to `Metaheuristics.optimize!`, which receives a `Metaheuristics.State` at every step.
 - `seed`: An integer seed for randomness. Default `1234`.
 """
 function optimize!(
@@ -204,6 +205,7 @@ function optimize!(
     param_bounds::Vector{<:Tuple{Real, Real}}; 
     time_limit::Float64 = 300.0,
     verbose = true,
+    logger::Function,
     seed::Integer = 1234)
 
     seed!(seed)
@@ -222,7 +224,7 @@ function optimize!(
 
     options = Metaheuristics.Options(time_limit = time_limit, parallel_evaluation = true, verbose = verbose)
     algorithm = Metaheuristics.ECA(options = options)
-    result = Metaheuristics.optimize(f_parallel, bounds, algorithm)
+    result = Metaheuristics.optimize(f_parallel, bounds, algorithm, logger = logger)
 
     return result
 end

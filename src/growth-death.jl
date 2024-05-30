@@ -1,30 +1,37 @@
+const _UNISAMP = Union{Sampleable{Univariate, Continuous}, Sampleable{Univariate, Discrete}}
+
 """
     abstract type AbstractGrowthDeathModel
 
 The abstract type for growth and death models.
     
 Subtypes must have a field `S`, a `Vector{Float64}` of length `n_clumps_max` representing an "amount" or "mass" for each clump.
+
+Subtypes must have a field `S_gen`, which is a `Distributions.Sampleable{Univariate, ...}` such that `rand(S_gen)` generates a 
+sample of `S`. E.g. `S_gen = Distributions.Dirac(0.0)` will always initialize clumps with `S = fill(0.0, n_clumps_max)`.
 """
 abstract type AbstractGrowthDeathModel end 
 
 """
-    struct ImmortalModel{T}
+    struct ImmortalModel{D}
 
 An `AbstractGrowthDeathModel` such that no growth or death occurs.
 
 ### Fields
 
 - `S`: The amount parameter. Unused for an `ImmortalModel`.
+- `S_gen`. The amount generator. Unused for an `ImmortalModel`.
 
 ### Constructors 
 
-Use `ImmortalModel(n_clumps_max::Integer).`
+Use `ImmortalModel(n_clumps_max, S_gen).`
 """
-struct ImmortalModel <: AbstractGrowthDeathModel
+struct ImmortalModel{D<:_UNISAMP} <: AbstractGrowthDeathModel
     S::Vector{Float64}
+    S_gen::D
 
-    function ImmortalModel(n_clumps_max::Integer)
-        return new(zeros(n_clumps_max))
+    function ImmortalModel(n_clumps_max::Integer, S_gen::D) where {D<:_UNISAMP}
+        return new{D}(zeros(n_clumps_max), S_gen)
     end
 end
 
@@ -118,13 +125,14 @@ end
 
 
 """
-    mutable struct BrooksModel{B}
+    mutable struct BrooksModel{B, D}
 
 The growth/death model of [Brooks et al. (2018)](https://www.int-res.com/abstracts/meps/v599/p1-18/). 
 
 ### Fields 
 
 - `S`: The amount parameter.
+- `S_gen`. The amount generator.
 - `params`: The [`BrooksModelParameters`](@ref) parameters of the model.
 - `growths`:A `Vector` of indices of clumps that are to be grown (if any).
 - `deaths`: A `Vector` of indices of clumps that are to be killed (if any).
@@ -140,21 +148,23 @@ Use [`cb_growth_death`](@ref) to create a `DiscreteCallback` suitable for use wi
 
 At each time step ...
 """
-mutable struct BrooksModel{B<:BrooksModelParameters} <: AbstractGrowthDeathModel
+mutable struct BrooksModel{B<:BrooksModelParameters, D<:_UNISAMP} <: AbstractGrowthDeathModel
     S::Vector{Float64}
+    S_gen::D
     params::B
     growths::Vector{Int64}
     deaths::Vector{Int64}
     verbose::Bool
 
     function BrooksModel(
-        n_clumps_max::Integer; 
+        n_clumps_max::Integer,
+        S_gen::D; 
         params::B = BrooksModelParameters(), 
-        verbose = false) where {B<:BrooksModelParameters}
+        verbose = false) where {B<:BrooksModelParameters, D<:_UNISAMP}
 
-        S = fill(0.0, n_clumps_max)
+        S = rand(S_gen, n_clumps_max) # the fate of each new clump is already sealed :(
 
-        return new{B}(S, params, Int64[], Int64[], verbose)
+        return new{B, D}(S, S_gen, params, Int64[], Int64[], verbose)
     end
 end
     
@@ -171,7 +181,7 @@ function (model::BrooksModel)(u, t, integrator)
             push!(model.deaths, i)
         elseif model.S[i] > model.params.S_max
             push!(model.growths, i)
-            model.S[i] = 0.0 # "refresh" parent clump
+            model.S[i] = rand(model.S_gen) # "refresh" parent clump
         end
     end
 

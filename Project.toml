@@ -1,7 +1,7 @@
 name = "SargassumBOMB"
 uuid = "b5ee06fe-188d-450a-9f05-8f188668dd15"
 authors = ["Gage Bonner <gage.bonner@gmail.com>"]
-version = "0.5.2"
+version = "0.5.3"
 
 [deps]
 ArgCheck = "dce04be8-c92d-5529-be00-80e4d2c0e197"
@@ -24,6 +24,7 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RemoteFiles = "cbe49d4c-5af1-5b60-bb70-0a60aa018e1b"
 SargassumColors = "d2143393-64d1-4702-ac44-3f87fb4b2e5f"
 SargassumFromAFAI = "db9ac4ac-0b65-4026-8dbd-2bb7cf4c299a"
+SimpleDiffEq = "05bca326-078c-5bf0-a5bf-ce7c7982d7fd"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"

@@ -1,7 +1,7 @@
 """
     struct TimeSeries
 
-A container for comparing simulation data to target data.
+A container for comparing simulation data to target data in weekly periods.
 
 ### Fields
 
@@ -16,7 +16,8 @@ distribution coming from observation, i.e. a [`SargassumDistribution`](@ref).
 
 ### Constructor
 
-Use `TimeSeries(rtr; corners, dists, exclude_clouded_bins)` where `rtr` is a [`RaftTrajectory`](@ref).
+Use `TimeSeries(rtr, ymw1, ymw2; corners, dists, exclude_clouded_bins)` where `rtr` is a [`RaftTrajectory`](@ref)
+and `ymw1` and `ymw2` are the `(year, month, week)` bounds of the time series.
 
 - `corners`: Of the form `(lon_min, lon_max, lat_min, lat_max)` where the data is restricted to bins in this area. \
 Default `(-180, 180, -90, 90)`.
@@ -33,14 +34,13 @@ struct TimeSeries
     exclude_clouded_bins::Bool
 
     function TimeSeries(
-        rtr::RaftTrajectory;
+        rtr::RaftTrajectory,
+        ymw1::NTuple{3, Int64},
+        ymw2::NTuple{3, Int64};
         corners::NTuple{4, Real} = (-180, 180, -90, 90),
         dists::Dict{Tuple{Int64, Int64}, SargassumFromAFAI.SargassumDistribution} = DIST_1718,
         exclude_clouded_bins::Bool = true)
     
-
-        ymw1 = time2ymw(first(rtr.t))
-        ymw2 = time2ymw(last(rtr.t))
         ymws = ymwspan2weekspan(ymw1, ymw2)
         tspans = [(ymw2time(ymws[i]...), ymw2time(ymws[i + 1]...)) for i = 1:length(ymws) - 1]
 

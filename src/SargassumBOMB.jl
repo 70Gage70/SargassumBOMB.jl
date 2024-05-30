@@ -1,7 +1,7 @@
 module SargassumBOMB
 
 # core functionality
-using OrdinaryDiffEq, SargassumFromAFAI, NearestNeighbors, Interpolations
+using OrdinaryDiffEq, SimpleDiffEq, SargassumFromAFAI, NearestNeighbors, Interpolations
 using SparseArrays
 using Unitful, Dates
 using LinearAlgebra: norm, ⋅
@@ -80,7 +80,7 @@ include("trajectories.jl")
 export Trajectory, time_slice, RaftTrajectory, bins
 
 include("main.jl")
-export simulate
+export simulate, rk4
 
 include("optimization.jl")
 export TimeSeries, vec

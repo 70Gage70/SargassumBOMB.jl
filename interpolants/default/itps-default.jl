@@ -1,39 +1,3 @@
-@RemoteFile(
-    SBOMB_WATER, 
-    "https://www.dropbox.com/scl/fi/7lvc5j0dqcbztcwd3rnnp/water.nc?rlkey=yhpmf5evtzrppr14v691l97j3&dl=1",
-    file = "water.nc", 
-    updates=:never,
-    dir = joinpath(@__DIR__, "data"))
-
-@RemoteFile(
-    SBOMB_WIND, 
-    "https://www.dropbox.com/scl/fi/k3vrbuxegp6mj6y5oqpbo/wind.nc?rlkey=jgi2zvrwagc2e1tcwt1nvzz54&dl=0",
-    file = "wind.nc", 
-    updates=:never,
-    dir = joinpath(@__DIR__, "data"))
-
-@RemoteFile(
-    SBOMB_WAVES, 
-    "https://www.dropbox.com/scl/fi/j5b6akflmgvhcfy124l4l/waves.nc?rlkey=me7c7tne70kd5xrt3oy7o15tm&dl=0",
-    file = "waves.nc", 
-    updates=:never,
-    dir = joinpath(@__DIR__, "data"))
-
-@RemoteFile(
-    SBOMB_TEMP, 
-    "https://www.dropbox.com/scl/fi/oyrk1klf8rugk3mty0erx/currents-temperature.nc?rlkey=3t6znxletyret5jo0v8447dpf&dl=1",
-    file = "currents-temperature.nc", 
-    updates=:never,
-    dir = joinpath(@__DIR__, "data"))
-
-@RemoteFile(
-    SBOMB_NUTRIENTS, 
-    "https://www.dropbox.com/scl/fi/pj3ovx8owlxqxaj43x2py/nutrients.nc?rlkey=jsulyltckanjqdmi8ygxrddwo&dl=1",
-    file = "nutrients.nc", 
-    updates=:never,
-    dir = joinpath(@__DIR__, "data"))
-
-
 function _construct_water_default(infile::String, outfile::String)
     gf = GriddedField(3)
 
@@ -179,6 +143,13 @@ function _construct_land_default(outfile::String)
     return nothing
 end
 
+function _dtk_path(name::String)
+    try
+        open(dataset(name), DataToolkit.FilePath).path
+    catch
+        nothing
+    end
+end
 
 """
     itps_default_construct(; download_data = false)
@@ -189,16 +160,14 @@ Interpolants constructed: water, wind, stokes, waves, nutrients, temperature, la
 
 ### Optional Arguments
 
-- `download_data`: If `true`, the data required to construct the interpolants will be downloaded using `RemoteFiles.jl`. \
-This is roughly 1 GB of .nc files. Any existing data will be overwritten. Default `false`.
+- `download_data`: If `true`, the data required to construct the interpolants will be downloaded using `DataToolkit.jl`. \
+This is roughly 1.2 GB of .nc files. Default `false`.
 """
 function itps_default_construct(; download_data::Bool = false)
     if download_data
-        download(SBOMB_WATER)
-        download(SBOMB_WIND)
-        download(SBOMB_WAVES)
-        download(SBOMB_TEMP)
-        download(SBOMB_NUTRIENTS)
+        path2datatoml = joinpath(@__DIR__, "..", "..", "Data.toml") |> abspath
+        loadcollection!(path2datatoml, @__MODULE__)
+        data`store fetch`
     end
 
     @info "Constructing default interpolants."
@@ -206,8 +175,8 @@ function itps_default_construct(; download_data::Bool = false)
     missings = String[]
 
     ########################### WATER
-    infile = joinpath(@__DIR__, "data", "water.nc")
-    if isfile(infile)
+    infile = _dtk_path("WATER")
+    if infile !== nothing
         outfile = joinpath(@__DIR__, "itps", "WATER_ITP.jld2")
         rm(outfile, force = true)
         _construct_water_default(infile, outfile)
@@ -216,8 +185,8 @@ function itps_default_construct(; download_data::Bool = false)
     end
 
     ########################### WIND
-    infile = joinpath(@__DIR__, "data", "wind.nc")
-    if isfile(infile)
+    infile = _dtk_path("WIND")
+    if infile !== nothing
         outfile = joinpath(@__DIR__, "itps", "WIND_ITP.jld2")
         rm(outfile, force = true)
         _construct_wind_default(infile, outfile)
@@ -226,8 +195,8 @@ function itps_default_construct(; download_data::Bool = false)
     end
 
     ########################### STOKES
-    infile = joinpath(@__DIR__, "data", "waves.nc")
-    if isfile(infile)
+    infile = _dtk_path("WAVES")
+    if infile !== nothing
         outfile = joinpath(@__DIR__, "itps", "STOKES_ITP.jld2")
         rm(outfile, force = true)
         _construct_stokes_default(infile, outfile)
@@ -236,8 +205,8 @@ function itps_default_construct(; download_data::Bool = false)
     end
 
     ########################### WAVES
-    infile = joinpath(@__DIR__, "data", "waves.nc")
-    if isfile(infile)
+    infile = _dtk_path("WAVES")
+    if infile !== nothing
         outfile = joinpath(@__DIR__, "itps", "WAVES_ITP.jld2")
         rm(outfile, force = true)
         _construct_waves_default(infile, outfile)
@@ -246,8 +215,8 @@ function itps_default_construct(; download_data::Bool = false)
     end
 
     ########################### NUTRIENTS
-    infile = joinpath(@__DIR__, "data", "nutrients.nc")
-    if isfile(infile)
+    infile = _dtk_path("NUTRIENTS")
+    if infile !== nothing
         outfile = joinpath(@__DIR__, "itps", "NUTRIENTS_ITP.jld2")
         rm(outfile, force = true)
         _construct_nutrients_default(infile, outfile)
@@ -256,8 +225,8 @@ function itps_default_construct(; download_data::Bool = false)
     end
 
     ########################### TEMPERATURE
-    infile = joinpath(@__DIR__, "data", "currents-temperature.nc")
-    if isfile(infile)
+    infile = _dtk_path("TEMPERATURE")
+    if infile !== nothing
         outfile = joinpath(@__DIR__, "itps", "TEMPERATURE_ITP.jld2")
         rm(outfile, force = true)
         _construct_temperature_default(infile, outfile)
@@ -277,9 +246,9 @@ function itps_default_construct(; download_data::Bool = false)
     ########################### END MATTER
 
     if length(missings) == 6
-        @warn "Could not construct any interpolants; data missing. Try running `itps_default_construct(download_data = true)`"
+        @warn "Could not construct any interpolants; data missing. Try running `itps_default_construct(download_data = true)`. This downloads roughly 1.2 GB of data."
     elseif 0 < length(missings) < 6
-        @warn "Could not construct interpolants $(missings); data missing. Try running `itps_default_construct(download_data = true)`"
+        @warn "Could not construct interpolants $(missings); data missing. Try running `itps_default_construct(download_data = true)`. This downloads roughly 1.2 GB of data."
     else
         itps_load(ITPS_DEFAULT_DIR)
         @info "Default interpolants constructed."

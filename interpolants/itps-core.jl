@@ -78,7 +78,7 @@ function add_spatial_dimension!(
     force::Bool = false)
 
     extension = infile[findlast(==('.'), infile)+1:end]
-    @argcheck extension in ["nc"] "Require a .nc file."
+    @argcheck extension in ["nc", "cache"] "Require a .nc or .cache file."
     @argcheck dim_units_out in keys(UNITS) "unit type not recognized, type `UNITS` to see options"
 
     u_out = UNITS[dim_units_out]
@@ -126,7 +126,7 @@ function add_temporal_dimension!(
     force::Bool = false)
 
     extension = infile[findlast(==('.'), infile)+1:end]
-    @argcheck extension in ["nc"] "Require a .nc file."
+    @argcheck extension in ["nc", "cache"] "Require a .nc or .cache file."
 
     u_out = UNITS["time"]
 
@@ -184,7 +184,7 @@ function add_field!(
     missings_replacement::Real = 0.0) where {N, I<:Integer}
 
     extension = infile[findlast(==('.'), infile)+1:end]
-    @argcheck extension in ["nc"] "Require a .nc file."
+    @argcheck extension in ["nc", "cache"] "Require a .nc or .cache file."
     @argcheck field_units_out in keys(UNITS) "unit type not recognized, type `UNITS` to see options"
 
     u_out = UNITS[field_units_out]

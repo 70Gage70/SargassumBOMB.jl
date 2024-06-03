@@ -1,0 +1,52 @@
+data_config_version = 0
+uuid = "329b6741-5141-48ce-b9c9-1174b8238075"
+name = "SargassumBOMB-default-itp"
+plugins = ["store", "defaults", "memorise"]
+
+[config.defaults.storage._]
+checksum = "auto"
+
+[[NUTRIENTS]]
+uuid = "1f5b6cdd-4735-4140-bd24-f165041b31f3"
+description = "Nutrients default (.nc)"
+
+    [[NUTRIENTS.storage]]
+    driver = "web"
+    checksum = "k12:4da4a90909bdfe107fb308501c025073"
+    url = "https://www.dropbox.com/scl/fi/pj3ovx8owlxqxaj43x2py/nutrients.nc?rlkey=jsulyltckanjqdmi8ygxrddwo&dl=1"
+
+[[TEMPERATURE]]
+uuid = "deab79d4-2926-460a-a046-bef0325e540b"
+description = "Temperature default (.nc)"
+
+    [[TEMPERATURE.storage]]
+    driver = "web"
+    checksum = "k12:76d1be4bcf20cae4c8761b6124f32995"
+    url = "https://www.dropbox.com/scl/fi/oyrk1klf8rugk3mty0erx/currents-temperature.nc?rlkey=3t6znxletyret5jo0v8447dpf&dl=1"
+
+[[WATER]]
+uuid = "c5806a0b-966d-42d1-b28d-8a93fd80c8ea"
+description = "Water velocity default (.nc)"
+
+    [[WATER.storage]]
+    driver = "web"
+    checksum = "k12:12bcf6d51eef97f9bca74d88478a0b25"
+    url = "https://www.dropbox.com/scl/fi/7lvc5j0dqcbztcwd3rnnp/water.nc?rlkey=yhpmf5evtzrppr14v691l97j3&dl=1"
+
+[[WAVES]]
+uuid = "3ac4c3e0-4fce-46db-8da9-d37b713dcf4c"
+description = "Wave height and Stokes drift (.nc)"
+
+    [[WAVES.storage]]
+    driver = "web"
+    checksum = "k12:88f665e816cff138e2e0dd51df0ef2b6"
+    url = "https://www.dropbox.com/scl/fi/j5b6akflmgvhcfy124l4l/waves.nc?rlkey=me7c7tne70kd5xrt3oy7o15tm&dl=0"
+
+[[WIND]]
+uuid = "39bdd1bf-9c7a-4b5d-9c83-5fc678eb1f00"
+description = "Wind velocity default (.nc)"
+
+    [[WIND.storage]]
+    driver = "web"
+    checksum = "k12:4268aeba14523716f38675ea5b29f44d"
+    url = "https://www.dropbox.com/scl/fi/k3vrbuxegp6mj6y5oqpbo/wind.nc?rlkey=jgi2zvrwagc2e1tcwt1nvzz54&dl=0"

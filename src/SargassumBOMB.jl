@@ -11,7 +11,7 @@ using ArgCheck
 using MAT, NetCDF, JLD2
 
 # downloading interpolants
-using RemoteFiles
+using DataToolkit
 
 # probability/statistics
 using StatsBase, Distributions 

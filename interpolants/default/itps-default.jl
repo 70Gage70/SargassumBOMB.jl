@@ -164,9 +164,10 @@ Interpolants constructed: water, wind, stokes, waves, nutrients, temperature, la
 This is roughly 1.2 GB of .nc files. Default `false`.
 """
 function itps_default_construct(; download_data::Bool = false)
+    path2datatoml = joinpath(@__DIR__, "..", "..", "Data.toml") |> abspath
+    loadcollection!(path2datatoml, @__MODULE__)
+
     if download_data
-        path2datatoml = joinpath(@__DIR__, "..", "..", "Data.toml") |> abspath
-        loadcollection!(path2datatoml, @__MODULE__)
         data`store fetch`
     end
 

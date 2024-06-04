@@ -24,13 +24,13 @@ An `AbstractGrowthDeathModel` such that no growth or death occurs.
 
 ### Constructors 
 
-Use `ImmortalModel(n_clumps_max, S_gen).`
+Use `ImmortalModel(n_clumps_max; S_gen = Dirac(0.0)).`
 """
 struct ImmortalModel{D<:_UNISAMP} <: AbstractGrowthDeathModel
     S::Vector{Float64}
     S_gen::D
 
-    function ImmortalModel(n_clumps_max::Integer, S_gen::D) where {D<:_UNISAMP}
+    function ImmortalModel(n_clumps_max::Integer; S_gen::D = Dirac(0.0)) where {D<:_UNISAMP}
         return new{D}(zeros(n_clumps_max), S_gen)
     end
 end
@@ -140,13 +140,7 @@ The growth/death model of [Brooks et al. (2018)](https://www.int-res.com/abstrac
 
 ### Constructors
 
-Use `BrooksModel(ics::InitialConditions; params = BrooksModelParameters(), verbose = false)`.
-
-### Callbacks
-
-Use [`cb_growth_death`](@ref) to create a `DiscreteCallback` suitable for use with `OrdinaryDiffEq.solve`. 
-
-At each time step ...
+Use `BrooksModel(n_clumps_max; S_gen = Dirac(0.0), params = BrooksModelParameters(), verbose = false)`.
 """
 mutable struct BrooksModel{B<:BrooksModelParameters, D<:_UNISAMP} <: AbstractGrowthDeathModel
     S::Vector{Float64}
@@ -157,8 +151,8 @@ mutable struct BrooksModel{B<:BrooksModelParameters, D<:_UNISAMP} <: AbstractGro
     verbose::Bool
 
     function BrooksModel(
-        n_clumps_max::Integer,
-        S_gen::D; 
+        n_clumps_max::Integer;
+        S_gen::D = Dirac(0.0),
         params::B = BrooksModelParameters(), 
         verbose = false) where {B<:BrooksModelParameters, D<:_UNISAMP}
 

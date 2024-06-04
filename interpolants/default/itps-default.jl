@@ -152,7 +152,7 @@ function _dtk_path(name::String)
 end
 
 """
-    itps_default_construct(; download_data = false)
+    itps_default_construct(; download_data = false, verbose = true)
 
 Construct all interpolants using the default data. This overwrites any default interpolants already constructed.
 
@@ -162,8 +162,9 @@ Interpolants constructed: water, wind, stokes, waves, nutrients, temperature, la
 
 - `download_data`: If `true`, the data required to construct the interpolants will be downloaded using `DataToolkit.jl`. \
 This is roughly 1.2 GB of .nc files. Default `false`.
+- `verbose`: If `true`, print itp construction stats. Default `true`.
 """
-function itps_default_construct(; download_data::Bool = false)
+function itps_default_construct(; download_data::Bool = false, verbose::Bool = true)
     path2datatoml = joinpath(@__DIR__, "Data.toml") |> abspath
     loadcollection!(path2datatoml, @__MODULE__)
 
@@ -171,11 +172,12 @@ function itps_default_construct(; download_data::Bool = false)
         data`store fetch`
     end
 
-    @info "Constructing default interpolants."
+    verbose && @info "Constructing default interpolants."
 
     missings = String[]
 
     ########################### WATER
+    verbose && @info "Constructing WATER interpolant."
     infile = _dtk_path("WATER")
     if infile !== nothing
         outfile = joinpath(@__DIR__, "itps", "WATER_ITP.jld2")
@@ -186,6 +188,7 @@ function itps_default_construct(; download_data::Bool = false)
     end
 
     ########################### WIND
+    verbose && @info "Constructing WIND interpolant."
     infile = _dtk_path("WIND")
     if infile !== nothing
         outfile = joinpath(@__DIR__, "itps", "WIND_ITP.jld2")
@@ -196,6 +199,7 @@ function itps_default_construct(; download_data::Bool = false)
     end
 
     ########################### STOKES
+    verbose && @info "Constructing STOKES interpolant."
     infile = _dtk_path("WAVES")
     if infile !== nothing
         outfile = joinpath(@__DIR__, "itps", "STOKES_ITP.jld2")
@@ -206,6 +210,7 @@ function itps_default_construct(; download_data::Bool = false)
     end
 
     ########################### WAVES
+    verbose && @info "Constructing WAVES interpolant."
     infile = _dtk_path("WAVES")
     if infile !== nothing
         outfile = joinpath(@__DIR__, "itps", "WAVES_ITP.jld2")
@@ -216,6 +221,7 @@ function itps_default_construct(; download_data::Bool = false)
     end
 
     ########################### NUTRIENTS
+    verbose && @info "Constructing NUTRIENTS interpolant."
     infile = _dtk_path("NUTRIENTS")
     if infile !== nothing
         outfile = joinpath(@__DIR__, "itps", "NUTRIENTS_ITP.jld2")
@@ -226,6 +232,7 @@ function itps_default_construct(; download_data::Bool = false)
     end
 
     ########################### TEMPERATURE
+    verbose && @info "Constructing TEMPERATURE interpolant."
     infile = _dtk_path("TEMPERATURE")
     if infile !== nothing
         outfile = joinpath(@__DIR__, "itps", "TEMPERATURE_ITP.jld2")
@@ -236,6 +243,7 @@ function itps_default_construct(; download_data::Bool = false)
     end
 
     ########################### LAND
+    verbose && @info "Constructing LAND interpolant."
     try 
         outfile = joinpath(@__DIR__, "itps", "LAND_ITP.jld2")
         rm(outfile, force = true)
@@ -247,12 +255,12 @@ function itps_default_construct(; download_data::Bool = false)
     ########################### END MATTER
 
     if length(missings) == 6
-        @warn "Could not construct any interpolants; data missing. Try running `itps_default_construct(download_data = true)`. This downloads roughly 1.2 GB of data."
+        verbose && @warn "Could not construct any interpolants; data missing. Try running `itps_default_construct(download_data = true)`. This downloads roughly 1.2 GB of data."
     elseif 0 < length(missings) < 6
-        @warn "Could not construct interpolants $(missings); data missing. Try running `itps_default_construct(download_data = true)`. This downloads roughly 1.2 GB of data."
+        verbose && @warn "Could not construct interpolants $(missings); data missing. Try running `itps_default_construct(download_data = true)`. This downloads roughly 1.2 GB of data."
     else
         itps_load(ITPS_DEFAULT_DIR)
-        @info "Default interpolants constructed."
+        verbose && @info "Default interpolants constructed."
     end
 
     return nothing

@@ -99,6 +99,9 @@ export rtr2mat, rtr2nc
 include("show.jl")
 export length, show, iterate # various Base extensions
 
+include(joinpath(@__DIR__, "..", "examples", "examples.jl"))
+export Examples
+
 # initialize interpolants
 function __init__()
     try

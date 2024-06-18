@@ -40,7 +40,7 @@ export UNITS, EARTH_RADIUS, EquirectangularReference, EQR
 export sph2xy, xy2sph
 
 include("time.jl")
-export T_REF, datetime2time, time2datetime, ymw2time, time2ymw, ymwspan2weekspan
+export T_REF, datetime2time, time2datetime, ymw2time, time2ymw, ymwspan2weekspan, ymwplusweek
 
 include(joinpath(@__DIR__, "..", "interpolants", "itps-core.jl"))
 export GriddedField, InterpolatedField

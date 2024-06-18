@@ -74,39 +74,3 @@ function check_itp(
 
     return fig
 end
-
-# """
-#     vector_field_t!(axis, vf, t; fieldnames)
-# """
-# function vector_field_t!(
-#     axis::Axis,
-#     vf::InterpolatedField,
-#     t::Real;
-#     fieldnames::Tuple{Symbol, Symbol} = (:u, :v))
-
-#     lims = axis.limits.val
-#     f(x, y) = Point2f(
-#         vf.fields[fieldnames[1]](sph2xy(x, y)..., t), 
-#         vf.fields[fieldnames[2]](sph2xy(x, y)..., t))
-    
-#     streamplot!(axis, f, lims[1]..lims[2], lims[3]..lims[4])
-# end
-
-# """
-#     scalar_field_t!(axis, sf, t; fieldnames, n_points)
-# """
-# function scalar_field_t!(
-#     axis::Axis,
-#     vf::InterpolatedField,
-#     t::Real;
-#     fieldname::Symbol = :u,
-#     n_points::Integer = 100)
-
-#     lims = axis.limits.val
-
-#     xs = range(start = lims[1], stop = lims[2], length = n_points)
-#     ys = range(start = lims[3], stop = lims[4], length = n_points)
-#     zs = [vf.fields[fieldname](sph2xy(x, y)..., t) for x in xs, y in ys]
-    
-#     heatmap!(axis, xs, ys, zs)
-# end

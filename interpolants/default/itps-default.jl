@@ -166,10 +166,12 @@ This is roughly 1.2 GB of .nc files. Default `false`.
 """
 function itps_default_construct(; download_data::Bool = false, verbose::Bool = true)
     path2datatoml = joinpath(@__DIR__, "Data.toml") |> abspath
-    loadcollection!(path2datatoml, @__MODULE__)
+    data_col = loadcollection!(path2datatoml, @__MODULE__)
+
 
     if download_data
-        data`store fetch`
+        DataToolkitCommon.Store.fetch!(data_col) # v0.9
+        # DataToolkitStore.fetch!(data_col) # v0.10
     end
 
     verbose && @info "Constructing default interpolants."

@@ -110,3 +110,19 @@ function ymwspan2weekspan(ymw1::NTuple{3, Integer}, ymw2::NTuple{3, Integer})
 
     return times
 end
+
+"""
+    ymwplusweek(ymw, n_week)
+
+Calculate the `(year, month, week)` after `n_week` weeks have passed since `ymw`.
+
+### Example
+
+`ymwplusweek((2018, 10, 2), 12) == (2019, 1, 2)`
+"""
+function ymwplusweek(ymw, n_week)
+	y, m, w = ymw
+	new_months, new_weeks = (0, 1) .+ divrem(w + n_week - 1, 4)
+	new_years, new_months = (0, 1) .+ divrem(m + new_months - 1, 12)
+	return (y + new_years, new_months, new_weeks)
+end

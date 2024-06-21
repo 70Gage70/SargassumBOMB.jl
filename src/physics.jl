@@ -9,7 +9,7 @@ The solution vector `u` is a `2 x N` `Matrix` of the form `[x1 x2 ... xN ; y1 y2
 For integrating using a leeway velocity, [`Leeway!`](@ref) should be used.
 """
 function Raft!(du, u, p::RaftParameters, t)
-    α, τ, R, f, σ = p.clumps.α, p.clumps.τ, p.clumps.R, p.clumps.f, p.clumps.σ
+    α, τ, R, Ω, σ = p.clumps.α, p.clumps.τ, p.clumps.R, p.clumps.Ω, p.clumps.σ
     n_clumps_max = p.n_clumps_max
 
     du .= 0.0
@@ -24,14 +24,17 @@ function Raft!(du, u, p::RaftParameters, t)
         u_y     = (1 - α) * v_y + α * WIND_ITP.x.fields[:v](x, y, t)
         Du_xDt  = (1 - α) * Dv_xDt + α * WIND_ITP.x.fields[:DDt_x](x, y, t)
         Du_yDt  = (1 - α) * Dv_yDt + α * WIND_ITP.x.fields[:DDt_y](x, y, t)
-        ω       = WATER_ITP.x.fields[:vorticity](x, y, t)        
+        ω       = WATER_ITP.x.fields[:vorticity](x, y, t)
+        f       = 2*Ω*sin(_y2lat(y))
+        τ_☉     = τ_sphere(y)
+        γ_☉     = γ_sphere(y)       
 
-        du[1,i] += u_x + τ * (R*Dv_xDt - R*(f + ω/3)*v_y - Du_xDt + (f + R*ω/3)*u_y)
-        du[2,i] += u_y + τ * (R*Dv_yDt + R*(f + ω/3)*v_x - Du_yDt - (f + R*ω/3)*u_x)
+        du[1,i] += (1/γ_☉) * (u_x + τ * (R*Dv_xDt - R*(f + ω/3)*v_y - Du_xDt + (f + τ_☉*u_x + R*ω/3)*u_y))
+        du[2,i] +=            u_y + τ * (R*Dv_yDt + R*(f + ω/3)*v_x - Du_yDt - (f + τ_☉*u_x + R*ω/3)*u_x)
 
         for j in filter(x -> x > i, p.connections.connections[i]) # using Newton's Law 3, avoid double-counting spring forces
             xj, yj = clump_i(u, j)
-            d = sqrt((x - xj)^2 + (y - yj)^2)
+            d = sqrt(γ_☉^2 * (x - xj)^2 + (y - yj)^2)
             fac = τ*(p.springs.k(d))*(p.springs.L/d - 1)
             fx, fy = fac*(x - xj), fac*(y - yj)
 
@@ -60,12 +63,13 @@ function FastRaft!(du, u, p::RaftParameters, t)
 
     for i in (1:n_clumps_max)[p.living]
         x, y    = clump_i(u, i)
+        γ_☉     = γ_sphere(y)  
         du[1,i] += p.dx_MR(x, y, t)
         du[2,i] += p.dy_MR(x, y, t)
 
         for j in filter(x -> x > i, p.connections.connections[i]) # using Newton's Law 3, avoid double-counting spring forces
             xj, yj = clump_i(u, j)
-            d = sqrt((x - xj)^2 + (y - yj)^2)
+            d = sqrt(γ_☉^2 * (x - xj)^2 + (y - yj)^2)
             fac = τ*(p.springs.k(d))*(p.springs.L/d - 1)
             fx, fy = fac*(x - xj), fac*(y - yj)
 

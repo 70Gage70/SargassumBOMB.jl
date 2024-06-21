@@ -37,8 +37,8 @@ function Base.show(io::IO, x::Union{GriddedField, InterpolatedField})
 end
 
 function Base.show(io::IO, x::ClumpParameters)
-    α, τ, R, f, σ = (x.α, x.τ, x.R, x.f, x.σ) .|> x-> round(x, sigdigits = 4)
-    print(io, "ClumpParameters[α = $α, τ = $τ, R = $R, f = $f, σ = $σ]")
+    α, τ, R, Ω, σ = (x.α, x.τ, x.R, x.Ω, x.σ) .|> x-> round(x, sigdigits = 4)
+    print(io, "ClumpParameters[α = $α, τ = $τ, R = $R, Ω = $Ω, σ = $σ]")
 end
 
 function Base.show(io::IO, x::HookeSpring)

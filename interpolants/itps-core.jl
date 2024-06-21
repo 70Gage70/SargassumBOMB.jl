@@ -95,7 +95,7 @@ function add_spatial_dimension!(
 end
 
 """
-    add_temporal_dimension!(gf, infile, time_name_in, time_name_out, time_start, time_period; transform)
+    add_temporal_dimension!(gf, infile, time_name_in, time_name_out, time_start, time_period; transform, force)
 
 Add a new temporal dimension to `gf::GriddedField` with data read from a NetCDF file `infile`.
 
@@ -143,7 +143,7 @@ function add_temporal_dimension!(
 end
 
 """
-    add_field!(gf, infile, field_name_in, field_name_out, field_units_in, field_units_out; permutation, scale_factor_name, add_offset_name, missings_name, missings_replacement)
+    add_field!(gf, infile, field_name_in, field_name_out, field_units_in, field_units_out; take_axes, permutation, scale_factor_name, add_offset_name, missings_name, missings_replacement)
 
 Add a new field to `gf::GriddedField` with data read from a NetCDF file `infile`.
 
@@ -160,10 +160,10 @@ The new dimension appears last in the list of field names.
 
 ### Optional Arguments
 
-- `permutation`: If provided, the field will be permuted according to `permutation`. Default `nothing`.
-- `take_axes`: If provided, only the selected elements will be taken via `field[take_axes...]` applied AFTER the `permutation`. \
+- `take_axes`: If provided, only the selected elements will be taken via `field[take_axes...]`. \
     For example, if the `field` is four dimensional, passing `take_axes = [:,:,1,:]` would result in a three dimensional field with \
     dimensions 1, 2 and 4 preserved - indexed on the first element of the third dimension. Default `nothing`.
+- `permutation`: If provided, the field will be permuted according to `permutation`. Applied AFTER `take_axes`. Default `nothing`.
 - `scale_factor_name`: The name of the scale factor. If no scale factor is found, it is taken to be `1`. Default `"scale_factor"`.
 - `add_offset_name`: The name of the additive offset. If no additive offset is found, it is taken to be `0`. Default `"add_offset"`.
 - `missings_name`: A vector of names of missing/fill/extra values. Each such value will be replaced by `missings_replacement` if found. Default `["_FillValue", "missing_value"]`.
@@ -177,7 +177,7 @@ function add_field!(
     field_units_in::UFUL, 
     field_units_out::String;
     permutation::Union{NTuple{N, I}, Nothing} = nothing,
-    take_axes::Union{Vector{Any}, Nothing} = nothing,
+    take_axes::Union{Vector{<:Any}, Nothing} = nothing,
     scale_factor_name::String = "scale_factor",
     add_offset_name::String = "add_offset",
     missings_name::Vector{String} = ["_FillValue", "missing_value"],
@@ -200,8 +200,8 @@ function add_field!(
         field[idx] = (val in missing_vals) ? missings_replacement : unit_factor*(scale_factor*val + add_offset)
     end
 
-    (permutation !== nothing) && (field = permutedims(field, permutation))
     (take_axes !== nothing) && (field = field[take_axes...])
+    (permutation !== nothing) && (field = permutedims(field, permutation))
 
     push!(gf.fields_names, (field_name_out, u_out))
     gf.fields[field_name_out] = field
@@ -379,9 +379,9 @@ function add_derivatives!(
     x_var, y_var, t_var = [itrf.dims[name] for name in xyt_names]
     vx, vy = [itrf.fields[name] for name in vxvy_names]
 
-    DDx(x, y, t) = gradient(vx, x, y, t) ⋅ [vx(x, y, t), vy(x, y, t), 1.0] 
-    DDy(x, y, t) = gradient(vy, x, y, t) ⋅ [vx(x, y, t), vy(x, y, t), 1.0]
-    vort(x, y, t) = gradient(vy, x, y, t)[1] - gradient(vx, x, y, t)[2]
+    DDx(x, y, t) = gradient(vx, x, y, t) ⋅ [vx(x, y, t)/γ_sphere(y), vy(x, y, t), 1.0] - τ_sphere(y)*vx(x, y, t)*vy(x, y, t)
+    DDy(x, y, t) = gradient(vy, x, y, t) ⋅ [vx(x, y, t)/γ_sphere(y), vy(x, y, t), 1.0] + τ_sphere(y)*vx(x, y, t)^2
+    vort(x, y, t) = gradient(vy, x, y, t)[1]/γ_sphere(y) - gradient(vx, x, y, t)[2] + τ_sphere(y)*vx(x, y, t)
 
     data_ddx = [DDx(x, y, t) for x in x_var, y in y_var, t in t_var]
     data_ddy = [DDy(x, y, t) for x in x_var, y in y_var, t in t_var]

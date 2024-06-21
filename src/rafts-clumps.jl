@@ -7,7 +7,7 @@ A container for the high-level parameters of the BOM equations.
 - `α` []: The fraction of the wind field acting on the particle.
 - `τ` [d]: Measures the inertial response time of the medium to the particle
 - `R` []: A geometric parameter.
-- `f` [1/d]: The Coriolis parameter in the σ plane.
+- `Ω` [1/d]: The angular velocity of the Earth.
 - `σ` []: The Stokes drift parameter; this applies an additional fraction of the Stokes drift to the water velocity 
     component of the particle.
 """
@@ -15,7 +15,7 @@ struct ClumpParameters
     α::Float64
     τ::Float64
     R::Float64
-    f::Float64
+    Ω::Float64
     σ::Float64
 end
 
@@ -57,10 +57,7 @@ function ClumpParameters(;
     τ = (1 - Φ/6)/(1 - (1 - γ)*Ψ) * (a^2 * ρ / (3*μ*δ^4))
     R = (1 - Φ/2)/(1 - Φ/6)
 
-    ϑ0 = EQR.x.lat0
-    f = 2*Ω*sin(ϑ0*π/180)
-
-    return ClumpParameters(α, τ, R, f, σ)
+    return ClumpParameters(α, τ, R, Ω, σ)
 end
 
 """
@@ -164,7 +161,7 @@ of the Maxey-Riley equations (spring force excluded).
 This is automatically applies when a fast raft is selected in [`Raft!`](@ref).
 """
 function dxdy_MR(tspan::Tuple{Real, Real}, clumps::ClumpParameters)
-    α, τ, R, f, σ = clumps.α, clumps.τ, clumps.R, clumps.f, clumps.σ
+    α, τ, R, Ω, σ = clumps.α, clumps.τ, clumps.R, clumps.Ω, clumps.σ
 
     dt = step(WATER_ITP.x.dims[:t])
     xs, ys, ts = WATER_ITP.x.dims[:x], WATER_ITP.x.dims[:y], range(tspan..., step = dt)
@@ -181,10 +178,13 @@ function dxdy_MR(tspan::Tuple{Real, Real}, clumps::ClumpParameters)
         u_y     = (1 - α) * v_y + α * WIND_ITP.x.fields[:v](x, y, t)
         Du_xDt  = (1 - α) * Dv_xDt + α * WIND_ITP.x.fields[:DDt_x](x, y, t)
         Du_yDt  = (1 - α) * Dv_yDt + α * WIND_ITP.x.fields[:DDt_y](x, y, t)
-        ω       = WATER_ITP.x.fields[:vorticity](x, y, t)        
+        ω       = WATER_ITP.x.fields[:vorticity](x, y, t)
+        f       = 2*Ω*sin(_y2lat(y))
+        τ_☉     = τ_sphere(y)
+        γ_☉     = γ_sphere(y)       
 
-        dx[i, j, k] = u_x + τ * (R*Dv_xDt - R*(f + ω/3)*v_y - Du_xDt + (f + R*ω/3)*u_y)
-        dy[i, j, k] = u_y + τ * (R*Dv_yDt + R*(f + ω/3)*v_x - Du_yDt - (f + R*ω/3)*u_x)
+        dx[i, j, k] += (1/γ_☉) * (u_x + τ * (R*Dv_xDt - R*(f + ω/3)*v_y - Du_xDt + (f + τ_☉*u_x + R*ω/3)*u_y))
+        dy[i, j, k] +=            u_y + τ * (R*Dv_yDt + R*(f + ω/3)*v_x - Du_yDt - (f + τ_☉*u_x + R*ω/3)*u_x)
     end
 
     spline = BSpline(Cubic(Interpolations.Line(OnGrid())))

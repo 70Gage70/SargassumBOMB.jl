@@ -171,25 +171,30 @@ function xy2sph(xy::Matrix{T}; eqr::EquirectangularReference = EQR.x) where {T<:
     return lonlat
 end
 
+function _y2lat(y::Real; eqr::EquirectangularReference = EQR.x)
+    lat0, R = (eqr.lat0, eqr.R.val)
+    deg2rad = π/180
+    rad2deg = 1/deg2rad
 
-# function xy2sph(xy::Vector{<:Vector{T}}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
-#     lonlat = zeros(T, length(xy), 2) 
-    
-#     for i = 1:length(xy)
-#         lonlat[i,:] = xy2sph(xy[i][1], xy[i][2], eqr = eqr)
-#     end
+    lat = lat0 + rad2deg*y/R
 
-#     return lonlat
-# end
+    return lat*deg2rad
+end
 
-# function xy2sph(xy::Vector{T}; eqr::EquirectangularReference = EQR.x) where {T<:Real}
-#     @argcheck iseven(length(xy)) "xy should be of the form `[x1, y1, x2, y2 ... x3, y3]`."
+"""
+    γ_sphere(y)
 
-#     lon_lat = zeros(T, length(xy))
-    
-#     for i = 1:2:length(xy)
-#         lon_lat[i:i+1] .= xy2sph(xy[i], xy[i + 1], eqr = eqr)
-#     end
+Calculate `sec(lat_0) * cos(lat)`, converting `y` to `lat` automatically.
+"""
+function γ_sphere(y::Real; eqr::EquirectangularReference = EQR.x)    
+    return sec(eqr.lat0*π/180) * cos(_y2lat(y, eqr = eqr))
+end
 
-#     return lon_lat
-# end
+"""
+    τ_sphere(y)
+
+Calculate `τ = tan(lat)/R` converting `y` to `lat` automatically.
+"""
+function τ_sphere(y::Real; eqr::EquirectangularReference = EQR.x)    
+    return tan(_y2lat(y, eqr = eqr))/eqr.R.val
+end

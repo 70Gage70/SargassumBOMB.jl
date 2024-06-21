@@ -37,7 +37,7 @@ export n_clumps, clump_i, com, vec2range
 
 include("coordinates.jl")
 export UNITS, EARTH_RADIUS, EquirectangularReference, EQR
-export sph2xy, xy2sph
+export sph2xy, xy2sph, γ_sphere, τ_sphere
 
 include("time.jl")
 export T_REF, datetime2time, time2datetime, ymw2time, time2ymw, ymwspan2weekspan, ymwplusweek

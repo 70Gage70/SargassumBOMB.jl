@@ -83,6 +83,7 @@ function add_spatial_dimension!(
 
     u_out = UNITS[dim_units_out]
 
+    dim = nothing
     try # NetCDF
         dim = ncread(infile, dim_name_in)
     catch # MAT
@@ -135,6 +136,7 @@ function add_temporal_dimension!(
 
     u_out = UNITS["time"]
 
+    time = nothing
     try # NetCDF
         time = ncread(infile, time_name_in)
     catch # MAT

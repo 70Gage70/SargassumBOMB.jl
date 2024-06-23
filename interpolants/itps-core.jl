@@ -49,17 +49,17 @@ end
 """
     add_spatial_dimension!(gf, infile, dim_name_in, dim_name_out, dim_units_in, dim_units_out; transform)
 
-Add a new spatial dimension to `gf::GriddedField` with data read from a NetCDF file `infile`.
+Add a new spatial dimension to `gf::GriddedField` with data read from a NetCDF or MAT file `infile`.
 
 The new dimension appears last in the list of dimension names.
 
 ### Arguments
 
 - `gf`: The [`GriddedField`](@ref) to be modified.
-- `infile`: The path to the NetCDF file.
-- `dim_name_in`: A `String` giving the name of the dimension to read in as it appears in the NetCDF file.
+- `infile`: The path to the NetCDF/MAT file.
+- `dim_name_in`: A `String` giving the name of the dimension to read in as it appears in the NetCDF/MAT file.
 - `dim_name_out`: A `Symbol` giving the name of the added dimension in `gf`.
-- `dim_units_in`: A `Unitful.Unitlike` giving the units of the dimension as they appear in the NetCDF file.
+- `dim_units_in`: A `Unitful.Unitlike` giving the units of the dimension as they appear in the NetCDF/MAT file.
 - `dim_units_out`: A `String` giving the kind of quantity being read; should be one of `keys(UNITS)`.
 
 ### Optional Arguments
@@ -78,12 +78,17 @@ function add_spatial_dimension!(
     force::Bool = false)
 
     extension = infile[findlast(==('.'), infile)+1:end]
-    @argcheck extension in ["nc", "cache"] "Require a .nc or .cache file."
+    @argcheck extension in ["nc", "mat", "cache"] "Require a .nc or .mat or .cache file."
     @argcheck dim_units_out in keys(UNITS) "unit type not recognized, type `UNITS` to see options"
 
     u_out = UNITS[dim_units_out]
 
-    dim = ncread(infile, dim_name_in)
+    try # NetCDF
+        dim = ncread(infile, dim_name_in)
+    catch # MAT
+        dim = matread(infile)[dim_name_in]
+        dim = ndims(dim) == 2 && size(dim, 2) == 1 ? vec(dim) : dim # convert from Nx1 Matrix to Vector
+    end
     (transform !== nothing) && (dim = map(transform, dim))
     dim = dim * uconvert(u_out, 1.0 * dim_units_in).val
     dim = vec2range(dim, force = force)
@@ -97,18 +102,18 @@ end
 """
     add_temporal_dimension!(gf, infile, time_name_in, time_name_out, time_start, time_period; transform, force)
 
-Add a new temporal dimension to `gf::GriddedField` with data read from a NetCDF file `infile`.
+Add a new temporal dimension to `gf::GriddedField` with data read from a NetCDF or MAT file `infile`.
 
 The new dimension appears last in the list of dimension names.
 
 ### Arguments
 
 - `gf`: The [`GriddedField`](@ref) to be modified.
-- `infile`: The path to the NetCDF file.
-- `time_name_in`: A `String` giving the name of the time dimension to read in as it appears in the NetCDF file.
+- `infile`: The path to the NetCDF/MAT file.
+- `time_name_in`: A `String` giving the name of the time dimension to read in as it appears in the NetCDF/MAT file.
 - `time_name_out`: A `Symbol` giving the name of the added time dimension in `gf`.
-- `time_start`: A `DateTime` giving the reference time of the time dimension, e.g. if the units of the NetCDF are `hours since 1990-01-01` then `time_start == DateTime(1900, 1, 1)`.
-- `time_period`: A `DataType` giving the time step of the time dimension, which should come from `Dates`. E.g. if the units of the NetCDF are `hours since 1990-01-01` then `time_period == Hour`.
+- `time_start`: A `DateTime` giving the reference time of the time dimension, e.g. if the units of the NetCDF/MAT are `hours since 1990-01-01` then `time_start == DateTime(1900, 1, 1)`.
+- `time_period`: A `DataType` giving the time step of the time dimension, which should come from `Dates`. E.g. if the units of the NetCDF/MAT are `hours since 1990-01-01` then `time_period == Hour`.
 
 ### Optional Arguments
 
@@ -126,11 +131,16 @@ function add_temporal_dimension!(
     force::Bool = false)
 
     extension = infile[findlast(==('.'), infile)+1:end]
-    @argcheck extension in ["nc", "cache"] "Require a .nc or .cache file."
+    @argcheck extension in ["nc", "mat", "cache"] "Require a .nc or .mat or .cache file."
 
     u_out = UNITS["time"]
 
-    time = ncread(infile, time_name_in)
+    try # NetCDF
+        time = ncread(infile, time_name_in)
+    catch # MAT
+        time = matread(infile)[time_name_in]
+        time = ndims(time) == 2 && size(time, 2) == 1 ? vec(time) : time # convert from Nx1 Matrix to Vector
+    end
     (transform !== nothing) && (time = map(transform, time))
     time = map(x -> time_start + time_period(x) - T_REF.x, time)
     time = map(x -> uconvert(u_out, x).val, time)
@@ -145,17 +155,17 @@ end
 """
     add_field!(gf, infile, field_name_in, field_name_out, field_units_in, field_units_out; take_axes, permutation, scale_factor_name, add_offset_name, missings_name, missings_replacement)
 
-Add a new field to `gf::GriddedField` with data read from a NetCDF file `infile`.
+Add a new field to `gf::GriddedField` with data read from a NetCDF or MAT file `infile`.
 
 The new dimension appears last in the list of field names.
 
 ### Arguments
 
 - `gf`: The [`GriddedField`](@ref) to be modified.
-- `infile`: The path to the NetCDF file.
-- `field_name_in`: A `String` giving the name of the field to read in as it appears in the NetCDF file.
+- `infile`: The path to the NetCDF/MAT file.
+- `field_name_in`: A `String` giving the name of the field to read in as it appears in the NetCDF/MAT file.
 - `field_name_out`: A `Symbol` giving the name of the added field in `gf`.
-- `field_units_in`: A `Unitful.Unitlike` giving the units of the field as they appear in the NetCDF file.
+- `field_units_in`: A `Unitful.Unitlike` giving the units of the field as they appear in the NetCDF/MAT file.
 - `field_units_out`: A `String` giving the kind of quantity being read; should be one of `keys(UNITS)`.
 
 ### Optional Arguments
@@ -164,9 +174,9 @@ The new dimension appears last in the list of field names.
     For example, if the `field` is four dimensional, passing `take_axes = [:,:,1,:]` would result in a three dimensional field with \
     dimensions 1, 2 and 4 preserved - indexed on the first element of the third dimension. Default `nothing`.
 - `permutation`: If provided, the field will be permuted according to `permutation`. Applied AFTER `take_axes`. Default `nothing`.
-- `scale_factor_name`: The name of the scale factor. If no scale factor is found, it is taken to be `1`. Default `"scale_factor"`.
-- `add_offset_name`: The name of the additive offset. If no additive offset is found, it is taken to be `0`. Default `"add_offset"`.
-- `missings_name`: A vector of names of missing/fill/extra values. Each such value will be replaced by `missings_replacement` if found. Default `["_FillValue", "missing_value"]`.
+- `scale_factor_name`: The name of the scale factor, only for NetCDF files. If no scale factor is found, it is taken to be `1`. Default `"scale_factor"`.
+- `add_offset_name`: The name of the additive offset, only for NetCDF files. If no additive offset is found, it is taken to be `0`. Default `"add_offset"`.
+- `missings_name`: A vector of names of missing/fill/extra values, only for NetCDF files. Each such value will be replaced by `missings_replacement` if found. Default `["_FillValue", "missing_value"]`.
 - `missings_replacement`: `missings_name` replaces the missing/fill/extra values with this. Default `0.0`.
 """
 function add_field!(
@@ -184,15 +194,25 @@ function add_field!(
     missings_replacement::Real = 0.0) where {N, I<:Integer}
 
     extension = infile[findlast(==('.'), infile)+1:end]
-    @argcheck extension in ["nc", "cache"] "Require a .nc or .cache file."
+    @argcheck extension in ["nc", "mat", "cache"] "Require a .nc or .mat or .cache file."
     @argcheck field_units_out in keys(UNITS) "unit type not recognized, type `UNITS` to see options"
 
     u_out = UNITS[field_units_out]
 
-    field = ncread(infile, field_name_in) |> float
-    missing_vals = [ncgetatt(infile, field_name_in, mn) for mn in missings_name]
-    scale_factor = ncgetatt(infile, field_name_in, scale_factor_name) |> x -> x === nothing ? 1.0 : x
-    add_offset = ncgetatt(infile, field_name_in, add_offset_name) |> x -> x === nothing ? 0.0 : x
+    field, missing_vals, scale_factor, add_offset = zeros(4) 
+
+    try # NetCDF
+        field = ncread(infile, field_name_in) |> float
+        missing_vals = [ncgetatt(infile, field_name_in, mn) for mn in missings_name]
+        scale_factor = ncgetatt(infile, field_name_in, scale_factor_name) |> x -> x === nothing ? 1.0 : x
+        add_offset = ncgetatt(infile, field_name_in, add_offset_name) |> x -> x === nothing ? 0.0 : x
+    catch # MAT
+        field = matread(infile)[field_name_in] |> float
+        missing_vals = [NaN]
+        scale_factor = 1.0
+        add_offset = 0.0
+    end
+
     unit_factor = uconvert(u_out, 1.0 * field_units_in).val
 
     for idx in eachindex(field)

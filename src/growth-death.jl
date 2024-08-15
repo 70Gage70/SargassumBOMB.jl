@@ -24,7 +24,7 @@ An `AbstractGrowthDeathModel` such that no growth or death occurs.
 
 ### Constructors 
 
-Use `ImmortalModel(n_clumps_max; S_gen = Dirac(0.0)).`
+    ImmortalModel(n_clumps_max; S_gen = Dirac(0.0))
 """
 struct ImmortalModel{D<:_UNISAMP} <: AbstractGrowthDeathModel
     S::Vector{Float64}
@@ -74,8 +74,9 @@ This function is of the form `dSdt = growth_factors  - death_factors`.
 
 ### Constructors 
 
-The function `BrooksModelParameters(; parameters...)` is provided, where each parameters is a kwarg 
-with the default values given above.
+    BrooksModelParameters(; parameters...)
+    
+where each parameter is a kwarg with the default values given above.
 """
 struct BrooksModelParameters{I<:InterpolatedField, F<:Function} 
     temp::I
@@ -140,7 +141,13 @@ The growth/death model of [Brooks et al. (2018)](https://www.int-res.com/abstrac
 
 ### Constructors
 
-Use `BrooksModel(n_clumps_max; S_gen = Dirac(0.0), params = BrooksModelParameters(), verbose = false)`.
+    BrooksModel(n_clumps_max; S_gen = Dirac(0.0), params = BrooksModelParameters(), verbose = false)
+
+### Logic
+
+At each time step, `model.S` is modified by `model.params.dSdt * dt`. The resulting `S` values are each \
+compared to `model.params.S_min` and `model.params.S_max` and the associated `i`th clump either dies or spawns 
+a child according to `grow!(integrator, location = i)`.
 """
 mutable struct BrooksModel{B<:BrooksModelParameters, D<:_UNISAMP} <: AbstractGrowthDeathModel
     S::Vector{Float64}
@@ -216,15 +223,6 @@ function (model::BrooksModel)(integrator)
     end
 
     kill!(integrator, model.deaths)
-
-    ### random
-    # for i in model.growths
-    #     grow!(integrator, location = "parent")
-    # end
-
-    # for i = 1:length(model.deaths)
-    #     kill!(integrator, rand(1:n_clumps(integrator.u)))
-    # end
 
     return nothing
 end

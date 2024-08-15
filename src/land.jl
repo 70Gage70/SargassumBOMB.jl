@@ -36,7 +36,7 @@ A container for data handling death of clumps upon reaching the shore.
 
 ### Constructors 
 
-Use `Land(;land_itp::InterpolatedField = land_itp, verbose = false)` to create a new `Land` object.
+    Land(;land_itp::InterpolatedField = land_itp, verbose = false)
 """
 mutable struct Land{I<:InterpolatedField} <: AbstractLand
     land_itp::I

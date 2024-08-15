@@ -18,8 +18,9 @@ If `GriddedField.dims_names == [(:x, u"km"), (:y, u"km"), (:t, u"d")]`, this imp
 
 ### Constructor
 
-Use `GriddedField(n_dims; floats = Float64, ints = Int64)` where `n_dims` is the number of dimensions of the field and `floats` and `ints` give the 
-datatypes used.
+    GriddedField(n_dims; floats = Float64, ints = Int64)
+    
+where `n_dims` is the number of dimensions of the field and `floats` and `ints` give the datatypes used.
 """
 struct GriddedField{N, T<:Real, U<:Integer}
     dims_names::Vector{Tuple{Symbol, UFUL}}
@@ -308,9 +309,9 @@ If `InterpolatedField.dims_names == [(:x, u"km"), (:y, u"km"), (:t, u"d")]`, thi
 
 ### Constructor
 
-Use `InterpolatedField(gf; interpolant_type = "cubic", extrapolate_value = 0.0)` where `gf` is a [`GriddedField`](@ref). 
-
-### Constructor Optional Arguments
+    InterpolatedField(gf; interpolant_type = "cubic", extrapolate_value = 0.0)
+    
+where `gf` is a [`GriddedField`](@ref) and with the optional arguments 
 
 - `interpolant_type`: Two convenience flags are provided, `"cubic"` and `"nearest"` which refer to cubic BSpline and nearest-neighbor interpolation, \
     respectively. Alternatively, any `Interpolations.InterpolationType` can be provided. Default `"cubic"`.

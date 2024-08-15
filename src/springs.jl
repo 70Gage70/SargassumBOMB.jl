@@ -4,7 +4,7 @@
 A supertype for all connections between clumps.
 
 Every subtype of `AbstractConnections` should be mutable with a field `connections` which is similar to a vector
-of vectors an array-like objectsuch that that `connections[i]` is a list of clump indices that
+of vectors such that that `connections[i]` is a list of clump indices that
 are connected to clump `i`.
 
 This should be updated in-place during the integration, i.e. it only shows the connections at the current time.
@@ -34,9 +34,9 @@ end
 
 A connection type such that no clumps are connected.
 
-### Constructors
+### Constructor
 
-`ConnectionsNone(n_clumps_max)` creates an instance with no connections.
+    ConnectionsNone(n_clumps_max)
 """
 struct ConnectionsNone <: AbstractConnections
     connections::Vector{Vector{Int64}}
@@ -55,9 +55,9 @@ end
 
 A connection type such that every clump is connected to every other clump.
 
-### Constructors
+### Constructor
 
-`ConnectionsFull(n_clumps_max)` creates an instance with no connections.
+    ConnectionsFull(n_clumps_max)
 """
 struct ConnectionsFull <: AbstractConnections
     connections::Vector{Vector{Int64}}
@@ -81,9 +81,9 @@ A connection type such that every clump is connected to every clump within a giv
 - `radius`: A distance (assumed in `UNITS["distance"]`) such that each clump is connected \
 to every clump whose distance is at most `radius` from it.
 
-### Constructors
+### Constructor
 
-`ConnectionsRadius(n_clumps_max, radius)` creates an instance with no connections.
+    ConnectionsRadius(n_clumps_max, radius)
 """
 struct ConnectionsRadius <: AbstractConnections
     connections::Vector{Vector{Int64}}
@@ -111,7 +111,7 @@ A connection type such that every clump is connected to a number of its nearest 
 
 ### Constructors
 
-`ConnectionsNearest(n_clumps_max, neighbors)` creates an instance with no connections.
+    ConnectionsNearest(n_clumps_max, neighbors)
 """
 struct ConnectionsNearest <: AbstractConnections
     connections::Vector{Vector{Int64}}
@@ -142,7 +142,13 @@ A supertype for all spring parameters. Each clump, when conncted, is joined by t
 Every subtype of `AbstractSpring` should have a field `k::Function` representing the stiffness force 
 and callable as `k(x)` as well as a field `L::Real` representing the spring's natural length.
 
-All forces are computed using `parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)` where `d = norm(xy1 - xy2)`.
+All forces are computed using 
+
+```julia
+parameters.k(d)*(parameters.L/d - 1)*(xy1 - xy2)
+```
+
+where `d = norm(xy1 - xy2)`.
 """
 abstract type AbstractSpring end
 
@@ -153,7 +159,7 @@ A subtype of `AbstractSpring` representing a spring with a constant stiffness.
 
 ### Constructor
 
-`HookeSpring(k::Real, L::Real)`
+    HookeSpring(k::Real, L::Real)
 """
 struct HookeSpring{F<:Function} <: AbstractSpring
     k::F
@@ -176,7 +182,7 @@ A subtype of `AbstractSpring` representing a BOMB spring of the form `A * (exp((
 
 ### Constructor
 
-`BOMBSpring(A::Real, L::Real)`
+    BOMBSpring(A::Real, L::Real)
 """
 struct BOMBSpring{F<:Function} <: AbstractSpring
     k::F

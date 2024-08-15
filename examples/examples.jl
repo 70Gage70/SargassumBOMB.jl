@@ -5,6 +5,11 @@ using Dates
 
 export generate_rp_example
 
+"""
+    generate_rp_example()
+
+Return a [`RaftParameters`](@ref) suitable for testing purposes.
+"""
 function generate_rp_example()
     LOADED_EXAMPLES = true
     try 

@@ -10,6 +10,23 @@ A container for the high-level parameters of the BOM equations.
 - `Ω` [1/d]: The angular velocity of the Earth.
 - `σ` []: The Stokes drift parameter; this applies an additional fraction of the Stokes drift to the water velocity 
     component of the particle.
+
+### Constructor
+
+    ClumpParameters(; constants...)
+
+Compute the parameters required for the eBOM equations from physical constants.
+
+### Constants
+
+- `δ` []: The bouyancy of the particle. Default: `1.25`.
+- `a` [km]: The radius of the particle. Default: `1.0e-4`.
+- `ρ` [kg/km^3]: The density of the water. Default: `1027.0e9`.
+- `ρa` [kg/km^3]: The density of the air. Default: `1.2e9`.
+- `ν` [km^2/d]: The viscosity of the water. Default: `8.64e-8`.
+- `νa` [km^2/d]: The viscosity of the air. Default: `1.296e-6`.
+- `Ω` [rad/d]: The angular velocity of the Earth. Default: `2π`.
+- `σ` []: The Stokes drift parameter. Default: `0.0`.
 """
 struct ClumpParameters
     α::Float64
@@ -19,22 +36,6 @@ struct ClumpParameters
     σ::Float64
 end
 
-"""
-    ClumpParameters(; constants...)
-
-Compute the parameters required for the BOM equations from physical constants.
-
-### Arguments
-
-- `δ` []: The bouyancy of the particle. Default: `1.25`.
-- `a` [km]: The radius of the particle. Default: `1.0e-4`.
-- `ρ` [kg/km^3]: The density of the water. Default: `1027.0e9`.
-- `ρa` [kg/km^3]: The density of the air. Default: `1.2e9`.
-- `ν` [km^2/d]: The viscosity of the water. Default: `8.64e-8`.
-- `νa` [km^2/d]: The viscosity of the air. Default: `1.296e-6`.
-- `Ω` [rad/d]: The angular velocity of the Earth. Default: `2π`.
-- σ []: The Stokes drift parameter. Default: `0.0`.
-"""
 function ClumpParameters(;
     δ::Real = 1.25,
     a::Real = 1.0e-4,
@@ -85,11 +86,11 @@ clumps that have ever existed (i.e. it is at least the number of clumps that exi
 - `dx_MR`: `dx` of the Maxey-Riley equation. When provided, integration is done using [`FastRaft!`](@ref).
 - `dy_MR`: `dy` of the Maxey-Riley equation. When provided, integration is done using [`FastRaft!`](@ref).
 
-### Constructors 
+### Constructor
 
-Use `RaftParameters(; ics, clumps, springs, connections, gd_model, land, n_clumps_max, fast_raft)`.
+    RaftParameters(; ics, clumps, springs, connections, gd_model, land, n_clumps_max, fast_raft)
 
-The quantities `living` and `n_clumps_tot` are computed automatically under the assumping that \
+The quantities `living` and `n_clumps_tot` are computed automatically under the assumption that \
 the clumps initially provided are all alive.
 
 ### Fast Raft
@@ -158,7 +159,7 @@ end
 Compute `(dx, dy)` where `dx` and `dy` are interpolants evaluable at `(x, y, t)` equal to the right-hand-side
 of the Maxey-Riley equations (spring force excluded).
 
-This is automatically applies when a fast raft is selected in [`Raft!`](@ref).
+This is automatically applied when a fast raft is selected in [`Raft!`](@ref).
 """
 function dxdy_MR(tspan::Tuple{Real, Real}, clumps::ClumpParameters)
     α, τ, R, Ω, σ = clumps.α, clumps.τ, clumps.R, clumps.Ω, clumps.σ

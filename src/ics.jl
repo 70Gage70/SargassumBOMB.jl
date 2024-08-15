@@ -3,15 +3,57 @@
 
 A container for the initial conditions for a raft. 
 
-### Fields
+## Fields
 
 - `tspan`: A `Tuple` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is \
 in `UNITS["time"]` since [`T_REF`](@ref).
 - `ics`: A `2 x N` `Matrix` of the form `[x1 x2 ... xN ; y1 y2 ... yN]` giving the initial coordinates of each clump.
 
-### Constructors 
+## Generic constructor
 
-use `InitialConditions(;tspan, ics)`.
+    InitialConditions(;tspan, ics)
+
+## Constructing from positions
+
+    InitialConditions(tspan, xy0; to_xy)
+
+Construct initial conditions suitable for use in `RaftParameters.ics` from `2 x N` `Matrix`, `xy0` which should \
+be equirectangular coordinates.
+
+    InitialConditions(tspan, x_range, y_range; to_xy)
+
+Generate clumps in a rectangular arrangement.
+
+    InitialConditions(tspan, x0, y0; to_xy)
+    
+Generate a single clump with coordinates `(x0, y0)`.
+
+### Optional Arguments 
+
+`to_xy`: If `true`, the coordinates are converted from spherical to equirectangular coordinates. Default `false`.
+
+## Constructing from a SargassumDistribution
+
+    InitialConditions(tspan, dist, weeks, levels; seed)
+
+Construct [`InitialConditions`](@ref) from a `SargassumDistribution`.
+
+### Arguments 
+- `tspan`: A `Tuple{Real, Real}` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is \
+in in `UNITS["time"]` since [`T_REF`](@ref).
+- `dist`: A `SargassumDistribution`.
+- `weeks`: A `Vector{<:Integer}` giving the weeks of the month to consider. Each entry should be between 1 and 4 and appear only once.
+- `levels`: The number of clump levels. Note that this is NOT equal to the number of clumps, see below.
+
+### Levels
+
+Boxes with nonzero Sargassum content are divided into `levels` levels of size `(maximum(D) - minimum(D))/levels` where `D = log10.(dist.sargassm[:,:,weeks])`. \
+Each box gets a number of clumps equal to its level index. For example, if `levels = 2`, then the smaller half of the boxes (by Sargassum content) \
+get 1 clump each and the larger half get 2 clumps each.
+
+### Optional Arguments 
+
+- `seed`: `Random.seed!(seed)` is called before the the initialization. Default 1234.
 """
 struct InitialConditions
     tspan::Tuple{Float64, Float64}
@@ -26,20 +68,6 @@ struct InitialConditions
     end
 end
 
-"""
-    InitialConditions(tspan, xy0; to_xy)
-
-Construct initial conditions suitable for use in `RaftParameters.ics` from `2 x N` `Matrix`, `xy0` which should \
-be equirectangular coordinates
-
-Can be applied as `InitialConditions(tspan, x_range, y_range; [kwargs])` to generate clumps in a rectangular arrangement.
-
-Can be applied as `InitialConditions(tspan, x0, y0; to_xy; [kwargs])` for a single clump with coordinates `(x0, y0)`.
-
-### Optional Arguments 
-
-`to_xy`: If `true`, the coordinates are converted from spherical to equirectangular coordinates. Default `false`.
-"""
 function InitialConditions(
     tspan::Tuple{Real, Real}, 
     xy0::Matrix{<:Real};
@@ -89,38 +117,16 @@ function InitialConditions(
     return InitialConditions(tspan = tspan, ics = reshape(ics, 2, 1))
 end
 
-"""
-    InitialConditions(tspan, dist, weeks, number; seed)
-
-Construct [`InitialConditions`](@ref) from a `SargassumDistribution`.
-
-### Arguments 
-- `tspan`: A `Tuple{Real, Real}` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is \
-in in `UNITS["time"]` since [`T_REF`](@ref).
-- `dist`: A `SargassumDistribution`.
-- `weeks`: A `Vector{<:Integer}` giving the weeks of the month to consider. Each entry should be between 1 and 4 and appear only once.
-- `number`: The number of clump levels. Note that this is NOT equal to the number of clumps.
-
-### Levels
-
-Boxes with nonzero Sargassum are divided into `number` levels of size `(minimum(D) - maximum(D))/number` where `D = log10.(dist.sargassm[:,:,weeks])`. \
-Each box gets a number of clumps equal to its level index. For example, if `number = 2`, then the smaller half of the boxes (by Sargassum content) \
-get 1 clump each and the larger half get 2 clumps each.
-
-### Optional Arguments 
-
-- `seed`: A `Random.seed!` used in the initialization. Default 1234.
-"""
 function InitialConditions(
     tspan::Tuple{Real, Real},
     dist::SargassumDistribution, 
     weeks::Vector{<:Integer},
-    number::Integer,
+    levels::Integer;
     seed::Integer = 1234)
 
     seed!(seed)
 
-    @argcheck number > 0 "Must request at least one clump"
+    @argcheck levels > 0 "Must request at least one clump"
     @argcheck length(weeks) > 0 "At least one week must be selected."
     @argcheck all(map(x -> 1 <= x <= 4, weeks)) "Each entry of `weeks` must be between 1 and 4."
     @argcheck allunique(weeks) "Each week should only appear once."
@@ -146,7 +152,7 @@ function InitialConditions(
 
     for i = 1:length(pts)
         pt = pts[i]
-        n_c = number*(wts[i] - wtsmin)/(wtsmax - wtsmin) |> x -> round(Integer, x, RoundUp)
+        n_c = levels*(wts[i] - wtsmin)/(wtsmax - wtsmin) |> x -> round(Integer, x, RoundUp)
         for _ = 1:n_c
             push!(x0, rand(Uniform(pt[1] - δ_x/2, pt[1] + δ_x/2)))
             push!(y0, rand(Uniform(pt[2] - δ_y/2, pt[2] + δ_y/2)))       

@@ -19,7 +19,7 @@ const UNITS = Dict{String, UFUL}(
 """
     const EARTH_RADIUS
 
-The radius of the Earth, equal to 6371 km.
+The radius of the Earth, equal to `6371 km`.
 """
 const EARTH_RADIUS = 6371.0 * u"km"
 
@@ -36,9 +36,15 @@ A container for the reference longitude and latitude of an equirectangular proje
 
 ### Constructor
 
-Use `EquirectangularReference(; lon0 = -75.0, lat0 = 10.0, units = UNITS["distance"])`.
+    EquirectangularReference(; lon0 = -75.0, lat0 = 10.0, units = UNITS["distance"])
 
-Example: to measure distances in meters, use `eqr = EquirectangularReference(units = u"m")`.
+### Example
+
+To measure distances in meters,  
+
+```julia
+eqr = EquirectangularReference(units = u"m")
+```
 """
 struct EquirectangularReference{U<:Unitful.AbstractQuantity}
     lon0::Float64
@@ -71,20 +77,19 @@ const EQR = Ref{EquirectangularReference}(EquirectangularReference())
 """
     sph2xy(lon, lat; eqr = EQR.x)
 
-Compute planar coordinates `[x, y]` from spherical coordinates `(lon, lat)` [deg] using [`EquirectangularReference`](@ref) `eqr`, default [`EQR`](@ref).
+Compute planar coordinates `[x, y]` from spherical coordinates `(lon, lat)` [deg E/W, deg N/S] using [`EquirectangularReference`](@ref), `eqr`, default [`EQR`](@ref).
 
 The units of `x` and `y` the same as `eqr.R`.
 
-Can be applied as `sph2xy(lon_range, lat_range; eqr = EQR)` where `lon_range` and `lat_range` are `AbstractRange`. Returns `(x_range, y_range)`.
+### Further Methods
 
-Can be applied as `sph2xy(lon_lat; eqr = EQR)` where `lon_lat` is a `2 x N` `Matrix. 
+    sph2xy(lon_range, lat_range; eqr = EQR)
+    
+where `lon_range` and `lat_range` are `AbstractRange`. Returns `(x_range, y_range)`.
 
-Returns a result in the same shape as the input.
-
-### Arguments
-
-- `lon`: Longitude in degrees (East/West).
-- `lat`: Latitude in degrees (North/South).
+    sph2xy(lon_lat; eqr = EQR) 
+    
+where `lon_lat` is a `2 x N` `Matrix. Returns a result in the same shape as the input.
 """
 function sph2xy(lon::Real, lat::Real; eqr::EquirectangularReference = EQR.x)
     @argcheck -180.0 <= lon <= 180.0 "The longitude must be between -180 degrees and 180 degrees."
@@ -129,14 +134,15 @@ Compute spherical coordinates `[lon, lat]` [deg] from rectilinear coordinates `(
 
 The units of `x` and `y` should be the same as `eqr.R`.
 
-Can be applied as `xy2sph(x_range, y_range)` where `x_range` and `y_range` are `AbstractRange`. Returns `(lon_range, lat_range)`.
+### Further Methods
 
-Can be applied as `xy2sph(xy)` where `xy` is a `2 x N` `Matrix`. 
+    xy2sph(x_range, y_range)
+    
+where `x_range` and `y_range` are `AbstractRange`. Returns `(lon_range, lat_range)`.
 
-### Arguments
-
-- `x`: The x Cartesian coordinate in km (East/West).
-- `y`: The y Cartesian coordinate in km (North/South).
+    xy2sph(xy) 
+    
+where `xy` is a `2 x N` `Matrix`. 
 """
 function xy2sph(x::Real, y::Real; eqr::EquirectangularReference = EQR.x)
     lon0, lat0, R = (eqr.lon0, eqr.lat0, eqr.R.val)

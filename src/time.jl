@@ -78,8 +78,6 @@ end
     ymwspan2weekspan(ymw1, ymw2)
 
 Return a vector list of all `(year, month, week)` tuples between `ym1 = (year1, month1, week1)` and `ym2 = (year2, month2, week2)` inclusive.
-
-### Example
 """
 function ymwspan2weekspan(ymw1::NTuple{3, Integer}, ymw2::NTuple{3, Integer})
 

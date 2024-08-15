@@ -8,9 +8,9 @@ A container for the data of a single clump's trajectory.
 - `xy`: A `Matrix` of size `N x 2` such that `xy[i,:]` gives the `[x, y]` or `[lon, lat]` coordinates at the clump at time `t[i]`.
 - `t`: A `Vector` of length `N` giving the time values of the trajectory.
 
-### Constructors
+### Constructor
 
-Apply as `Trajectory(xy, t)`.
+    Trajectory(xy, t)
 """
 struct Trajectory
     xy::Matrix{Float64}
@@ -58,7 +58,9 @@ A container for the data of a every clump's trajectory in a raft, as well as its
 
 ### Constructor
 
-Apply as `RaftTrajectory(; trajectories, n_clumps, com). The field `t` is set to `com.t`.
+    RaftTrajectory(; trajectories, n_clumps, com)
+    
+The field `t` is set to `com.t`.
 """
 struct RaftTrajectory
     trajectories::Dict{Int64,Trajectory}

@@ -5,7 +5,7 @@ Remove the clump with index `i` from `integrator`.
 
 Can be applied as kill!(integrator, inds) in which case each `i in inds` will be killed in order.
 
-For the [`RaftParameters`](@ref), `rp = integrator.p` update `rp.living` appropriately.
+For the [`RaftParameters`](@ref), `rp = integrator.p`, update `rp.living` appropriately.
 """
 function kill!(integrator::SciMLBase.DEIntegrator, i::Integer)
     !integrator.p.living[i] && error("kill! was called on a clump that was already dead, idx $(i)")
@@ -25,15 +25,15 @@ end
 """
     grow!(integrator, location)
 
-Add a clump to the [`RaftParameters`](@ref), `rp = integrator.p` with an index equal to `rp.n_clumps_tot + 1` and also update `rp.living` appropriately.
+Add a clump to the [`RaftParameters`](@ref), `rp = integrator.p`, with an index equal to `rp.n_clumps_tot + 1` and also update `rp.living` appropriately.
 
 ### Location 
 
 `location` can be a pre-defined flag, an integer, or a `[x, y]` vector. The default value is the flag `"parent"`.
 
 The possible flags are:
-- `"parent"`: A parent clump is chosen randomly among clumps that already exist, and the new clump is placed a distance `integrator.rp.springs.L` away and at a 
-random angle from it.
+- `"parent"`: A parent clump is chosen randomly among clumps that already exist, and the new clump is placed \
+a distance `integrator.rp.springs.L` away and at a random angle from it.
 - `"com"`: The same as `"parent"`, except the centre location is at the center of mass of the raft.
 
 If `location` is an `Integer` with value `i`, then the new clump will be grown with `i`th clump (by vector location) as its parent.

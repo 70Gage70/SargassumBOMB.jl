@@ -5,9 +5,9 @@ A container for comparing simulation data to target data in weekly periods.
 
 ### Fields
 
-- `simulation`: An array with dimensions `lon x lat x t` such that `sum(:,:,t) = 1` for all `t`. This is the Sargassum
+- `simulation`: An array with dimensions `lon x lat x t` such that `sum(:,:,t) = 1` for all `t`. This is the Sargassum \
 distribution coming from simulation, i.e. a [`RaftTrajectory`](@ref).
-- `target`: An array with dimensions `lon x lat x t` such that `sum(:,:,t) = 1` for all `t`. This is the Sargassum
+- `target`: An array with dimensions `lon x lat x t` such that `sum(:,:,t) = 1` for all `t`. This is the Sargassum \
 distribution coming from observation, i.e. a [`SargassumDistribution`](@ref).
 - `lon`: A vector of latitudes.
 - `lat`: A vector of longitudes.
@@ -16,13 +16,16 @@ distribution coming from observation, i.e. a [`SargassumDistribution`](@ref).
 
 ### Constructor
 
-Use `TimeSeries(rtr, ymw1, ymw2; corners, dists, exclude_clouded_bins)` where `rtr` is a [`RaftTrajectory`](@ref)
-and `ymw1` and `ymw2` are the `(year, month, week)` bounds of the time series.
+    TimeSeries(rtr, ymw1, ymw2; corners, dists, exclude_clouded_bins)
+    
+where `rtr` is a [`RaftTrajectory`](@ref) and `ymw1` and `ymw2` are the `(year, month, week)` bounds of the time series.
+
+### Optional Arguments
 
 - `corners`: Of the form `(lon_min, lon_max, lat_min, lat_max)` where the data is restricted to bins in this area. \
 Default `(-180, 180, -90, 90)`.
 - `dists`: A dictionary mapping `(year, month)` to `SargassumDistribution`. Default `DIST_1718`.
-- `exclude_clouded_bins`: Exclude clouded bins from the calculation, i.e. set their bin value equal to 0 in both the 
+- `exclude_clouded_bins`: Exclude clouded bins from the calculation, i.e. set their bin value equal to 0 in both the \
 simulation and the target. Default `true`.
 """
 struct TimeSeries

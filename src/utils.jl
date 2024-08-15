@@ -1,16 +1,3 @@
-# """
-#     n_clumps(object)
-
-# Return the number of living clumps in the `object.`
-
-# `object` can be a [`InitialConditions`](@ref). This simply returns `size(ics.ics, 2)`.
-
-# `object` can be an [`RaftParameters`](@ref).
-# """
-# function n_clumps(ics::InitialConditions)
-#     return size(ics.ics, 2)
-# end
-
 """
     clump_i(u, i)
 

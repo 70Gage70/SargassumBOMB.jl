@@ -148,7 +148,7 @@ end
     trajectory_hist!(axis, traj, dist, week; log_scale, args...)
 
 Create a `Makie.heatmap` on `axis` with the same bins as the `SargassumFromAFAI.SargassumDistribution` in `dist` 
-` of the data in `traj` scaled according to the sargassum content at week `week`.
+of the data in `traj` scaled according to the sargassum content at week `week`.
 
 `traj` is a [`RaftTrajectory`](@ref).
 

@@ -107,11 +107,11 @@ function __init__()
     try
         itps_load(ITPS_DEFAULT_DIR)
     catch
-        try 
-            itps_default_construct()
-        catch
-            @warn "Default interpolants could not be loaded."
-        end
+        # try 
+        #     itps_default_construct()
+        # catch
+        #     @warn "Default interpolants could not be loaded."
+        # end
     end
 
     return nothing

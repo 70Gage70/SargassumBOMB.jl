@@ -79,15 +79,15 @@ function add_spatial_dimension!(
     force::Bool = false)
 
     extension = infile[findlast(==('.'), infile)+1:end]
-    @argcheck extension in ["nc", "mat", "cache"] "Require a .nc or .mat or .cache file."
+    @argcheck extension in ["nc", "mat"] "Require a .nc or .mat file."
     @argcheck dim_units_out in keys(UNITS) "unit type not recognized, type `UNITS` to see options"
 
     u_out = UNITS[dim_units_out]
 
     dim = nothing
-    try # NetCDF
+    if extension == "nc"
         dim = ncread(infile, dim_name_in)
-    catch # MAT
+    elseif extension == "mat"
         dim = matread(infile)[dim_name_in]
         dim = ndims(dim) == 2 && size(dim, 2) == 1 ? vec(dim) : dim # convert from Nx1 Matrix to Vector
     end
@@ -133,14 +133,14 @@ function add_temporal_dimension!(
     force::Bool = false)
 
     extension = infile[findlast(==('.'), infile)+1:end]
-    @argcheck extension in ["nc", "mat", "cache"] "Require a .nc or .mat or .cache file."
+    @argcheck extension in ["nc", "mat"] "Require a .nc or .mat file."
 
     u_out = UNITS["time"]
 
     time = nothing
-    try # NetCDF
+    if extension == "nc"
         time = ncread(infile, time_name_in)
-    catch # MAT
+    elseif extension == "mat"
         time = matread(infile)[time_name_in]
         time = ndims(time) == 2 && size(time, 2) == 1 ? vec(time) : time # convert from Nx1 Matrix to Vector
     end
@@ -197,19 +197,19 @@ function add_field!(
     missings_replacement::Real = 0.0) where {N, I<:Integer}
 
     extension = infile[findlast(==('.'), infile)+1:end]
-    @argcheck extension in ["nc", "mat", "cache"] "Require a .nc or .mat or .cache file."
+    @argcheck extension in ["nc", "mat"] "Require a .nc or .mat file."
     @argcheck field_units_out in keys(UNITS) "unit type not recognized, type `UNITS` to see options"
 
     u_out = UNITS[field_units_out]
 
     field, missing_vals, scale_factor, add_offset = zeros(4) 
 
-    try # NetCDF
+    if extension == "nc"
         field = ncread(infile, field_name_in) |> float
         missing_vals = [ncgetatt(infile, field_name_in, mn) for mn in missings_name]
         scale_factor = ncgetatt(infile, field_name_in, scale_factor_name) |> x -> x === nothing ? 1.0 : x
         add_offset = ncgetatt(infile, field_name_in, add_offset_name) |> x -> x === nothing ? 0.0 : x
-    catch # MAT
+    elseif extension == "mat"
         field = matread(infile)[field_name_in] |> float
         missing_vals = [NaN]
         scale_factor = 1.0

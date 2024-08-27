@@ -1,11 +1,4 @@
 """
-    const ITP_DEFAULT_DIR
-
-The directory where default interpolants are stored. Default `~/interpolants/default/itps`.
-"""
-const ITPS_DEFAULT_DIR = abspath(joinpath(@__DIR__, "default", "itps"))
-
-"""
     const WATER_ITP
 
 The interpolant for ocean currents. This is a `Ref`, access or modify the actual interpolant with `WATER_ITP.x`.

@@ -37,3 +37,37 @@ function vec2range(vector::Vector{<:Real}; force::Bool = false)
     
     return vector[1]:step_size:vector[end]
 end
+
+"""
+    _download_with_progress(url, output_path)
+
+Download file from `url` to `output_path` with a progress bar.
+"""
+function _download_with_progress(url::String, output_path::String)
+    println("Downloading $url to $output_path")
+
+    started = false
+
+    function progress_callback(total, now)
+        if total == 0
+            if !started
+                print("STARTING DOWNLOAD")
+                started = true
+            end
+        else
+            percent = round(now / total * 100, digits = 2)
+            bar_length = 50
+            filled_length = Int(round(bar_length * percent / 100))
+            bar = "█"^filled_length * " "^(bar_length - filled_length)
+            print("\r[$bar] $percent%")
+        end
+        flush(stdout)
+    end
+
+    Downloads.download(url, output_path; progress = progress_callback)
+    flush(stdout)
+
+    println("\nDownload complete!")
+
+    return nothing
+end

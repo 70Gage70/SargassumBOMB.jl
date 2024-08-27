@@ -11,7 +11,9 @@ using ArgCheck
 using MAT, NetCDF, JLD2
 
 # downloading interpolants
-using DataToolkit
+using Scratch, Downloads
+_ITPS_RAW_SCRATCH = Ref{String}()
+_ITPS_SCRATCH = Ref{String}()
 
 # probability/statistics
 using StatsBase, Distributions 
@@ -104,14 +106,17 @@ export Examples
 
 # initialize interpolants
 function __init__()
+    _ITPS_RAW_SCRATCH.x = @get_scratch!("_ITPS_RAW_SCRATCH")
+    _ITPS_SCRATCH.x = @get_scratch!("_ITPS_SCRATCH")
+
     try
-        itps_load(ITPS_DEFAULT_DIR)
+        itps_load(_ITPS_SCRATCH.x)
     catch
-        # try 
-        #     itps_default_construct()
-        # catch
-        #     @warn "Default interpolants could not be loaded."
-        # end
+        try 
+            itps_default_construct()
+        catch
+            nothing
+        end
     end
 
     return nothing

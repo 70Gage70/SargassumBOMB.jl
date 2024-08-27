@@ -1,3 +1,13 @@
+const _WATER_DEFAULT_RAW_LINK = "https://www.dropbox.com/scl/fi/7lvc5j0dqcbztcwd3rnnp/water.nc?rlkey=yhpmf5evtzrppr14v691l97j3&dl=1"
+
+const _WIND_DEFAULT_RAW_LINK = "https://www.dropbox.com/scl/fi/k3vrbuxegp6mj6y5oqpbo/wind.nc?rlkey=jgi2zvrwagc2e1tcwt1nvzz54&dl=0"
+
+const _WAVES_DEFAULT_RAW_LINK = "https://www.dropbox.com/scl/fi/j5b6akflmgvhcfy124l4l/waves.nc?rlkey=me7c7tne70kd5xrt3oy7o15tm&dl=0"
+
+const _NUTRIENTS_DEFAULT_RAW_LINK = "https://www.dropbox.com/scl/fi/pj3ovx8owlxqxaj43x2py/nutrients.nc?rlkey=jsulyltckanjqdmi8ygxrddwo&dl=1"
+
+const _TEMPERATURE_DEFAULT_RAW_LINK = "https://www.dropbox.com/scl/fi/oyrk1klf8rugk3mty0erx/currents-temperature.nc?rlkey=3t6znxletyret5jo0v8447dpf&dl=1"
+
 function _construct_water_default(infile::String, outfile::String)
     gf = GriddedField(3)
 
@@ -143,35 +153,27 @@ function _construct_land_default(outfile::String)
     return nothing
 end
 
-function _dtk_path(name::String)
-    try
-        open(dataset(name), DataToolkit.FilePath).path
-    catch
-        nothing
-    end
-end
-
 """
-    itps_default_construct(; download_data = false, verbose = true)
+    itps_default_construct(; download = false, verbose = true)
 
-Construct all interpolants using the default data. This overwrites any default interpolants already constructed.
+Construct all interpolants using the default data. 
+
+This overwrites any default interpolants already constructed.
 
 Interpolants constructed: water, wind, stokes, waves, nutrients, temperature, land.
 
 ### Optional Arguments
 
-- `download_data`: If `true`, the data required to construct the interpolants will be downloaded using `DataToolkit.jl`. \
-This is roughly 1.2 GB of .nc files. Default `false`.
+- `download`: If `true`, download the data (roughly 1.2 GB of NetCDF files).
 - `verbose`: If `true`, print itp construction stats. Default `true`.
 """
-function itps_default_construct(; download_data::Bool = false, verbose::Bool = true)
-    path2datatoml = joinpath(@__DIR__, "Data.toml") |> abspath
-    data_col = loadcollection!(path2datatoml, @__MODULE__)
-
-
-    if download_data
-        DataToolkitCommon.Store.fetch!(data_col) # v0.9
-        # DataToolkitStore.fetch!(data_col) # v0.10
+function itps_default_construct(; download::Bool = false, verbose::Bool = true)
+    if download
+        _download_with_progress(_WATER_DEFAULT_RAW_LINK, joinpath(_ITPS_RAW_SCRATCH.x, "water.nc"))
+        _download_with_progress(_WIND_DEFAULT_RAW_LINK, joinpath(_ITPS_RAW_SCRATCH.x, "wind.nc"))
+        _download_with_progress(_WAVES_DEFAULT_RAW_LINK, joinpath(_ITPS_RAW_SCRATCH.x, "waves.nc"))
+        _download_with_progress(_NUTRIENTS_DEFAULT_RAW_LINK, joinpath(_ITPS_RAW_SCRATCH.x, "nutrients.nc"))
+        _download_with_progress(_TEMPERATURE_DEFAULT_RAW_LINK, joinpath(_ITPS_RAW_SCRATCH.x, "temperature.nc"))
     end
 
     verbose && @info "Constructing default interpolants."
@@ -180,74 +182,74 @@ function itps_default_construct(; download_data::Bool = false, verbose::Bool = t
 
     ########################### WATER
     verbose && @info "Constructing WATER interpolant."
-    infile = _dtk_path("WATER")
-    if infile !== nothing
-        outfile = joinpath(@__DIR__, "itps", "WATER_ITP.jld2")
+    infile = joinpath(_ITPS_RAW_SCRATCH.x, "water.nc")
+    if isfile(infile)
+        outfile = joinpath(_ITPS_SCRATCH.x, "WATER_ITP.jld2")
         rm(outfile, force = true)
         _construct_water_default(infile, outfile)
     else
         push!(missings, "WATER")
     end
 
-    ########################### WIND
+    # ########################### WIND
     verbose && @info "Constructing WIND interpolant."
-    infile = _dtk_path("WIND")
-    if infile !== nothing
-        outfile = joinpath(@__DIR__, "itps", "WIND_ITP.jld2")
+    infile = joinpath(_ITPS_RAW_SCRATCH.x, "wind.nc")
+    if isfile(infile)
+        outfile = joinpath(_ITPS_SCRATCH.x, "WIND_ITP.jld2")
         rm(outfile, force = true)
         _construct_wind_default(infile, outfile)
     else
         push!(missings, "WIND")
     end
 
-    ########################### STOKES
+    # ########################### STOKES
     verbose && @info "Constructing STOKES interpolant."
-    infile = _dtk_path("WAVES")
-    if infile !== nothing
-        outfile = joinpath(@__DIR__, "itps", "STOKES_ITP.jld2")
+    infile = joinpath(_ITPS_RAW_SCRATCH.x, "waves.nc")
+    if isfile(infile)
+        outfile = joinpath(_ITPS_SCRATCH.x, "STOKES_ITP.jld2")
         rm(outfile, force = true)
         _construct_stokes_default(infile, outfile)
     else
         push!(missings, "STOKES")
     end
 
-    ########################### WAVES
+    # ########################### WAVES
     verbose && @info "Constructing WAVES interpolant."
-    infile = _dtk_path("WAVES")
-    if infile !== nothing
-        outfile = joinpath(@__DIR__, "itps", "WAVES_ITP.jld2")
+    infile = joinpath(_ITPS_RAW_SCRATCH.x, "waves.nc")
+    if isfile(infile)
+        outfile = joinpath(_ITPS_SCRATCH.x, "WAVES_ITP.jld2")
         rm(outfile, force = true)
         _construct_waves_default(infile, outfile)
     else
         push!(missings, "WAVES")
     end
 
-    ########################### NUTRIENTS
+    # ########################### NUTRIENTS
     verbose && @info "Constructing NUTRIENTS interpolant."
-    infile = _dtk_path("NUTRIENTS")
-    if infile !== nothing
-        outfile = joinpath(@__DIR__, "itps", "NUTRIENTS_ITP.jld2")
+    infile = joinpath(_ITPS_RAW_SCRATCH.x, "nutrients.nc")
+    if isfile(infile)
+        outfile = joinpath(_ITPS_SCRATCH.x, "NUTRIENTS_ITP.jld2")
         rm(outfile, force = true)
         _construct_nutrients_default(infile, outfile)
     else
         push!(missings, "NUTRIENTS")
     end
 
-    ########################### TEMPERATURE
+    # ########################### TEMPERATURE
     verbose && @info "Constructing TEMPERATURE interpolant."
-    infile = _dtk_path("TEMPERATURE")
-    if infile !== nothing
-        outfile = joinpath(@__DIR__, "itps", "TEMPERATURE_ITP.jld2")
+    infile = joinpath(_ITPS_RAW_SCRATCH.x, "temperature.nc")
+    if isfile(infile)
+        outfile = joinpath(_ITPS_SCRATCH.x, "TEMPERATURE_ITP.jld2")
         rm(outfile, force = true)
         _construct_temperature_default(infile, outfile)
     else
         push!(missings, "TEMPERATURE")
     end
 
-    ########################### LAND
+    # ########################### LAND
     verbose && @info "Constructing LAND interpolant."
     try 
-        outfile = joinpath(@__DIR__, "itps", "LAND_ITP.jld2")
+        outfile = joinpath(_ITPS_SCRATCH.x, "LAND_ITP.jld2")
         rm(outfile, force = true)
         _construct_land_default(outfile)
     catch
@@ -257,11 +259,11 @@ function itps_default_construct(; download_data::Bool = false, verbose::Bool = t
     ########################### END MATTER
 
     if length(missings) == 6
-        verbose && @warn "Could not construct any interpolants; data missing. Try running `itps_default_construct(download_data = true)`. This downloads roughly 1.2 GB of data."
+        verbose && @warn "Could not construct any interpolants."
     elseif 0 < length(missings) < 6
-        verbose && @warn "Could not construct interpolants $(missings); data missing. Try running `itps_default_construct(download_data = true)`. This downloads roughly 1.2 GB of data."
+        verbose && @warn "Could not construct interpolants $(missings)."
     else
-        itps_load(ITPS_DEFAULT_DIR)
+        itps_load(_ITPS_SCRATCH.x)
         verbose && @info "Default interpolants constructed."
     end
 

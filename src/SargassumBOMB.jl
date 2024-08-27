@@ -113,7 +113,7 @@ function __init__()
         itps_load(_ITPS_SCRATCH.x)
     catch
         try 
-            itps_default_construct()
+            itps_default_construct(verbose = false)
         catch
             nothing
         end

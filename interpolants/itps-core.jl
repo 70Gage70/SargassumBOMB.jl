@@ -89,7 +89,7 @@ function add_spatial_dimension!(
         dim = ncread(infile, dim_name_in)
     elseif extension == "mat"
         dim = matread(infile)[dim_name_in]
-        dim = ndims(dim) == 2 && size(dim, 2) == 1 ? vec(dim) : dim # convert from Nx1 Matrix to Vector
+        dim = ndims(dim) == 2 && (size(dim, 2) == 1 || size(dim, 1) == 1) ? vec(dim) : dim # convert from Matrix to Vector
     end
     (transform !== nothing) && (dim = map(transform, dim))
     dim = dim * uconvert(u_out, 1.0 * dim_units_in).val
@@ -144,12 +144,12 @@ function add_temporal_dimension!(
         time = ncread(infile, time_name_in)
     elseif extension == "mat"
         time = matread(infile)[time_name_in]
-        time = ndims(time) == 2 && size(time, 2) == 1 ? vec(time) : time # convert from Nx1 Matrix to Vector
+        time = ndims(time) == 2 && (size(time, 2) == 1 || size(time, 1) == 1) ? vec(time) : time # convert from Matrix to Vector
     end
     time = float(time)
     (transform !== nothing) && (time = map(transform, time))
     time = map(x -> time_start + x * time_period - T_REF.x, time)
-    time = map(x -> uconvert(u_out, x).val, time)
+    time = map(x -> uconvert(u_out, x).val, time) |> float
     time = vec2range(time, force = force)
 
     push!(gf.dims_names, (time_name_out, u_out))

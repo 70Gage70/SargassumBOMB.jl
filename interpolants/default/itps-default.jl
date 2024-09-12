@@ -13,7 +13,7 @@ function _construct_water_default(infile::String, outfile::String)
 
     add_spatial_dimension!(gf, infile, "lon", :lon, u"°", "degrees")
     add_spatial_dimension!(gf, infile, "lat", :lat, u"°", "degrees")
-    add_temporal_dimension!(gf, infile, "time", :t, DateTime(0000, 12, 31), Day) # Rata Die days
+    add_temporal_dimension!(gf, infile, "time", :t, DateTime(0000, 12, 31), u"d") # Rata Die days
 
     add_field!(gf, infile, "u", :u, u"km/d", "speed")
     add_field!(gf, infile, "v", :v, u"km/d", "speed")
@@ -34,7 +34,7 @@ function _construct_wind_default(infile::String, outfile::String)
 
     add_spatial_dimension!(gf, infile, "longitude", :lon, u"°", "degrees")
     add_spatial_dimension!(gf, infile, "latitude", :lat, u"°", "degrees")
-    add_temporal_dimension!(gf, infile, "time", :t, DateTime(1900, 1, 1), Hour)
+    add_temporal_dimension!(gf, infile, "time", :t, DateTime(1900, 1, 1), u"hr")
 
     add_field!(gf, infile, "u10", :u, u"m/s", "speed")
     add_field!(gf, infile, "v10", :v, u"m/s", "speed")
@@ -55,7 +55,7 @@ function _construct_stokes_default(infile::String, outfile::String)
 
     add_spatial_dimension!(gf, infile, "longitude", :lon, u"°", "degrees")
     add_spatial_dimension!(gf, infile, "latitude", :lat, u"°", "degrees")
-    add_temporal_dimension!(gf, infile, "time", :t, DateTime(1900, 1, 1), Hour)
+    add_temporal_dimension!(gf, infile, "time", :t, DateTime(1900, 1, 1), u"hr")
 
     add_field!(gf, infile, "ust", :u, u"m/s", "speed")
     add_field!(gf, infile, "vst", :v, u"m/s", "speed")
@@ -76,7 +76,7 @@ function _construct_waves_default(infile::String, outfile::String)
 
     add_spatial_dimension!(gf, infile, "longitude", :lon, u"°", "degrees")
     add_spatial_dimension!(gf, infile, "latitude", :lat, u"°", "degrees")
-    add_temporal_dimension!(gf, infile, "time", :t, DateTime(1900, 1, 1), Hour)
+    add_temporal_dimension!(gf, infile, "time", :t, DateTime(1900, 1, 1), u"hr")
 
     add_field!(gf, infile, "swh", :swh, u"m", "wave_height")
 
@@ -95,7 +95,7 @@ function _construct_nutrients_default(infile::String, outfile::String)
 
     add_spatial_dimension!(gf, infile, "longitude", :lon, u"°", "degrees")
     add_spatial_dimension!(gf, infile, "latitude", :lat, u"°", "degrees")
-    add_temporal_dimension!(gf, infile, "time", :t, DateTime(1950, 1, 1), Hour)
+    add_temporal_dimension!(gf, infile, "time", :t, DateTime(1950, 1, 1), u"hr")
 
     add_field!(gf, infile, "no3", :no3, u"mmol/m^3", "concentration", take_axes = [:,:,1,:])
 
@@ -114,7 +114,7 @@ function _construct_temperature_default(infile::String, outfile::String)
 
     add_spatial_dimension!(gf, infile, "longitude", :lon, u"°", "degrees")
     add_spatial_dimension!(gf, infile, "latitude", :lat, u"°", "degrees")
-    add_temporal_dimension!(gf, infile, "time", :t, DateTime(1950, 1, 1), Day)
+    add_temporal_dimension!(gf, infile, "time", :t, DateTime(1950, 1, 1), u"d")
 
     add_field!(gf, infile, "thetao_glor", :temp, u"°C", "temperature", take_axes = [:,:,1,:])
 

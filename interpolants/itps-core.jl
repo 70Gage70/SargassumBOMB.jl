@@ -114,8 +114,10 @@ The new dimension appears last in the list of dimension names.
 - `infile`: The path to the NetCDF/MAT file.
 - `time_name_in`: A `String` giving the name of the time dimension to read in as it appears in the NetCDF/MAT file.
 - `time_name_out`: A `Symbol` giving the name of the added time dimension in `gf`.
-- `time_start`: A `DateTime` giving the reference time of the time dimension, e.g. if the units of the NetCDF/MAT are `hours since 1990-01-01` then `time_start == DateTime(1900, 1, 1)`.
-- `time_period`: A `DataType` giving the time step of the time dimension, which should come from `Dates`. E.g. if the units of the NetCDF/MAT are `hours since 1990-01-01` then `time_period == Hour`.
+- `time_start`: A `DateTime` giving the reference time of the time dimension, e.g. if the \
+units of the NetCDF/MAT are `hours since 1990-01-01` then `time_start == DateTime(1900, 1, 1)`.
+- `time_period`: A `Unitful.FreeUnits` giving the time step (units) of the time dimension. \
+E.g. if the units of the NetCDF/MAT are `hours since 1990-01-01` then `time_period == u"hr"`.
 
 ### Optional Arguments
 
@@ -128,9 +130,9 @@ function add_temporal_dimension!(
     time_name_in::String,
     time_name_out::Symbol,  
     time_start::DateTime,
-    time_period::DataType;
+    time_period::Unitful.FreeUnits{N, Unitful.𝐓, nothing};
     transform::Union{Function, Nothing} = nothing,
-    force::Bool = false)
+    force::Bool = false) where {N}
 
     extension = infile[findlast(==('.'), infile)+1:end]
     @argcheck extension in ["nc", "mat"] "Require a .nc or .mat file."
@@ -144,8 +146,9 @@ function add_temporal_dimension!(
         time = matread(infile)[time_name_in]
         time = ndims(time) == 2 && size(time, 2) == 1 ? vec(time) : time # convert from Nx1 Matrix to Vector
     end
+    time = float(time)
     (transform !== nothing) && (time = map(transform, time))
-    time = map(x -> time_start + time_period(x) - T_REF.x, time)
+    time = map(x -> time_start + x * time_period - T_REF.x, time)
     time = map(x -> uconvert(u_out, x).val, time)
     time = vec2range(time, force = force)
 

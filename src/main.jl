@@ -79,7 +79,7 @@ function simulate(
     ts = collect(ts)[l_idx]
     trajs = [Trajectory(permutedims(xy2sph(trajs[i][:,2:end])), ts[lifespans[l_idx,i]]) for i = 1:rp.n_clumps_max if size(trajs[i], 2) > 1]
     trajs = Dict(1:length(trajs) .=> trajs)
-    raft_com = Trajectory(raft_com[l_idx,:], ts)
+    raft_com = raft_com[l_idx,:] |> permutedims |> xy2sph |> permutedims |> r -> Trajectory(r, ts)
 
     return RaftTrajectory(trajectories = trajs, n_clumps = n_clumps[l_idx], com = raft_com)
 end
@@ -147,7 +147,7 @@ function rk4(
     ts = collect(ts)[l_idx]
     trajs = [Trajectory(permutedims(xy2sph(trajs[i][:,2:end])), ts[lifespans[l_idx,i]]) for i = 1:rp.n_clumps_max if size(trajs[i], 2) > 1]
     trajs = Dict(1:length(trajs) .=> trajs)
-    raft_com = Trajectory(raft_com[l_idx,:], ts)
+    raft_com = raft_com[l_idx,:] |> permutedims |> xy2sph |> permutedims |> r -> Trajectory(r, ts)
 
     return RaftTrajectory(trajectories = trajs, n_clumps = n_clumps[l_idx], com = raft_com)
 end

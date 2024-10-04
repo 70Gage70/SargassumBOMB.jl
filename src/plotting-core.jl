@@ -84,6 +84,31 @@ function trajectory!(
 end
 
 """
+    trajectory(rtr::RaftTrajectory; limits = (-100, -40, 5, 35))
+
+Visualize a [`RaftTrajectory`](@ref) quickly.
+"""
+function trajectory(rtraj::RaftTrajectory; limits::NTuple{4, Real} = (-100, -40, 5, 35))
+    set_theme!(GEO_THEME())
+    fig = Figure()
+    ax = Axis(fig[1, 1], limits = limits)
+
+    for i in keys(rtraj.trajectories)
+        x, y = rtraj.trajectories[i].xy[:,1], rtraj.trajectories[i].xy[:,2]
+
+        lines!(ax, x, y, color = rtraj.trajectories[i].t, linewidth = 2)
+    end
+
+    limits = rtraj.com.t |> x -> x .- first(x) |> extrema
+    t0 = time2datetime(rtraj.com.t[1])
+    Colorbar(fig[1, 2], limits = limits, label = "Days since $(t0)")
+
+    land!(ax)
+
+    return fig
+end
+
+"""
     trajectory_hist!(axis, traj, lon_bins, lat_bins; log_scale, args...)
 
 Create a `Makie.heatmap` on `axis` with bin centers at the coordinates defined by `lon_bins` 

@@ -20,7 +20,7 @@ using StatsBase, Distributions
 using Random: seed!
 
 # plotting/geography
-using Makie
+using Makie, CairoMakie
 using SargassumColors
 using GeoDatasets # landseamask
 
@@ -90,7 +90,7 @@ export LossFunction
 export optimize!
 
 include("plotting-core.jl")
-export trajectory!, trajectory_hist!
+export trajectory!, trajectory_hist!, trajectory
 
 include("plotting-itp.jl")
 export check_land, check_itp

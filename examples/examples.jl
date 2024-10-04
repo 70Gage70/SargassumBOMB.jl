@@ -3,14 +3,14 @@ module Examples
 using SargassumBOMB, SargassumFromAFAI
 using Dates
 
-export generate_rp_example, RaftParameters
+export QuickRaftParameters
 
 """
-    generate_rp_example()
+    QuickRaftParameters()
 
-Return a [`RaftParameters`](@ref) suitable for testing purposes.
+Return a simple [`RaftParameters`](@ref) suitable for testing purposes.
 """
-function generate_rp_example()
+function QuickRaftParameters()
     LOADED_EXAMPLES = true
     try 
         itps_load(ITPS_DEFAULT_DIR)
@@ -38,11 +38,9 @@ function generate_rp_example()
     )
 end
 
-end # module
-
 
 """
-    RaftParameters(ymw_initial, ymw_final; kwargs...)
+    QuickRaftParameters(ymw_initial, ymw_final; kwargs...)
 
 Generate a [`RaftParameters`](@ref) object to integrate from `(year, month, week)` inital to final. The raft 
 is initialized at the Sargassum distribution at `ymw_initial`.
@@ -65,7 +63,7 @@ See [`InitialConditions`](@ref) for more detail. Default `5`.
 - `S_max`: A clump dies when it's "amount" grows above this value. Default `0.001`.
 - `seed`: A seed for reproducible randomness, passed to [`InitialConditions`](@ref). Default `1234`.
 """
-function RaftParameters(
+function QuickRaftParameters(
 	ymw_initial::NTuple{3, Integer},
 	ymw_final::NTuple{3, Integer};
     use_biology::Bool = false,
@@ -119,3 +117,5 @@ function RaftParameters(
 	    fast_raft = false
 	)
 end
+
+end # module

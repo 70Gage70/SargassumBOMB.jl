@@ -1,10 +1,11 @@
 name = "SargassumBOMB"
 uuid = "b5ee06fe-188d-450a-9f05-8f188668dd15"
 authors = ["Gage Bonner <gage.bonner@gmail.com>"]
-version = "0.7.8"
+version = "0.7.9"
 
 [deps]
 ArgCheck = "dce04be8-c92d-5529-be00-80e4d2c0e197"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"

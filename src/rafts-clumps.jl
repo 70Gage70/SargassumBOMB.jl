@@ -83,12 +83,16 @@ will not exceed this for any reason.
 - `living`: A `BitVector` such that `living[i] == true` if the clump with index `i` is alive.
 - `n_clumps_tot`: An `Base.RefValue{Int64}` whose reference is equal to the total number of \
 clumps that have ever existed (i.e. it is at least the number of clumps that exist at any specific time.)
+- `geometry`: A `Bool` that toggles whether to apply the geometric correction factors [`γ_sphere`](@ref) \
+and [`τ_sphere`](@ref). Note that the simulation still uses the available interpolants, therefore if the \
+interpolants have been created with geometric corrections included, but `RaftParameters` is created with \
+`geometry == false`, the result will be a mixture of corrected and uncorrected terms.
 - `dx_MR`: `dx` of the Maxey-Riley equation. When provided, integration is done using [`FastRaft!`](@ref).
 - `dy_MR`: `dy` of the Maxey-Riley equation. When provided, integration is done using [`FastRaft!`](@ref).
 
 ### Constructor
 
-    RaftParameters(; ics, clumps, springs, connections, gd_model, land, n_clumps_max, fast_raft)
+    RaftParameters(; ics, clumps, springs, connections, gd_model, land, n_clumps_max, geometry = true, fast_raft = false)
 
 The quantities `living` and `n_clumps_tot` are computed automatically under the assumption that \
 the clumps initially provided are all alive.
@@ -117,6 +121,7 @@ struct RaftParameters{
     n_clumps_max::Int64
     living::BitVector
     n_clumps_tot::Base.RefValue{Int64}
+    geometry::Bool
     dx_MR::I
     dy_MR::I
 
@@ -128,6 +133,7 @@ struct RaftParameters{
         gd_model::G,
         land::L,
         n_clumps_max::Int64,
+        geometry::Bool = true,
         fast_raft::Union{Bool, Tuple{I, I}} = false) where {S<:AbstractSpring, C<:AbstractConnections, G<:AbstractGrowthDeathModel, L<:AbstractLand, I<:Interpolations.AbstractInterpolation}
 
         @argcheck n_clumps_max >= size(ics.ics, 2) "Maximum number of clumps must be at least as large as number of initial clumps"
@@ -148,20 +154,24 @@ struct RaftParameters{
             dx_MR, dy_MR = fast_raft
         end
   
-        return new{S, C, G, L, typeof(dx_MR)}(ics, clumps, springs, connections, gd_model, land, n_clumps_max, living, n_clumps_tot, dx_MR, dy_MR)
+        return new{S, C, G, L, typeof(dx_MR)}(ics, clumps, springs, connections, gd_model, land, n_clumps_max, living, n_clumps_tot, geometry, dx_MR, dy_MR)
     end
 end
 
 
 """
-    dxdy_MR(tspan, clumps)
+    dxdy_MR(tspan, clumps; geometry = true)
 
 Compute `(dx, dy)` where `dx` and `dy` are interpolants evaluable at `(x, y, t)` equal to the right-hand-side
 of the Maxey-Riley equations (spring force excluded).
 
 This is automatically applied when a fast raft is selected in [`Raft!`](@ref).
+
+### Optional Arguments
+
+- `geometry`: Passed directly to `γ_sphere`](@ref) and [`τ_sphere`](@ref).
 """
-function dxdy_MR(tspan::Tuple{Real, Real}, clumps::ClumpParameters)
+function dxdy_MR(tspan::Tuple{Real, Real}, clumps::ClumpParameters; geometry::Bool = true)
     α, τ, R, Ω, σ = clumps.α, clumps.τ, clumps.R, clumps.Ω, clumps.σ
 
     dt = step(WATER_ITP.x.dims[:t])
@@ -181,8 +191,8 @@ function dxdy_MR(tspan::Tuple{Real, Real}, clumps::ClumpParameters)
         Du_yDt  = (1 - α) * Dv_yDt + α * WIND_ITP.x.fields[:DDt_y](x, y, t)
         ω       = WATER_ITP.x.fields[:vorticity](x, y, t)
         f       = 2*Ω*sin(_y2lat(y))
-        τ_☉     = τ_sphere(y)
-        γ_☉     = γ_sphere(y)       
+        τ_☉     = τ_sphere(y, geometry = geometry)
+        γ_☉     = γ_sphere(y, geometry = geometry)       
 
         dx[i, j, k] += (1/γ_☉) * (u_x + τ * (R*Dv_xDt - R*(f + ω/3)*v_y - Du_xDt + (f + τ_☉*u_x + R*ω/3)*u_y))
         dy[i, j, k] +=            u_y + τ * (R*Dv_yDt + R*(f + ω/3)*v_x - Du_yDt - (f + τ_☉*u_x + R*ω/3)*u_x)

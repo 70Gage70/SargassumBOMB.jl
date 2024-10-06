@@ -11,6 +11,7 @@ For integrating using a leeway velocity, [`Leeway!`](@ref) should be used.
 function Raft!(du, u, p::RaftParameters, t)
     α, τ, R, Ω, σ = p.clumps.α, p.clumps.τ, p.clumps.R, p.clumps.Ω, p.clumps.σ
     n_clumps_max = p.n_clumps_max
+    geometry = p.geometry
 
     du .= 0.0
 
@@ -26,8 +27,8 @@ function Raft!(du, u, p::RaftParameters, t)
         Du_yDt  = (1 - α) * Dv_yDt + α * WIND_ITP.x.fields[:DDt_y](x, y, t)
         ω       = WATER_ITP.x.fields[:vorticity](x, y, t)
         f       = 2*Ω*sin(_y2lat(y))
-        τ_☉     = τ_sphere(y)
-        γ_☉     = γ_sphere(y)       
+        τ_☉     = τ_sphere(y, geometry = geometry)
+        γ_☉     = γ_sphere(y, geometry = geometry)       
 
         du[1,i] += (1/γ_☉) * (u_x + τ * (R*Dv_xDt - R*(f + ω/3)*v_y - Du_xDt + (f + τ_☉*u_x + R*ω/3)*u_y))
         du[2,i] +=            u_y + τ * (R*Dv_yDt + R*(f + ω/3)*v_x - Du_yDt - (f + τ_☉*u_x + R*ω/3)*u_x)
@@ -58,12 +59,13 @@ a more front-loaded computation due to the requirement of additional interpolant
 function FastRaft!(du, u, p::RaftParameters, t)
     τ = p.clumps.τ
     n_clumps_max = p.n_clumps_max
+    geometry = p.geometry
 
     du .= 0.0
 
     for i in (1:n_clumps_max)[p.living]
         x, y    = clump_i(u, i)
-        γ_☉     = γ_sphere(y)  
+        γ_☉     = γ_sphere(y, geometry = geometry)  
         du[1,i] += p.dx_MR(x, y, t)
         du[2,i] += p.dy_MR(x, y, t)
 

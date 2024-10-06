@@ -362,7 +362,7 @@ struct InterpolatedField{N, T<:Real, U<:Integer, I<:AbstractInterpolation}
 end
 
 """
-    add_derivatives(itrf; interpolant_type, extrapolate_value, xyt_names, vxvy_names, Dx_Dy_vort_names)
+    add_derivatives(itrf; interpolant_type, extrapolate_value, xyt_names, vxvy_names, Dx_Dy_vort_names, geometry)
 
 Add three additional fields to [`InterpolatedField`](@ref), namely the x and y components 
 of the material derivative and the vorticity.
@@ -381,6 +381,7 @@ of the material derivative and the vorticity.
 - `vxvy_names`: A `Tuple` with two symbols, corresponding to the `x` and `y` components of the vector field, in that order. Default `(:u, :v)`.
 - `Dx_Dy_vort_names`: A `Tuple` with three symbols, corresponding to the `x` component of the material derivative, the 
     `y` component of the material derivative and the vorticity, in that order. Default `(:DDt_x, :DDt_y, :vorticity)`.
+- `geometry`: If `true`, include factors that take into account the spherical geometry of the Earth. Default `true`.
 """ 
 function add_derivatives!(
     itrf::InterpolatedField;
@@ -388,7 +389,8 @@ function add_derivatives!(
     extrapolate_value::Real = 0.0,
     xyt_names::NTuple{3, Symbol} = (:x, :y, :t),
     vxvy_names::NTuple{2, Symbol} = (:u, :v),
-    Dx_Dy_vort_names::NTuple{3, Symbol} = (:DDt_x, :DDt_y, :vorticity))
+    Dx_Dy_vort_names::NTuple{3, Symbol} = (:DDt_x, :DDt_y, :vorticity),
+    geometry::Bool = true)
 
     if interpolant_type isa String
         @argcheck interpolant_type in ["cubic", "nearest"] "kwarg `interpolant_type` should be either $("cubic"), $("nearest") or an `Interpolations.InterpolationType`."
@@ -405,9 +407,12 @@ function add_derivatives!(
     x_var, y_var, t_var = [itrf.dims[name] for name in xyt_names]
     vx, vy = [itrf.fields[name] for name in vxvy_names]
 
-    DDx(x, y, t) = gradient(vx, x, y, t) ⋅ [vx(x, y, t)/γ_sphere(y), vy(x, y, t), 1.0] - τ_sphere(y)*vx(x, y, t)*vy(x, y, t)
-    DDy(x, y, t) = gradient(vy, x, y, t) ⋅ [vx(x, y, t)/γ_sphere(y), vy(x, y, t), 1.0] + τ_sphere(y)*vx(x, y, t)^2
-    vort(x, y, t) = gradient(vy, x, y, t)[1]/γ_sphere(y) - gradient(vx, x, y, t)[2] + τ_sphere(y)*vx(x, y, t)
+    γ(y) = γ_sphere(y, geometry = geometry)
+    τ(y) = τ_sphere(y, geometry = geometry)
+
+    DDx(x, y, t) = gradient(vx, x, y, t) ⋅ [vx(x, y, t)/γ(y), vy(x, y, t), 1.0] - τ(y)*vx(x, y, t)*vy(x, y, t)
+    DDy(x, y, t) = gradient(vy, x, y, t) ⋅ [vx(x, y, t)/γ(y), vy(x, y, t), 1.0] + τ(y)*vx(x, y, t)^2
+    vort(x, y, t) = gradient(vy, x, y, t)[1]/γ(y) - gradient(vx, x, y, t)[2] + τ(y)*vx(x, y, t)
 
     data_ddx = [DDx(x, y, t) for x in x_var, y in y_var, t in t_var]
     data_ddy = [DDy(x, y, t) for x in x_var, y in y_var, t in t_var]

@@ -6,7 +6,7 @@ A container for the initial conditions for a raft.
 ## Fields
 
 - `tspan`: A `Tuple` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is \
-in `UNITS["time"]` since [`T_REF`](@ref).
+either two two `DateTime`s or two `Real`s measured in `UNITS["time"]` since [`T_REF`](@ref). 
 - `ics`: A `2 x N` `Matrix` of the form `[x1 x2 ... xN ; y1 y2 ... yN]` giving the initial coordinates of each clump.
 
 ## Generic constructor
@@ -39,8 +39,8 @@ Generate a single clump with coordinates `(x0, y0)`.
 Construct [`InitialConditions`](@ref) from a `SargassumDistribution`.
 
 ### Arguments 
-- `tspan`: A `Tuple{Real, Real}` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is \
-in in `UNITS["time"]` since [`T_REF`](@ref).
+- `tspan`: A 2-`Tuple` such that the integration is performed for `tspan[1] ≤ t ≤ tspan[2]` where `t` is \
+either two two `DateTime`s or two `Real`s measured in `UNITS["time"]` since [`T_REF`](@ref). 
 - `dist`: A `SargassumDistribution`.
 - `weeks`: A `Vector{<:Integer}` giving the weeks of the month to consider. Each entry should be between 1 and 4 and appear only once.
 - `levels`: The number of clump levels. Note that this is NOT equal to the number of clumps, see below.
@@ -59,17 +59,22 @@ struct InitialConditions
     tspan::Tuple{Float64, Float64}
     ics::Matrix{Float64}
 
-    function InitialConditions(;tspan::Tuple{Real, Real}, ics::Matrix{<:Real})
+    function InitialConditions(;
+        tspan::Union{Tuple{Real, Real}, Tuple{DateTime, DateTime}}, 
+        ics::Matrix{<:Real})
+        
         @argcheck tspan[1] < tspan[2] "initial time must be less than final time"
         @argcheck size(ics, 1) == 2 "matrix should have size 2 x N"
         @argcheck size(ics, 2) > 0 "ics can not be empty"
 
-        return new(tspan, ics)
+        _tspan = tspan isa Tuple{Real, Real} ? tspan : datetime2time.(tspan)
+
+        return new(_tspan, ics)
     end
 end
 
 function InitialConditions(
-    tspan::Tuple{Real, Real}, 
+    tspan::Union{Tuple{Real, Real}, Tuple{DateTime, DateTime}}, 
     xy0::Matrix{<:Real};
     to_xy::Bool = false)
     
@@ -83,7 +88,7 @@ function InitialConditions(
 end
 
 function InitialConditions(
-    tspan::Tuple{Real, Real},
+    tspan::Union{Tuple{Real, Real}, Tuple{DateTime, DateTime}},
     x_range::AbstractRange{T}, 
     y_range::AbstractRange{T};
     to_xy::Bool = false) where {T<:Real}
@@ -103,7 +108,7 @@ function InitialConditions(
 end
 
 function InitialConditions(
-    tspan::Tuple{Real, Real}, 
+    tspan::Union{Tuple{Real, Real}, Tuple{DateTime, DateTime}}, 
     x0::Real, 
     y0::Real;
     to_xy::Bool = false)
@@ -118,7 +123,7 @@ function InitialConditions(
 end
 
 function InitialConditions(
-    tspan::Tuple{Real, Real},
+    tspan::Union{Tuple{Real, Real}, Tuple{DateTime, DateTime}},
     dist::SargassumDistribution, 
     weeks::Vector{<:Integer},
     levels::Integer;

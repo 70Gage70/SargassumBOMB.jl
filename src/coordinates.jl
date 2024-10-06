@@ -188,19 +188,25 @@ function _y2lat(y::Real; eqr::EquirectangularReference = EQR.x)
 end
 
 """
-    γ_sphere(y)
+    γ_sphere(y; eqr = EQR.x, geometry = true)
 
-Calculate `sec(lat_0) * cos(lat)`, converting `y` to `lat` automatically.
+Calculate the geometric correction factor `sec(lat_0) * cos(lat)`, converting `y` to `lat` automatically \
+using [`EquirectangularReference`](@ref) `eqr`, default [`EQR`](@ref).
+
+If `geometry == false`, `γ_sphere` is always equal to `1.0`.
 """
-function γ_sphere(y::Real; eqr::EquirectangularReference = EQR.x)    
-    return sec(eqr.lat0*π/180) * cos(_y2lat(y, eqr = eqr))
+function γ_sphere(y::Real; eqr::EquirectangularReference = EQR.x, geometry::Bool = true)    
+    return geometry ? sec(eqr.lat0*π/180) * cos(_y2lat(y, eqr = eqr)) : 1.0
 end
 
 """
-    τ_sphere(y)
+    τ_sphere(y; eqr = EQR.x, geometry = true)
 
-Calculate `τ = tan(lat)/R` converting `y` to `lat` automatically.
+Calculate the geometric correction factor `τ = tan(lat)/R` converting `y` to `lat` automatically \
+using [`EquirectangularReference`](@ref) `eqr`, default [`EQR`](@ref).
+
+If `geometry == false`, `τ_sphere` is always equal to `0.0`.
 """
-function τ_sphere(y::Real; eqr::EquirectangularReference = EQR.x)    
-    return tan(_y2lat(y, eqr = eqr))/eqr.R.val
+function τ_sphere(y::Real; eqr::EquirectangularReference = EQR.x, geometry::Bool = true)    
+    return geometry ? tan(_y2lat(y, eqr = eqr))/eqr.R.val : 0.0
 end

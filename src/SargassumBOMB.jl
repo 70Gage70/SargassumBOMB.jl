@@ -56,6 +56,9 @@ export itps_load
 include(joinpath(@__DIR__, "..", "interpolants", "default", "itps-default.jl"))
 export itps_default_construct
 
+include(joinpath(@__DIR__, "..", "interpolants", "itps-interface.jl"))
+export update_interpolant!, dim, dims, field, fields
+
 include("land.jl")
 export AbstractLand, NoLand, Land
 

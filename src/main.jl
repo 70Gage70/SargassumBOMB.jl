@@ -1,5 +1,5 @@
 """
-    simulate(rp; rhs, alg, abstol, reltol, showprogress, dt, return_raw)
+    simulate(rp; leeway, alg, abstol, reltol, showprogress, dt, return_raw)
 
 Simulate a Sargassum raft with [`RaftParameters`](@ref) `rp` and return a [`RaftTrajectory`](@ref).
 

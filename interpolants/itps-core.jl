@@ -4,10 +4,10 @@
 A container for gridded data, possibly time-dependent.
 
 ### Fields
-- `dims_names`: A `Vector` of `Tuple{Unitful.Unitlike, Symbol}`s such that `dims_names[i][1]` is the `i`th dimension of `fields` and \
+- `dims_names`: A `Vector` of `Tuple{Symbol, Unitful.Unitlike}`s such that `dims_names[i][1]` is the `i`th dimension of `fields` and \
     `dims_names[i][2]` gives the units of the `i`th dimension.
 - `dims`: A `Dict` mapping variable names to ranges they take.
-- `fields_names`: A `Vector` of `Tuple{Unitful.Unitlike, Symbol}`s such that `fields_names[i][1]` is the `i`th field and \
+- `fields_names`: A `Vector` of `Tuple{Symbol, Unitful.Unitlike}`s such that `fields_names[i][1]` is the `i`th field and \
 `fields_names[i][2]` gives its units.
 - `fields`: A `Dict` mapping field names to their arrays.
 
@@ -300,10 +300,10 @@ end
 A container for interpolants of gridded data, possibly time-dependent.
 
 ### Fields
-- `dims_names`: A `Vector` of `Tuple{Unitful.Unitlike, Symbol}`s such that `dims_names[i][1]` is the `i`th dimension of `fields` and \
+- `dims_names`: A `Vector` of `Tuple{Symbol, Unitful.Unitlike}`s such that `dims_names[i][1]` is the `i`th dimension of `fields` and \
     `dims_names[i][2]` gives the units of the `i`th dimension.
 - `dims`: A `Dict` mapping variable names to ranges they take.
-- `fields_names`: A `Vector` of `Tuple{Unitful.Unitlike, Symbol}`s such that `fields_names[i][1]` is the `i`th field and \
+- `fields_names`: A `Vector` of `Tuple{Symbol, Unitful.Unitlike}`s such that `fields_names[i][1]` is the `i`th field and \
 `fields_names[i][2]` gives its units.
 - `fields`: A `Dict` mapping field names to their interpolants.
 

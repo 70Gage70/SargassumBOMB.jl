@@ -20,7 +20,9 @@ If `GriddedField.dims_names == [(:x, u"km"), (:y, u"km"), (:t, u"d")]`, this imp
 
     GriddedField(n_dims; floats = Float64, ints = Int64)
     
-where `n_dims` is the number of dimensions of the field and `floats` and `ints` give the datatypes used.
+where `n_dims` is the number of dimensions of the field and `floats` and `ints` give the datatypes used. For example \
+a water velocity field would have `n_dims = 3` from `(x, y, t)`. A land interpolant would have `n_dims = 2` from \
+`(x, y)`, i.e. the land location is not time-dependent.
 """
 struct GriddedField{N, T<:Real, U<:Integer}
     dims_names::Vector{Tuple{Symbol, UFUL}}

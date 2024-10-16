@@ -61,6 +61,7 @@ See [`InitialConditions`](@ref) for more detail. Default `5`.
 - `k_N`: Sargassum nutrient (N) uptake half saturation, measured in mmol N/m^3. Default `0.000129`.
 - `S_min`: A clump dies when it's "amount" drops below this value. Default `-0.00481`.
 - `S_max`: A clump dies when it's "amount" grows above this value. Default `0.001`.
+- `verbose`: Whether to print out clump growths/deaths at each step. Default `false`.
 - `seed`: A seed for reproducible randomness, passed to [`InitialConditions`](@ref). Default `1234`.
 """
 function QuickRaftParameters(
@@ -79,6 +80,7 @@ function QuickRaftParameters(
     k_N::Real = 0.000129,
     S_min::Real = -0.00481,
     S_max::Real = 0.001,
+	verbose::Bool = false,
 	seed::Integer = 1234)
 	
 	tspan = (ymw2time(ymw_initial...), ymw2time(ymw_final...))
@@ -96,7 +98,8 @@ function QuickRaftParameters(
 	            m = m,
 	            k_N = k_N,
 	            S_min = S_min,
-	            S_max = S_max))
+	            S_max = S_max),
+			verbose = verbose)
 	else
 		n_clumps_max_rp = n_clumps_max
 		gd_model = ImmortalModel(n_clumps_max_rp)
@@ -112,7 +115,7 @@ function QuickRaftParameters(
 	    springs = BOMBSpring(A_spring, lambda_spring*ΔL(ics)),
 	    connections = connections,
 	    gd_model = gd_model,
-	    land = Land(),
+	    land = Land(verbose = verbose),
 	    n_clumps_max = n_clumps_max_rp,
 	    fast_raft = false
 	)

@@ -18,6 +18,39 @@ function update_interpolant!(itp::Ref{InterpolatedField}, itp_new::InterpolatedF
 end
 
 """
+    limits(itp)
+
+Return a the corners of the spatio-temporal box the interpolant is defined in.
+
+If `itp` is time-dependent, return `(lon_min, lon_max, lat_min, lat_max, t_min, t_max)`.
+
+If `itp` is time-independent, `(lon_min, lon_max, lat_min, lat_max)`.
+
+### Examples
+
+```julia-repl
+(lon_min, lon_max, lat_min, lat_max, t_min, t_max) = limits(WATER_ITP)
+```
+
+```julia-repl
+(lon_min, lon_max, lat_min, lat_max) = limits(LAND_ITP)
+```
+"""
+function limits(itp)
+	x = itp.x
+	lon, lat = xy2sph(x.dims[:x], x.dims[:y]) .|> extrema
+	lon = lon .|> x -> round(x, sigdigits = 4)
+	lat = lat .|> x -> round(x, sigdigits = 4)
+
+    if :t ∈ keys(x.dims)
+	    tmin, tmax = extrema(x.dims[:t]) .|> time2datetime .|> x -> "$(monthname(x)), $(day(x)), $(year(x))"
+	    return (lon[1], lon[2], lat[1], lat[2], tmin, tmax)
+    else
+        return (lon[1], lon[2], lat[1], lat[2])
+    end
+end
+
+"""
     dim(itp, name)
 
 Return the variable of `itp` whose value corresponds to the dimension indicated by `name`.

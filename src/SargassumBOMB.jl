@@ -1,10 +1,10 @@
 module SargassumBOMB
 
 # core functionality
-using OrdinaryDiffEq, SimpleDiffEq, SargassumFromAFAI, NearestNeighbors, Interpolations
+using OrdinaryDiffEqTsit5, SargassumFromAFAI, NearestNeighbors, Interpolations
 using SparseArrays
 using Unitful, Dates
-using LinearAlgebra: norm, ⋅
+using LinearAlgebra: norm, ⋅ # dot product
 using ArgCheck
 
 # i/o
@@ -27,6 +27,7 @@ using GeoDatasets # landseamask
 # printing
 using Crayons.Box
 using Latexify
+using ProgressBars
 
 # optimization 
 using Metaheuristics
@@ -57,7 +58,7 @@ include(joinpath(@__DIR__, "..", "interpolants", "default", "itps-default.jl"))
 export itps_default_construct
 
 include(joinpath(@__DIR__, "..", "interpolants", "itps-interface.jl"))
-export update_interpolant!, dim, dims, field, fields
+export update_interpolant!, limits, dim, dims, field, fields
 
 include("land.jl")
 export AbstractLand, NoLand, Land
@@ -85,7 +86,7 @@ include("trajectories.jl")
 export Trajectory, time_slice, RaftTrajectory, bins
 
 include("main.jl")
-export simulate, rk4
+export simulate
 
 include("optimization.jl")
 export TimeSeries, vec

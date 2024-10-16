@@ -24,7 +24,7 @@ Use this if you would like to manipulate the solution directly. Default `false`.
 function simulate(
     rp::RaftParameters; 
     leeway::Bool = false,
-    alg::OrdinaryDiffEq.OrdinaryDiffEqAlgorithm = Tsit5(),
+    alg = Tsit5(),
     abstol::Union{Real, Nothing} = nothing,
     reltol::Union{Real, Nothing} = nothing,
     showprogress::Bool = false,
@@ -41,113 +41,54 @@ function simulate(
         prob_raft = ODEProblem(Raft!, rp.ics.ics, tspan, rp)
     end
 
+    prog = ProgressBar(total = round(Int64, (tspan[2] - tspan[1])/dt), unit = "steps", unit_scale = true)
+    set_description(prog, "Integrating:")
+
     callback = CallbackSet(
                 DiscreteCallback(rp.land, rp.land),                             # LAND
                 DiscreteCallback(rp.gd_model, rp.gd_model),                     # BIOLOGY 
-                DiscreteCallback((u, t, integrator) -> true, rp.connections))   # CONNECTIONS
-    integrator = init(prob_raft, alg, abstol = abstol, reltol = reltol, callback = callback)
+                DiscreteCallback((u, t, integrator) -> true, rp.connections),   # CONNECTIONS
+                DiscreteCallback(                                               # PROGRESS
+                    (u, t, integrator) -> showprogress, 
+                    integrator -> update(prog, max(0, round(Int64, (integrator.t - tspan[1])/dt) - prog.current) )))
+                    
+    sol = solve(prob_raft, alg, abstol = abstol, reltol = reltol, callback = callback)
 
-    ts = range(tspan..., step = dt)         # "binned" times with width dt
-    n_clumps = zeros(Int64, length(ts))     # the number of clumps that are alice at each time
-    raft_com = zeros(length(ts), 2)         # the center-of-mass coordinates at each time
-    trajs = [reshape(rp.ics.ics[:,i], 2, 1) for i = 1:rp.n_clumps_max] # trajs[i] is a matrix of coordinate locations of clump i
-    lifespans = zeros(Bool, length(ts), rp.n_clumps_max) # lifespans[i, j] = true if clump j is alive at time ts[i]
-    li = 0 # keeps track of how many steps have been taken such at at least one clump is alive
-    
-    for (u, t) in TimeChoiceIterator(integrator, ts)
-        sum(rp.living) == 0 && continue
-        li += 1
-        n_clumps[li] = sum(rp.living)
-        raft_com[li,:] .= com(u[:,rp.living])
+    return_raw && return sol
 
-        for i in (1:rp.n_clumps_max)[rp.living]
-            trajs[i] = hcat(trajs[i], u[:,i])
-            lifespans[li, i] = true
+    ts = range(extrema(sol.t)..., step = dt) |> collect     # "binned" times with width dt
+    n_clumps = zeros(Int64, length(ts))                     # the number of clumps that are alice at each time
+    raft_com = zeros(length(ts), 2)                         # the center-of-mass coordinates at each time
+    trajs_t = [Float64[] for _ = 1:rp.n_clumps_max]         # trajs_t[i] is [t1, t2, ...] for clump i such that it is alive at each time
+    trajs = [Float64[] for _ = 1:rp.n_clumps_max]           # trajs[i] is [x1, y1, x2, y2, ...] for clump i such that (x_j, y_j) = (x(trajs_t[j]), y(trajs_t[j]))
+    u_prev = sol(ts[1])
+    u_curr = sol(ts[1])
+
+    for t_i = 1:length(ts)
+        u_prev .= u_curr
+        u_curr .= sol(ts[t_i])
+        n_alive = 0
+        com_t = [0.0, 0.0]
+
+        for c_i = 1:rp.n_clumps_max
+            if u_curr[:, c_i] != [0, 0] # clump has been alive at some point
+                if t_i == 1 || (t_i > 1 && u_curr[:, c_i] != u_prev[:, c_i])
+                    n_alive += 1
+                    com_t += u_curr[:, c_i]
+                    push!(trajs_t[c_i], ts[t_i])
+                    append!(trajs[c_i], u_curr[:, c_i])
+                end
+            end
         end
 
-        if showprogress
-            t0, tend = integrator.sol.prob.tspan
-            val = round(100*(t - t0)/(tend - t0), sigdigits = 3)
-            print(WHITE_BG("Integrating: $(val)%   \r"))
-            flush(stdout)
-        end
+        n_clumps[t_i] = n_alive
+        raft_com[t_i, :] = com_t/n_alive
     end
 
-    return_raw && return integrator.sol
-
-    l_idx = 1:li
-    ts = collect(ts)[l_idx]
-    trajs = [Trajectory(permutedims(xy2sph(trajs[i][:,2:end])), ts[lifespans[l_idx,i]]) for i = 1:rp.n_clumps_max if size(trajs[i], 2) > 1]
+    trajs = [Trajectory(permutedims(xy2sph(reshape(trajs[i], 2, length(trajs_t[i])))), trajs_t[i]) for i = 1:length(trajs) if length(trajs_t[i]) > 0]
     trajs = Dict(1:length(trajs) .=> trajs)
-    raft_com = raft_com[l_idx,:] |> permutedims |> xy2sph |> permutedims |> r -> Trajectory(r, ts)
+    raft_com = raft_com |> permutedims |> xy2sph |> permutedims |> r -> Trajectory(r, ts)
+    rtr = RaftTrajectory(trajectories = trajs, n_clumps = n_clumps, com = raft_com)
 
-    return RaftTrajectory(trajectories = trajs, n_clumps = n_clumps[l_idx], com = raft_com)
-end
-
-"""
-    rk4(rp; rhs, alg, showprogress, dt, return_raw)
-
-Similar to [`simulate`](@ref) but uses a stock RK4 algorithm with time step `dt` (default `0.1` days).
-
-May be faster for large spring constants at the expense of accuracy.
-"""
-function rk4(
-    rp::RaftParameters; 
-    leeway::Bool = false,
-    showprogress::Bool = false,
-    dt::Real = 0.1,
-    return_raw::Bool = false)
-
-    tspan = rp.ics.tspan
-
-    if leeway
-        prob_raft = ODEProblem(Leeway!, rp.ics.ics, tspan, rp)
-    elseif rp.dx_MR !== nothing && rp.dx_MR !== nothing
-        prob_raft = ODEProblem(FastRaft!, rp.ics.ics, tspan, rp)
-    else
-        prob_raft = ODEProblem(Raft!, rp.ics.ics, tspan, rp)
-    end
-
-    integrator = init(prob_raft, SimpleRK4(), dt = dt)
-
-    ts = range(tspan..., step = dt)
-    n_clumps = zeros(Int64, length(ts))
-    raft_com = zeros(length(ts), 2)
-    trajs = [reshape(rp.ics.ics[:,i], 2, 1) for i = 1:rp.n_clumps_max]
-    lifespans = zeros(Bool, length(ts), rp.n_clumps_max)
-    li = 0
-    
-    while integrator.t <= last(tspan)
-        step!(integrator)
-        rp.land(integrator.u, integrator.t, integrator) && rp.land(integrator)
-        rp.gd_model(integrator.u, integrator.t, integrator) && rp.gd_model(integrator)
-        rp.connections(integrator)
-
-        sum(rp.living) == 0 && continue
-        li += 1
-        n_clumps[li] = sum(rp.living)
-        raft_com[li,:] .= com(integrator.u[:,rp.living])
-
-        for i in (1:rp.n_clumps_max)[rp.living]
-            trajs[i] = hcat(trajs[i], integrator.u[:,i])
-            lifespans[li, i] = true
-        end
-
-        if showprogress
-            t0, tend = integrator.sol.prob.tspan
-            val = round(100*(t - t0)/(tend - t0), sigdigits = 3)
-            print(WHITE_BG("Integrating: $(val)%   \r"))
-            flush(stdout)
-        end
-    end
-
-    return_raw && return integrator.sol
-
-    l_idx = 1:li
-    ts = collect(ts)[l_idx]
-    trajs = [Trajectory(permutedims(xy2sph(trajs[i][:,2:end])), ts[lifespans[l_idx,i]]) for i = 1:rp.n_clumps_max if size(trajs[i], 2) > 1]
-    trajs = Dict(1:length(trajs) .=> trajs)
-    raft_com = raft_com[l_idx,:] |> permutedims |> xy2sph |> permutedims |> r -> Trajectory(r, ts)
-
-    return RaftTrajectory(trajectories = trajs, n_clumps = n_clumps[l_idx], com = raft_com)
+    return rtr
 end

@@ -263,7 +263,7 @@ function itps_default_construct(; download::Bool = false, verbose::Bool = true)
     elseif 0 < length(missings) < 6
         verbose && @warn "Could not construct interpolants $(missings)."
     else
-        itps_load(_ITPS_SCRATCH.x)
+        itps_load()
         verbose && @info "Default interpolants constructed."
     end
 

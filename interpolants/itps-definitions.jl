@@ -48,7 +48,7 @@ The interpolant for landmass location. This is a `Ref`, access or modify the act
 const LAND_ITP = Ref{InterpolatedField}()
 
 """
-    itps_load(dir::String)
+    itps_load(; dir = _ITPS_SCRATCH.x)
 
 Attempt to load the interpolants in directory `dir`.
 
@@ -65,7 +65,7 @@ This assumes that there exists in this directory the following files, each conta
 | LAND_ITP.jld2       | LAND_ITP          |
 
 """
-function itps_load(dir::String)
+function itps_load(; dir::String = _ITPS_SCRATCH.x)
     try
         WATER_ITP.x = load(joinpath(dir, "WATER_ITP.jld2"), "WATER_ITP")
     catch

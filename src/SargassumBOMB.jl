@@ -12,8 +12,8 @@ using MAT, NetCDF, JLD2
 
 # downloading interpolants
 using Scratch, Downloads
-_ITPS_RAW_SCRATCH = Ref{String}()
-_ITPS_SCRATCH = Ref{String}()
+const _ITPS_RAW_SCRATCH = Ref{String}()
+const _ITPS_SCRATCH = Ref{String}()
 
 # probability/statistics
 using StatsBase, Distributions 
@@ -114,10 +114,10 @@ function __init__()
     _ITPS_SCRATCH.x = @get_scratch!("_ITPS_SCRATCH")
 
     try
-        itps_load(_ITPS_SCRATCH.x)
+        itps_load()
     catch
         try 
-            itps_default_construct(verbose = false)
+            itps_default_construct()
         catch
             nothing
         end

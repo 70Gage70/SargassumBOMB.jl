@@ -6,6 +6,32 @@ using Dates
 export QuickRaftParameters
 
 """
+    QuickRaftParameters()
+
+Return a simple [`RaftParameters`](@ref) suitable for testing purposes.
+"""
+function QuickRaftParameters()
+    tspan = (DateTime(2018, 4, 13), DateTime(2018, 4, 15)) .|> datetime2time
+    ics = InitialConditions(tspan, range(-55.0, -50.0, length = 5), range(5.0, 10.0, length = 5), to_xy = true)
+    n_clumps_max = size(ics.ics, 2)
+    clumps = ClumpParameters()
+    springs = BOMBSpring(1.0, ΔL(ics))
+    connections = ConnectionsNearest(n_clumps_max, 2)
+    gd_model = ImmortalModel(n_clumps_max)
+    land = Land()
+
+    return RaftParameters(
+        ics = ics,
+        clumps = clumps,
+        springs = springs,
+        connections = connections,
+        gd_model = gd_model,
+        land = land,
+        n_clumps_max = n_clumps_max
+    )
+end
+
+"""
     QuickRaftParameters(ymw_initial, ymw_final; kwargs...)
 
 Generate a [`RaftParameters`](@ref) object to integrate from `(year, month, week)` inital to final. The raft 
@@ -27,6 +53,10 @@ See [`InitialConditions`](@ref) for more detail. Default `5`.
 - `k_N`: Sargassum nutrient (N) uptake half saturation, measured in mmol N/m^3. Default `0.000129`.
 - `S_min`: A clump dies when it's "amount" drops below this value. Default `-0.00481`.
 - `S_max`: A clump dies when it's "amount" grows above this value. Default `0.001`.
+- `geometry`: A `Bool` that toggles whether to apply the geometric correction factors [`γ_sphere`](@ref) \
+and [`τ_sphere`](@ref). Note that the simulation still uses the available interpolants, therefore if the \
+interpolants have been created with geometric corrections included, but `RaftParameters` is created with \
+`geometry == false`, the result will be a mixture of corrected and uncorrected terms. Default `true`.
 - `verbose`: Whether to print out clump growths/deaths at each step. Default `false`.
 - `seed`: A seed for reproducible randomness, passed to [`InitialConditions`](@ref). Default `1234`.
 """
@@ -46,6 +76,7 @@ function QuickRaftParameters(
     k_N::Real = 0.000129,
     S_min::Real = -0.00481,
     S_max::Real = 0.001,
+	geometry::Bool = true,
 	verbose::Bool = false,
 	seed::Integer = 1234)
 	
@@ -83,6 +114,7 @@ function QuickRaftParameters(
 	    gd_model = gd_model,
 	    land = Land(verbose = verbose),
 	    n_clumps_max = n_clumps_max_rp,
+		geometry = geometry,
 	    fast_raft = false
 	)
 end

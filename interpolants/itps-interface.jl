@@ -29,11 +29,11 @@ If `itp` is time-independent, `(lon_min, lon_max, lat_min, lat_max)`.
 ### Examples
 
 ```julia-repl
-(lon_min, lon_max, lat_min, lat_max, t_min, t_max) = limits(WATER_ITP)
+julia> (lon_min, lon_max, lat_min, lat_max, t_min, t_max) = limits(WATER_ITP)
 ```
 
 ```julia-repl
-(lon_min, lon_max, lat_min, lat_max) = limits(LAND_ITP)
+julia> (lon_min, lon_max, lat_min, lat_max) = limits(LAND_ITP)
 ```
 """
 function limits(itp)
@@ -60,7 +60,7 @@ Use [`dims`](@ref) to see a list of possible values of `name`.
 ### Example
 
 ```julia-repl
-x = dim(WATER_ITP, :x) # the x values defining interpolant knots
+julia> x = dim(WATER_ITP, :x) # the x values defining interpolant knots
 ```
 """
 dim(itp::Ref{InterpolatedField}, name::Symbol) = itp.x.dims[name] 
@@ -73,7 +73,7 @@ Return the list of variable name/unit pairs of `itp`.
 ### Example
 
 ```julia-repl
-dims(WATER_ITP)
+julia> dims(WATER_ITP)
 ```
 """
 dims(itp::Ref{InterpolatedField}) = itp.x.dims_names
@@ -88,8 +88,8 @@ Use [`fields`](@ref) to see a list of possible values of `name`.
 ### Example
 
 ```julia-repl
-v_x = field(WATER_ITP, :u) # the x component of the water velocity
-v_x(1, 2, 3) # evaluate it at `(x, y, t) = (1, 2, 3)`.
+julia> v_x = field(WATER_ITP, :u) # the x component of the water velocity
+julia> v_x(1, 2, 3) # evaluate it at `(x, y, t) = (1, 2, 3)`.
 ```
 """
 field(itp::Ref{InterpolatedField}, name::Symbol) = itp.x.fields[name] 
@@ -102,7 +102,7 @@ Return the list of field name/unit pairs of `itp`.
 ### Example
 
 ```julia-repl
-fields(WATER_ITP)
+julia> fields(WATER_ITP)
 ```
 """
 fields(itp::Ref{InterpolatedField}) = itp.x.fields_names

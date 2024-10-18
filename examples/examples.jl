@@ -8,7 +8,7 @@ export QuickRaftParameters
 """
     QuickRaftParameters()
 
-Return a simple [`RaftParameters`](@ref) suitable for testing purposes.
+Return a simple [`RaftParameters`](@ref) with fixed parameters suitable for testing purposes.
 """
 function QuickRaftParameters()
     tspan = (DateTime(2018, 4, 13), DateTime(2018, 4, 15)) .|> datetime2time
@@ -32,16 +32,13 @@ function QuickRaftParameters()
 end
 
 """
-    QuickRaftParameters(ymw_initial, ymw_final; kwargs...)
+    QuickRaftParameters(ics; kwargs...)
 
-Generate a [`RaftParameters`](@ref) object to integrate from `(year, month, week)` inital to final. The raft 
-is initialized at the Sargassum distribution at `ymw_initial`.
+Generate a [`RaftParameters`](@ref) object to integrate from `ics::InitialConditions`.
 
 ### Optional Arguments 
 
 - `use_biology`: If `true`, include biological effects in the simulation. Default `false`.
-- `n_levels`: This controls the number of initial clumps (higher is more clumps). \
-See [`InitialConditions`](@ref) for more detail. Default `5`.
 - `n_connections`: The number of inter-clump nearest neighbor connectionsto form. Default `2`. 
 - `delta`: The bouyancy of the particle. Default: `1.14`.
 - `tau`: The inertial response time, measured in days. Default `0.0103`.
@@ -58,13 +55,10 @@ and [`τ_sphere`](@ref). Note that the simulation still uses the available inter
 interpolants have been created with geometric corrections included, but `RaftParameters` is created with \
 `geometry == false`, the result will be a mixture of corrected and uncorrected terms. Default `true`.
 - `verbose`: Whether to print out clump growths/deaths at each step. Default `false`.
-- `seed`: A seed for reproducible randomness, passed to [`InitialConditions`](@ref). Default `1234`.
 """
 function QuickRaftParameters(
-	ymw_initial::NTuple{3, Integer},
-	ymw_final::NTuple{3, Integer};
+	ics::InitialConditions;
     use_biology::Bool = false,
-	n_levels::Integer = 5, 
 	n_connections::Integer = 2, 
 	delta::Real = 1.14,
     tau::Real = 0.0103,
@@ -77,12 +71,8 @@ function QuickRaftParameters(
     S_min::Real = -0.00481,
     S_max::Real = 0.001,
 	geometry::Bool = true,
-	verbose::Bool = false,
-	seed::Integer = 1234)
+	verbose::Bool = false)
 	
-	tspan = (ymw2time(ymw_initial...), ymw2time(ymw_final...))
-	dist_initial = SargassumFromAFAI.DIST_1718[ymw_initial[1:2]]
-	ics = InitialConditions(tspan, dist_initial, [ymw_initial[3]], n_levels, seed = seed)
 	n_clumps_max = size(ics.ics, 2)
 
 	# Pick bio model
